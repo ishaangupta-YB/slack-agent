@@ -39,6 +39,10 @@ export const cfg = {
     bucketHttpPort: parseInt(process.env.BUCKET_HTTP_PORT || "3001", 10),
     enableBucketServer: process.env.BUCKET_HTTP_PORT !== "0",
   },
+  hf: {
+    token: process.env.HF_TOKEN || "",
+    bucketRepo: process.env.HF_BUCKET_REPO || "",
+  },
   mcp: {
     serversRaw: process.env.MCP_SERVERS,
   },

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { uploadFiles, HUB_URL } from "@huggingface/hub";
 import { cfg } from "../config.js";
 
 export interface Bucket {
@@ -31,7 +32,42 @@ class LocalBucket implements Bucket {
   }
 }
 
-export const bucket: Bucket = new LocalBucket(
-  cfg.storage.bucketDir,
-  cfg.storage.bucketPublicUrl,
-);
+type Uploader = typeof uploadFiles;
+
+export class HuggingFaceBucket implements Bucket {
+  private repo: `buckets/${string}`;
+  private token: string;
+  private uploader: Uploader;
+
+  constructor(repo: string, token: string, uploader: Uploader = uploadFiles) {
+    if (!repo) throw new Error("HF bucket repo must not be empty");
+    this.repo = repo.startsWith("buckets/") ? (repo as `buckets/${string}`) : `buckets/${repo}`;
+    this.token = token;
+    this.uploader = uploader;
+  }
+
+  async write(path: string, content: string | Buffer, _contentType?: string): Promise<void> {
+    await this.uploader({
+      repo: this.repo,
+      files: [{ path: path.replace(/^\//, ""), content: new Blob([content]) }],
+      accessToken: this.token,
+      commitTitle: "Moon Bot artifact upload",
+      commitDescription: `Upload ${path}`,
+    });
+  }
+
+  readUrl(path: string): string {
+    const normalized = path.replace(/^\//, "");
+    const hubBase = HUB_URL.replace(/\/$/, "");
+    return `${hubBase}/${this.repo}/resolve/main/${normalized}`;
+  }
+}
+
+export function createBucket(): Bucket {
+  if (cfg.hf.bucketRepo && cfg.hf.token) {
+    return new HuggingFaceBucket(cfg.hf.bucketRepo, cfg.hf.token);
+  }
+  return new LocalBucket(cfg.storage.bucketDir, cfg.storage.bucketPublicUrl);
+}
+
+export const bucket: Bucket = createBucket();

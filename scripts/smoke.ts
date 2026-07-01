@@ -9,6 +9,7 @@ import { cfg } from "../src/config.js";
 import { startScheduler, stopScheduler } from "../src/scheduler.js";
 import { app } from "../src/slack.js";
 import { startBucketServer } from "../src/storage/server.js";
+import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 
@@ -244,6 +245,38 @@ async function main() {
   assert(existsSync(urls.sessionUrl));
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
   assert(responseContent.includes("Hello from smoke test"));
+
+  // HuggingFace Bucket integration
+  const uploaded: Array<{
+    repo: string;
+    files: Array<{ path: string; content: Blob }>;
+    accessToken?: string;
+    commitTitle?: string;
+    commitDescription?: string;
+  }> = [];
+  const hfBucket = new HuggingFaceBucket("huggingface/moon-bot-memory", "hf-test-token", async (params) => {
+    const files = params.files.map((f) => ({
+      path: "path" in f ? f.path : "",
+      content: f instanceof Blob ? f : (f as { content: Blob }).content,
+    }));
+    uploaded.push({
+      repo: params.repo as string,
+      files,
+      accessToken: (params as { accessToken?: string }).accessToken,
+      commitTitle: (params as { commitTitle?: string }).commitTitle,
+      commitDescription: (params as { commitDescription?: string }).commitDescription,
+    });
+    return { commit: { oid: "abc123", url: "https://huggingface.co/test-commit" }, hookOutput: "" } as never;
+  });
+  await hfBucket.write("responses/smoke.md", "HF bucket smoke test content");
+  assert.strictEqual(uploaded.length, 1);
+  assert.strictEqual(uploaded[0].repo, "buckets/huggingface/moon-bot-memory");
+  assert.strictEqual(uploaded[0].files[0].path, "responses/smoke.md");
+  assert.strictEqual(uploaded[0].commitTitle, "Moon Bot artifact upload");
+  assert.strictEqual(uploaded[0].accessToken, "hf-test-token");
+  const hfReadUrl = hfBucket.readUrl("responses/smoke.md");
+  assert(hfReadUrl.includes("huggingface.co/buckets/huggingface/moon-bot-memory/resolve/main/responses/smoke.md"));
+  console.log("HuggingFace Bucket integration passed");
 
   // Bucket server health endpoint
   const bucketServer = await startBucketServer();
