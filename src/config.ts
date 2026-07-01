@@ -36,6 +36,8 @@ export const cfg = {
     esApiKey: process.env.ES_API_KEY,
     esUsername: process.env.ES_USERNAME,
     esPassword: process.env.ES_PASSWORD,
+    mongoUri: process.env.MONGODB_URI,
+    mongoDatabase: process.env.MONGODB_DATABASE,
   },
   storage: {
     bucketDir: process.env.BUCKET_DIR || "./bucket",

@@ -12,6 +12,7 @@ import { startBucketServer } from "../src/storage/server.js";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
+import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -230,6 +231,42 @@ async function main() {
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch3;
   cfg.integrations.esUrl = originalEsUrl;
   cfg.integrations.esApiKey = originalEsApiKey;
+
+  // MongoDB query tool
+  const originalMongoUri = cfg.integrations.mongoUri;
+  const originalMongoDatabase = cfg.integrations.mongoDatabase;
+  cfg.integrations.mongoUri = "mongodb://localhost:27017";
+  cfg.integrations.mongoDatabase = "hub";
+  setMongoExecutor(async () => [
+    { _id: "abc", username: "alice", plan: "pro", createdAt: "2026-07-01T00:00:00Z" },
+    { _id: "def", username: "bob", plan: "basic" },
+  ]);
+
+  const mongoResult = await runToolCall({
+    tool: "mongo_query",
+    params: {
+      collection: "users",
+      filter: '{"plan": "pro"}',
+      projection: ["username", "plan"],
+      limit: 5,
+    },
+  });
+  assert.strictEqual(mongoResult.error, undefined);
+  assert(mongoResult.result.includes("alice"));
+  assert(mongoResult.result.includes("pro"));
+  console.log("MongoDB query tool passed");
+
+  clearMongoExecutor();
+  cfg.integrations.mongoUri = undefined;
+  cfg.integrations.mongoDatabase = undefined;
+  const mongoUnconfigured = await runToolCall({
+    tool: "mongo_query",
+    params: { collection: "users", limit: 1 },
+  });
+  assert(mongoUnconfigured.result.includes("MONGODB_URI"));
+
+  cfg.integrations.mongoUri = originalMongoUri;
+  cfg.integrations.mongoDatabase = originalMongoDatabase;
 
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;
