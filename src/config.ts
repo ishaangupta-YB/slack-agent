@@ -32,6 +32,10 @@ export const cfg = {
   integrations: {
     githubToken: process.env.GITHUB_TOKEN,
     plausibleApiKey: process.env.PLAUSIBLE_API_KEY,
+    esUrl: process.env.ES_URL,
+    esApiKey: process.env.ES_API_KEY,
+    esUsername: process.env.ES_USERNAME,
+    esPassword: process.env.ES_PASSWORD,
   },
   storage: {
     bucketDir: process.env.BUCKET_DIR || "./bucket",

@@ -163,6 +163,74 @@ async function main() {
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch2;
   cfg.integrations.plausibleApiKey = plausibleApiKey;
 
+  // Elasticsearch query tool
+  const originalEsUrl = cfg.integrations.esUrl;
+  const originalEsApiKey = cfg.integrations.esApiKey;
+  cfg.integrations.esUrl = "http://localhost:9200";
+  cfg.integrations.esApiKey = "es-test-api-key";
+  const originalFetch3 = globalThis.fetch;
+  let capturedEsRequest: { url?: string; body?: Record<string, unknown>; headers?: Record<string, string> } | undefined;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : undefined;
+    const headers = init?.headers as Record<string, string> | undefined;
+    capturedEsRequest = { url, body, headers };
+    return new Response(
+      JSON.stringify({
+        took: 12,
+        hits: {
+          total: { value: 2, relation: "eq" },
+          hits: [
+            {
+              _id: "1",
+              _index: "logs-2026.07.01",
+              _source: { "@timestamp": "2026-07-01T10:00:00Z", status: 500, message: "timeout" },
+            },
+            {
+              _id: "2",
+              _index: "logs-2026.07.01",
+              _source: { "@timestamp": "2026-07-01T10:01:00Z", status: 502, message: "gateway error" },
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  const esResult = await runToolCall({
+    tool: "es_query",
+    params: {
+      index: "logs-*",
+      query: '{"query":{"match_all":{}}}',
+      size: 5,
+      source_includes: ["@timestamp", "status", "message"],
+    },
+  });
+  assert.strictEqual(esResult.error, undefined);
+  assert(esResult.result.includes("timeout"));
+  assert(esResult.result.includes("500"));
+  assert(capturedEsRequest?.url?.includes("_search"));
+  assert(capturedEsRequest?.url?.includes("logs-"));
+  assert.strictEqual(capturedEsRequest?.headers?.Authorization, "ApiKey es-test-api-key");
+  assert.strictEqual((capturedEsRequest?.body as { size?: number })?.size, 5);
+  assert.deepStrictEqual((capturedEsRequest?.body as { _source?: string[] })?._source, ["@timestamp", "status", "message"]);
+
+  cfg.integrations.esUrl = undefined;
+  cfg.integrations.esApiKey = undefined;
+  const esUnconfigured = await runToolCall({
+    tool: "es_query",
+    params: { index: "logs-*", query: "{\"query\":{\"match_all\":{}}}", size: 1 },
+  });
+  assert(esUnconfigured.result.includes("ES_URL"));
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch3;
+  cfg.integrations.esUrl = originalEsUrl;
+  cfg.integrations.esApiKey = originalEsApiKey;
+
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;
   delete process.env.GITHUB_TOKEN;
