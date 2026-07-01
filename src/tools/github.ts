@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { cfg } from "../config.js";
+import { getToolContext } from "../context.js";
+import { bucket } from "../storage/bucket.js";
 import type { Tool } from "./types.js";
 
 interface PrFile {
@@ -29,6 +31,8 @@ const createIssueParams = z.object({
   repo: z.string(),
   title: z.string(),
   body: z.string(),
+  requestedBy: z.string().optional(),
+  traceUrl: z.string().optional(),
 });
 
 const GH_API_BASE = "https://api.github.com";
@@ -93,6 +97,24 @@ interface Issue {
   number: number;
 }
 
+async function applyContextDefaults<T extends { requestedBy?: string; traceUrl?: string }>(
+  input: T,
+): Promise<void> {
+  const ctx = getToolContext();
+  const map = cfg.integrations.githubUserMap;
+
+  if (!input.requestedBy && ctx.userId) {
+    input.requestedBy =
+      map[ctx.userId] ||
+      (ctx.userEmail ? map[ctx.userEmail] : undefined) ||
+      `<@${ctx.userId}>`;
+  }
+
+  if (!input.traceUrl && ctx.sessionFilename) {
+    input.traceUrl = bucket.readUrl(`sessions/${ctx.sessionFilename}`);
+  }
+}
+
 function buildFooter(requestedBy?: string, traceUrl?: string): string {
   const lines = ["", "---", "_Created by Moon Bot_"];
   if (requestedBy) {
@@ -113,6 +135,8 @@ async function openPullRequest(input: z.infer<typeof openPrParams>): Promise<str
   if (!owner || !repo) {
     return `Error: repo must be in "owner/name" format, got "${input.repo}".`;
   }
+
+  await applyContextDefaults(input);
 
   const repoPath = `/repos/${input.repo}`;
 
@@ -210,12 +234,15 @@ async function createGitHubIssue(input: z.infer<typeof createIssueParams>): Prom
     return `Error: repo must be in "owner/name" format, got "${input.repo}".`;
   }
 
+  await applyContextDefaults(input);
+
   try {
+    const issueBody = `${input.body}${buildFooter(input.requestedBy, input.traceUrl)}`;
     const issue = await api<Issue>(`/repos/${input.repo}/issues`, {
       method: "POST",
       body: JSON.stringify({
         title: input.title,
-        body: input.body,
+        body: issueBody,
       }),
     });
     return `Created issue #${issue.number}: ${issue.html_url}`;
@@ -227,16 +254,17 @@ async function createGitHubIssue(input: z.infer<typeof createIssueParams>): Prom
 export const openPrTool: Tool = {
   name: "open_pr",
   description:
-    "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. Requires GITHUB_TOKEN. Optionally include requestedBy (Slack user mention) and traceUrl.",
+    "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. Requires GITHUB_TOKEN. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: openPrParams,
-  tier: "privileged",
+  tier: "basic",
   run: openPullRequest,
 };
 
 export const createIssueTool: Tool = {
   name: "create_issue",
-  description: "Create a GitHub issue. Provide repo (owner/name), title, and body. Requires GITHUB_TOKEN.",
+  description:
+    "Create a GitHub issue. Provide repo (owner/name), title, and body. Requires GITHUB_TOKEN. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: createIssueParams,
-  tier: "privileged",
+  tier: "basic",
   run: createGitHubIssue,
 };

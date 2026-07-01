@@ -38,6 +38,7 @@ export const cfg = {
   },
   integrations: {
     githubToken: process.env.GITHUB_TOKEN,
+    githubUserMap: parseJsonMap(process.env.GITHUB_USER_MAP),
     plausibleApiKey: process.env.PLAUSIBLE_API_KEY,
     esUrl: process.env.ES_URL,
     esApiKey: process.env.ES_API_KEY,
@@ -90,6 +91,15 @@ export const cfg = {
     defaultTier: normalizeTier(process.env.DEFAULT_ACCESS_TIER) || "basic",
   },
 };
+
+function parseJsonMap(value?: string): Record<string, string> {
+  if (!value) return {};
+  try {
+    return JSON.parse(value) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
 
 function normalizeTier(value?: string): "basic" | "elastic" | "privileged" | undefined {
   const t = value?.toLowerCase().trim();

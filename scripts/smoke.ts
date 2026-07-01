@@ -18,6 +18,7 @@ import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
+import { runWithToolContext } from "../src/context.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
@@ -790,6 +791,68 @@ async function main() {
   assert(issueResult.result.includes("GITHUB_TOKEN is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
 
+  // GitHub PR/issue context is auto-filled from the Slack conversation.
+  const originalGhTokenCfg = cfg.integrations.githubToken;
+  const originalUserMap = cfg.integrations.githubUserMap;
+  cfg.integrations.githubToken = "test-token";
+  cfg.integrations.githubUserMap = { U_INJECTION: "injected-user" };
+  let createIssueBody = "";
+  const originalFetch4 = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("/repos/test-owner/test-repo/issues")) {
+      const body = JSON.parse((init?.body as string) || "{}") as {
+        title?: string;
+        body?: string;
+      };
+      createIssueBody = body.body ?? "";
+      return new Response(
+        JSON.stringify({
+          number: 42,
+          html_url: "https://github.com/test-owner/test-repo/issues/42",
+          title: body.title,
+          body: body.body,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }
+    return originalFetch4(input, init);
+  };
+
+  const ghContextResult = await runWithToolContext(
+    {
+      userId: "U_INJECTION",
+      userEmail: "injected@example.com",
+      sessionFilename: "github-injection-test.jsonl",
+      threadKey: "C_INJECTION:12345.67890",
+    },
+    () =>
+      runToolCall(
+        {
+          tool: "create_issue",
+          params: {
+            repo: "test-owner/test-repo",
+            title: "Context injection test",
+            body: "Body from smoke test",
+          },
+        },
+        8_000,
+        "basic",
+      ),
+  );
+  cfg.integrations.githubToken = originalGhTokenCfg;
+  cfg.integrations.githubUserMap = originalUserMap;
+  globalThis.fetch = originalFetch4;
+
+  assert.strictEqual(ghContextResult.error, undefined, `create_issue failed: ${ghContextResult.result}`);
+  assert(ghContextResult.result.includes("Created issue #42"));
+  assert(createIssueBody.includes("Requested by injected-user"));
+  assert(
+    createIssueBody.includes("github-injection-test.jsonl"),
+    "Expected issue body to include trace URL from session filename",
+  );
+  console.log("GitHub context injection passed");
+
   // End-to-end ReAct agent loop with a mocked LLM
   setChatOverride(async (messages) => {
     const lastMessage = messages[messages.length - 1];
@@ -945,20 +1008,21 @@ async function main() {
   assert(basicTools.includes("search_code"), "basic should include search_code");
   assert(!basicTools.includes("es_query"), "basic should not include es_query");
   assert(!basicTools.includes("mongo_query"), "basic should not include mongo_query");
-  assert(!basicTools.includes("open_pr"), "basic should not include open_pr");
+  assert(basicTools.includes("open_pr"), "basic should include open_pr");
+  assert(basicTools.includes("create_issue"), "basic should include create_issue");
 
   assert(elasticTools.includes("es_query"), "elastic should include es_query");
   assert(elasticTools.includes("athena_query"), "elastic should include athena_query");
   assert(elasticTools.includes("sizzle_query"), "elastic should include sizzle_query");
   assert(!elasticTools.includes("mongo_query"), "elastic should not include mongo_query");
-  assert(!elasticTools.includes("open_pr"), "elastic should not include open_pr");
+  assert(elasticTools.includes("open_pr"), "elastic should include open_pr");
 
   assert(privilegedTools.includes("mongo_query"), "privileged should include mongo_query");
   assert(privilegedTools.includes("open_pr"), "privileged should include open_pr");
   assert(privilegedTools.includes("write_file"), "privileged should include write_file");
 
   const blockedForBasic = await runToolCall(
-    { tool: "open_pr", params: { repo: "test/repo", title: "x", body: "x", branch: "x" } },
+    { tool: "write_file", params: { path: "/tmp/should-be-blocked.txt", content: "x" } },
     8_000,
     "basic",
   );

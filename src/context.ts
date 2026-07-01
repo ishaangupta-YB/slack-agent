@@ -9,6 +9,10 @@ export interface ToolContext {
   threadKey?: string;
   /** Slack user ID that sent the current message. */
   userId?: string;
+  /** Slack user email for the current message (used for tier / GitHub mapping). */
+  userEmail?: string;
+  /** Current session filename (used to link to the agent trace artifact). */
+  sessionFilename?: string;
 }
 
 const toolContextStore = new AsyncLocalStorage<ToolContext>();

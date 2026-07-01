@@ -13,6 +13,7 @@ import {
 import { listTools, runToolCall } from "./tools/registry.js";
 import { appendMemory } from "./tools/memory.js";
 import { resolveAccessTier, type AccessTier } from "./auth/tiers.js";
+import { getToolContext } from "./context.js";
 
 interface ThreadMapEntry {
   sessionFilename: string;
@@ -172,6 +173,9 @@ export async function handleMessage(
 ): Promise<HandleMessageResult> {
   const tier = await resolveAccessTier(userId, userEmail);
 
+  const toolCtx = getToolContext();
+  toolCtx.userEmail = userEmail;
+
   const map = await ensureThreadMap();
   let entry = map[threadKey];
   if (!entry) {
@@ -189,6 +193,7 @@ export async function handleMessage(
   }
 
   entry.lastProcessedMessageTs = messageTs;
+  toolCtx.sessionFilename = entry.sessionFilename;
   await writeThreadMap(map);
 
   // On restarts the session file may only exist in the bucket. Download it

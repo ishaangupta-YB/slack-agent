@@ -13,18 +13,16 @@ Examples:
 
 ## Opening PRs
 
-Writes go through dedicated in-process tools, not the sandboxed shell. When the user asks to open a PR, call the `open_pr` tool with:
+Writes go through dedicated in-process tools, not the sandboxed shell, so any user can ask Moon Bot to open a pull request — no personal write access required. When the user asks to open a PR, call the `open_pr` tool with:
 - `repo`: owner/name
 - `branch`: the new branch name to create
 - `base`: the base branch (defaults to `main`)
 - `title`: PR title (also used as the commit message)
 - `body`: PR description
 - `files`: optional array of `{ path, content }` objects to commit
-- `requestedBy`: optional Slack user mention for the PR footer
-- `traceUrl`: optional URL to the agent session trace
 
-The tool creates the branch, commits any files via the Git Data API, and opens the pull request. A consistent footer is appended automatically.
+The Slack requester and a link to the agent session trace are appended automatically from the conversation context (override with `requestedBy` / `traceUrl` if needed).
 
 ## Creating issues
 
-Use the `create_issue` tool with `repo`, `title`, and `body`.
+Use the `create_issue` tool with `repo`, `title`, and `body`. Like `open_pr`, the requester and trace URL are filled in automatically.
