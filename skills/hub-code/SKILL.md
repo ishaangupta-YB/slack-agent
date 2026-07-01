@@ -5,7 +5,13 @@ This skill lets you navigate and understand a codebase from Slack.
 ## Setup
 
 Clone the repositories you want Moon Bot to search into the directory configured
-by `CODE_REPOS_DIR` (default `./repos`). For example:
+by `CODE_REPOS_DIR` (default `./repos`). You can ask Moon Bot to clone a repo for you:
+
+```json
+{"tool": "clone_repo", "params": {"repo": "huggingface/huggingface_hub"}}
+```
+
+Or do it manually:
 
 ```bash
 mkdir -p repos
@@ -14,6 +20,7 @@ git clone https://github.com/huggingface/huggingface_hub repos/huggingface_hub
 
 ## Tools
 
+- `clone_repo`: clone a GitHub repository into `CODE_REPOS_DIR` on demand.
 - `search_code`: search across all cloned repos by file path or file content.
 - `read_file`: read a specific file once `search_code` finds it.
 - `write_file` / `edit_file`: propose changes after understanding the code.

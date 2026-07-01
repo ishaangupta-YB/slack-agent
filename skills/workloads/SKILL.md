@@ -4,13 +4,13 @@ This skill helps you navigate and operate the workspaces that run user-facing Hu
 
 ## Repositories
 
-Clone the following repositories (or your organization's equivalents) into `CODE_REPOS_DIR` (default `./repos`):
+Clone the following repositories (or your organization's equivalents) into `CODE_REPOS_DIR` (default `./repos`). You can ask Moon Bot to clone a repo for you at any time:
 
-- `spaces` – Hugging Face Spaces web application code, templates, and build pipeline
-- `endpoints` – Inference Endpoints provisioning, routing, and scaling logic
-- `jobs` – Training Jobs scheduler, runner, and lifecycle management
+```json
+{"tool": "clone_repo", "params": {"repo": "huggingface/spaces"}}
+```
 
-Example:
+Or do it manually:
 
 ```bash
 mkdir -p repos
@@ -19,10 +19,15 @@ git clone https://github.com/huggingface/endpoints repos/endpoints
 git clone https://github.com/huggingface/jobs repos/jobs
 ```
 
+- `spaces` – Hugging Face Spaces web application code, templates, and build pipeline
+- `endpoints` – Inference Endpoints provisioning, routing, and scaling logic
+- `jobs` – Training Jobs scheduler, runner, and lifecycle management
+
 ## Tools
 
 Use the same code-navigation tools as `hub-code`:
 
+- `clone_repo` to add a new repository to the search index.
 - `search_code` to locate files, functions, or config across Spaces, Endpoints, and Jobs.
 - `read_file` to inspect a file once `search_code` finds it.
 - `write_file` / `edit_file` to propose changes, then `open_pr` to submit them.

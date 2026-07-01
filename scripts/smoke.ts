@@ -23,6 +23,7 @@ import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
+import { clearCloneExecutor, setCloneExecutor } from "../src/tools/git.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
 import { runWithToolContext } from "../src/context.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
@@ -1134,6 +1135,51 @@ rLQ+epZplw==
   cfg.code.reposDir = originalCodeReposDir;
   rmSync(codeReposDir, { recursive: true, force: true });
   console.log("Code search tool passed");
+
+  // Clone repo tool
+  const originalGhTokenCfg3 = cfg.integrations.githubToken;
+  cfg.integrations.githubToken = "test-token";
+
+  const invalidCloneResult = await runToolCall({
+    tool: "clone_repo",
+    params: { repo: "not-a-repo" },
+  });
+  assert(invalidCloneResult.result.includes("invalid repo format"));
+
+  let capturedGitArgs: string[] = [];
+  setCloneExecutor((args) => {
+    capturedGitArgs = args;
+    return { stdout: "", stderr: "", exitCode: 0 };
+  });
+
+  const cloneResult = await runToolCall({
+    tool: "clone_repo",
+    params: { repo: "huggingface/huggingface_hub", branch: "main" },
+  });
+  assert.strictEqual(cloneResult.error, undefined);
+  assert(cloneResult.result.includes("Cloned huggingface/huggingface_hub"));
+  assert(capturedGitArgs.includes("clone"));
+  assert(capturedGitArgs.includes("--depth"));
+  assert(capturedGitArgs.includes("--branch"));
+  assert(capturedGitArgs.includes("main"));
+  const repoUrlArg = capturedGitArgs.find((a) => a.includes("github.com/huggingface/huggingface_hub.git"));
+  assert(repoUrlArg, "Expected git args to include the HTTPS clone URL");
+  assert(
+    repoUrlArg?.includes("x-access-token:test-token@"),
+    "Expected clone URL to include the configured GitHub token",
+  );
+
+  clearCloneExecutor();
+
+  cfg.integrations.githubToken = undefined;
+  const unconfiguredCloneResult = await runToolCall({
+    tool: "clone_repo",
+    params: { repo: "huggingface/huggingface_hub" },
+  });
+  assert(unconfiguredCloneResult.result.includes("GitHub is not configured"));
+
+  cfg.integrations.githubToken = originalGhTokenCfg3;
+  console.log("Clone repo tool passed");
 
   // Access tier gating
   const originalUserTiers = cfg.okta.userTiers;

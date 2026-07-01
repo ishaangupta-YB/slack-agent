@@ -3,6 +3,7 @@ import { isAtLeast, type AccessTier } from "../auth/tiers.js";
 import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { searchCodeTool } from "./code.js";
+import { cloneRepoTool } from "./git.js";
 import { memoryTool } from "./memory.js";
 import { openPrTool, commitToPrTool, createIssueTool } from "./github.js";
 import { plausibleQueryTool } from "./plausible.js";
@@ -22,6 +23,7 @@ const staticTools: Tool[] = [
   writeFileTool,
   editFileTool,
   searchCodeTool,
+  cloneRepoTool,
   memoryTool,
   openPrTool,
   commitToPrTool,
