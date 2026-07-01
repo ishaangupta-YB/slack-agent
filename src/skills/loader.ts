@@ -1,0 +1,35 @@
+import { readdirSync, readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
+
+export interface Skill {
+  name: string;
+  content: string;
+}
+
+const SKILLS_DIR = "./skills";
+
+export function loadSkills(): Skill[] {
+  if (!existsSync(SKILLS_DIR)) return [];
+  const entries = readdirSync(SKILLS_DIR, { withFileTypes: true });
+  const skills: Skill[] = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    const path = join(SKILLS_DIR, entry.name, "SKILL.md");
+    if (!existsSync(path)) continue;
+    skills.push({
+      name: entry.name,
+      content: readFileSync(path, "utf-8"),
+    });
+  }
+  return skills;
+}
+
+export function buildSkillPrompt(skills: Skill[]): string {
+  if (skills.length === 0) return "";
+  return (
+    "\n\n## Available Skills\n\n" +
+    skills
+      .map((s) => `### ${s.name}\n${s.content}`)
+      .join("\n\n")
+  );
+}

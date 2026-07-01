@@ -1,0 +1,28 @@
+{
+  "name": "moon-bot-slack-agent",
+  "version": "0.1.0",
+  "description": "Slack-native coding agent backed by Cloudflare Workers AI",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/app.ts",
+    "start": "node dist/app.js",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@slack/bolt": "^4.3.1",
+    "dotenv": "^16.5.0",
+    "node-cron": "^3.0.3",
+    "zod": "^3.25.42"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.1",
+    "@types/node-cron": "^3.0.11",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}

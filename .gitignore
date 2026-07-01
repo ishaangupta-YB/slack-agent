@@ -1,0 +1,20 @@
+# Secrets
+.env
+.env.local
+
+# Build outputs
+node_modules
+dist
+*.tsbuildinfo
+
+# Runtime data
+sessions
+logs
+
+# Sensitive project files
+WRITEUP.md
+
+# OS / editor
+.DS_Store
+.vscode
+.idea
