@@ -14,8 +14,9 @@ import {
   generateWeeklyReport,
   generateDeployReport,
 } from "../src/scheduler.js";
-import { app, stripBotMention } from "../src/slack.js";
+import { app, isGuestUser, stripBotMention } from "../src/slack.js";
 import { startBucketServer } from "../src/storage/server.js";
+import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
@@ -1258,11 +1259,33 @@ rLQ+epZplw==
 
   stopScheduler();
 
+  // Guest account detection and access control
+  const guestClient = {
+    users: {
+      info: async ({ user }: { user: string }) => {
+        if (user === "UGUEST") {
+          return { user: { is_restricted: true, is_ultra_restricted: false } };
+        }
+        if (user === "UULTRAGUEST") {
+          return { user: { is_restricted: false, is_ultra_restricted: true } };
+        }
+        return { user: { is_restricted: false, is_ultra_restricted: false } };
+      },
+    },
+  } as unknown as WebClient;
+  assert.strictEqual(await isGuestUser(guestClient, "UGUEST"), true, "single-channel guest should be detected");
+  assert.strictEqual(await isGuestUser(guestClient, "UULTRAGUEST"), true, "multi-channel guest should be detected");
+  assert.strictEqual(await isGuestUser(guestClient, "UEMPLOYEE"), false, "regular user should not be a guest");
+  assert.strictEqual(cfg.security.allowGuests, false, "guests should be refused by default");
+  console.log("Guest account detection passed");
+
   // Slack AI Assistant integration
   // Importing src/slack.ts already validated Assistant registration. Process a mocked
   // assistant_thread_started event to confirm our handler runs and uses Slack AI methods.
   const assistantCalls: Array<{ method: string; args: unknown[] }> = [];
   app.client.auth.test = async () => ({ ok: true });
+  app.client.users.info = async () =>
+    ({ user: { is_restricted: false, is_ultra_restricted: false } }) as never;
   app.client.assistant = {
     threads: {
       setStatus: async (...args: unknown[]) => {

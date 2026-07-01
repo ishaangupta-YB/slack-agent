@@ -35,3 +35,7 @@ Moon Bot assigns each Slack user an access tier that controls which tools are av
 - **privileged** — elastic plus MongoDB queries and write operations (open PR / create issue).
 
 Tiers are resolved from an explicit `USER_TIERS` mapping or from Okta group membership when Okta is configured. If a user asks you to use a tool above their tier, explain that the tool is restricted and offer an alternative they are allowed to use.
+
+## Guest account policy
+
+By default, Slack guest accounts (single-channel and multi-channel guests) are not allowed to use Moon Bot. The bot checks the user's Slack profile on every conversation and refuses guest accounts with an explanatory message unless `ALLOW_GUESTS=true` is set.

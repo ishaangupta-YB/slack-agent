@@ -49,6 +49,7 @@ function userIsAuthorized(userId: string): boolean {
 }
 
 const emailCache = new Map<string, string | undefined>();
+const guestCache = new Map<string, boolean | undefined>();
 let botUserIdCache: string | undefined | null = null;
 
 async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
@@ -76,6 +77,40 @@ async function ensureBotUserId(client: WebClient): Promise<string | undefined> {
     botUserIdCache = undefined;
     return undefined;
   }
+}
+
+export async function isGuestUser(client: WebClient, userId: string): Promise<boolean> {
+  const cached = guestCache.get(userId);
+  if (cached !== undefined || guestCache.has(userId)) return cached ?? false;
+
+  try {
+    const resp = await client.users.info({ user: userId });
+    const user = (resp as unknown as {
+      user?: { is_restricted?: boolean; is_ultra_restricted?: boolean };
+    }).user;
+    const guest = Boolean(user?.is_restricted || user?.is_ultra_restricted);
+    guestCache.set(userId, guest);
+    return guest;
+  } catch {
+    guestCache.set(userId, false);
+    return false;
+  }
+}
+
+async function assertNotGuest(
+  client: WebClient,
+  userId: string,
+  channel: string,
+): Promise<boolean> {
+  if (cfg.security.allowGuests) return true;
+  const guest = await isGuestUser(client, userId);
+  if (!guest) return true;
+  await client.chat.postEphemeral({
+    channel,
+    user: userId,
+    text: "Sorry, guest accounts are not allowed to use Moon Bot in this workspace.",
+  });
+  return false;
 }
 
 export function stripBotMention(text: string, botUserId?: string): string {
@@ -111,6 +146,7 @@ async function handleIncomingMessage({
     });
     return;
   }
+  if (!(await assertNotGuest(client, userId, channel))) return;
 
   const threadKey = getThreadKey(event);
   const userEmail = await getUserEmail(client, userId);
@@ -190,12 +226,20 @@ app.event("message", async (args) => {
  * This fulfills the hackathon's "Slack AI capabilities" requirement.
  */
 const moonAssistant = new Assistant({
-  threadStarted: async ({ say, setStatus, setSuggestedPrompts, event }) => {
+  threadStarted: async ({ say, setStatus, setSuggestedPrompts, event, client }) => {
     await setStatus("Moon Bot is ready.");
 
     const userId = event.assistant_thread?.user_id;
     if (userId && !userIsAuthorized(userId)) {
       await say("Sorry, you’re not authorized to use Moon Bot in this workspace.");
+      return;
+    }
+    if (
+      userId &&
+      !cfg.security.allowGuests &&
+      (await isGuestUser(client, userId))
+    ) {
+      await say("Sorry, guest accounts are not allowed to use Moon Bot in this workspace.");
       return;
     }
 

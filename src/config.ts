@@ -29,6 +29,7 @@ export const cfg = {
   },
   security: {
     allowBash: process.env.ALLOW_BASH === "true",
+    allowGuests: process.env.ALLOW_GUESTS === "true",
     allowedUserIds: csv(process.env.ALLOWED_USER_IDS),
     adminUserIds: csv(process.env.ADMIN_USER_IDS),
     auditLogFile:
