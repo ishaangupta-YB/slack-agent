@@ -8,7 +8,12 @@ import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/t
 import { uploadArtifacts } from "../src/artifacts.js";
 import { bucket } from "../src/storage/bucket.js";
 import { cfg } from "../src/config.js";
-import { startScheduler, stopScheduler } from "../src/scheduler.js";
+import {
+  startScheduler,
+  stopScheduler,
+  generateWeeklyReport,
+  generateDeployReport,
+} from "../src/scheduler.js";
 import { app } from "../src/slack.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
@@ -294,6 +299,57 @@ async function main() {
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch3;
   cfg.integrations.esUrl = originalEsUrl;
   cfg.integrations.esApiKey = originalEsApiKey;
+
+  // Scheduler reports: weekly and deploy impact are data-driven when ES is connected.
+  const originalFetch5 = globalThis.fetch;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const total = url.includes("rate") || url.includes("gitaly") ? 1 : 5;
+    return new Response(
+      JSON.stringify({
+        took: 3,
+        hits: {
+          total: { value: total, relation: "eq" },
+          hits: [
+            {
+              _id: "sched1",
+              _index: "logs-2026.07.01",
+              _source: { "@timestamp": "2026-07-01T10:00:00Z", message: "connection timeout", status: 500 },
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  cfg.integrations.esUrl = "http://localhost:9200";
+  cfg.integrations.esApiKey = "es-test-api-key";
+  const weeklyReport = await generateWeeklyReport();
+  assert(weeklyReport.includes("Weekly Ops Report"));
+  assert(weeklyReport.includes("Total logs (7d):"));
+  assert(weeklyReport.includes("Error-level logs:"));
+  assert(weeklyReport.includes("Rate-limiting mentions:"));
+  assert(weeklyReport.includes("Gitaly-related logs:"));
+
+  const deployReport = await generateDeployReport("1776379256.075999");
+  assert(deployReport.includes("Deploy Impact Check"));
+  assert(deployReport.includes("Before deploy"));
+  assert(deployReport.includes("After deploy"));
+  assert(deployReport.includes("error rate"));
+
+  // When ES is not configured, the reports fall back to a helpful template.
+  cfg.integrations.esUrl = undefined;
+  cfg.integrations.esApiKey = undefined;
+  const weeklyFallback = await generateWeeklyReport();
+  assert(weeklyFallback.includes("Elasticsearch is not connected"));
+  const deployFallback = await generateDeployReport("1776379256.075999");
+  assert(deployFallback.includes("Elasticsearch is not connected"));
+
+  cfg.integrations.esUrl = originalEsUrl;
+  cfg.integrations.esApiKey = originalEsApiKey;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch5;
+  console.log("Scheduler ES-backed reports passed");
 
   // Elasticsearch local credential proxy
   const originalEsProxyPort = cfg.integrations.esProxyPort;

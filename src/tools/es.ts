@@ -1,7 +1,7 @@
 import { z } from "zod";
-import { cfg } from "../config.js";
 import { truncateOutput } from "./types.js";
 import type { Tool } from "./types.js";
+import { esSearch, type EsSearchResponse, totalHits } from "../integrations/es.js";
 
 const esQueryParams = z.object({
   index: z.string().describe("Elasticsearch index name or wildcard pattern, e.g. logs-*"),
@@ -16,34 +16,13 @@ const esQueryParams = z.object({
     .describe("Optional list of fields to include in _source (e.g. [\"timestamp\", \"message\"])."),
 });
 
-interface EsHit {
-  _id: string;
-  _index: string;
-  _score?: number;
-  _source?: Record<string, unknown>;
-}
-
-interface EsSearchResponse {
-  took?: number;
-  hits?: {
-    total?: number | { value: number; relation: string };
-    hits?: EsHit[];
-  };
-  error?: { reason?: string; type?: string };
-  status?: number;
-}
-
 function formatEsResult(data: EsSearchResponse, sourceIncludes: string[]): string {
   if (data.error) {
     return `Elasticsearch error: ${data.error.reason ?? data.error.type ?? JSON.stringify(data.error)}`;
   }
 
   const hits = data.hits?.hits ?? [];
-  const totalRaw = data.hits?.total;
-  const total =
-    typeof totalRaw === "number"
-      ? totalRaw
-      : (totalRaw as { value?: number } | undefined)?.value ?? hits.length;
+  const total = totalHits(data);
 
   if (hits.length === 0) {
     return `No hits found (total: ${total}, took: ${data.took ?? "?"}ms).`;
@@ -74,54 +53,25 @@ function formatEsResult(data: EsSearchResponse, sourceIncludes: string[]): strin
 }
 
 async function esQuery(input: z.infer<typeof esQueryParams>): Promise<string> {
-  if (!cfg.integrations.esUrl) {
-    return "Elasticsearch is not configured. Set ES_URL to enable queries.";
-  }
-
-  let body: Record<string, unknown>;
+  let query: Record<string, unknown>;
   try {
-    body = JSON.parse(input.query) as Record<string, unknown>;
+    query = JSON.parse(input.query) as Record<string, unknown>;
   } catch {
     return "Invalid Elasticsearch query: the query parameter must be valid JSON.";
   }
 
-  body.size = input.size;
-  if (input.source_includes.length > 0) {
-    body._source = input.source_includes;
+  const result = await esSearch({
+    index: input.index,
+    query,
+    size: input.size,
+    _source: input.source_includes.length > 0 ? input.source_includes : undefined,
+  });
+
+  if (!result.ok) {
+    return result.error ?? "Elasticsearch request failed.";
   }
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  let baseUrl = cfg.integrations.esUrl.replace(/\/$/, "");
-
-  // Prefer the local credential proxy so the tool never handles the upstream secret.
-  if (cfg.integrations.esProxyToken && cfg.integrations.esProxyPort) {
-    baseUrl = `http://127.0.0.1:${cfg.integrations.esProxyPort}`;
-    headers.Authorization = `Bearer ${cfg.integrations.esProxyToken}`;
-  } else if (cfg.integrations.esApiKey) {
-    headers.Authorization = `ApiKey ${cfg.integrations.esApiKey}`;
-  } else if (cfg.integrations.esUsername && cfg.integrations.esPassword) {
-    const credentials = Buffer.from(`${cfg.integrations.esUsername}:${cfg.integrations.esPassword}`).toString("base64");
-    headers.Authorization = `Basic ${credentials}`;
-  }
-
-  try {
-    const url = `${baseUrl}/${encodeURIComponent(input.index)}/_search`;
-    const resp = await fetch(url, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    const data = (await resp.json()) as EsSearchResponse;
-
-    if (!resp.ok) {
-      return `Elasticsearch request failed ${resp.status}: ${data.error?.reason ?? JSON.stringify(data)}`;
-    }
-
-    return truncateOutput(formatEsResult(data, input.source_includes), 8_000);
-  } catch (err) {
-    return `Elasticsearch request failed: ${err instanceof Error ? err.message : String(err)}`;
-  }
+  return truncateOutput(formatEsResult(result.data!, input.source_includes), 8_000);
 }
 
 export const esQueryTool: Tool = {
