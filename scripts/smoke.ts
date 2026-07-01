@@ -13,6 +13,7 @@ import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
+import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -267,6 +268,95 @@ async function main() {
 
   cfg.integrations.mongoUri = originalMongoUri;
   cfg.integrations.mongoDatabase = originalMongoDatabase;
+
+  // AWS Athena query tool
+  const originalAwsAccessKey = cfg.integrations.awsAccessKeyId;
+  const originalAwsSecretKey = cfg.integrations.awsSecretAccessKey;
+  cfg.integrations.awsAccessKeyId = "AKIAIOSFODNN7EXAMPLE";
+  cfg.integrations.awsSecretAccessKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+
+  let athenaCommandCount = 0;
+  setAthenaExecutor(async (_command, args) => {
+    athenaCommandCount++;
+    const subcommand = args[1];
+
+    if (subcommand === "start-query-execution") {
+      return {
+        stdout: JSON.stringify({ QueryExecutionId: "athena-query-123" }),
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+
+    if (subcommand === "get-query-execution") {
+      return {
+        stdout: JSON.stringify({
+          QueryExecution: {
+            QueryExecutionId: "athena-query-123",
+            Status: { State: "SUCCEEDED" },
+            Statistics: {
+              DataScannedInBytes: 1_048_576,
+              EngineExecutionTimeInMillis: 2345,
+            },
+          },
+        }),
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+
+    if (subcommand === "get-query-results") {
+      return {
+        stdout: JSON.stringify({
+          ResultSet: {
+            ColumnInfo: [
+              { Name: "status_code", Type: "varchar" },
+              { Name: "hits", Type: "bigint" },
+            ],
+            Rows: [
+              { Data: [{ VarCharValue: "status_code" }, { VarCharValue: "hits" }] },
+              { Data: [{ VarCharValue: "200" }, { VarCharValue: "900" }] },
+              { Data: [{ VarCharValue: "404" }, { VarCharValue: "12" }] },
+            ],
+          },
+        }),
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+
+    return { stdout: "", stderr: `Unexpected Athena subcommand: ${subcommand}`, exitCode: 1 };
+  });
+
+  const athenaResult = await runToolCall({
+    tool: "athena_query",
+    params: {
+      query: "SELECT status_code, COUNT(*) AS hits FROM alb_logs GROUP BY status_code ORDER BY hits DESC",
+      database: "alb_logs",
+      output_location: "s3://my-bucket/athena-results/",
+      max_results: 10,
+    },
+  });
+  assert.strictEqual(athenaResult.error, undefined);
+  assert(athenaResult.result.includes("athena-query-123"));
+  assert(athenaResult.result.includes("status_code"));
+  assert(athenaResult.result.includes("200"));
+  assert(athenaResult.result.includes("900"));
+  assert(athenaResult.result.includes("scanned 1.00 MB"));
+  assert(athenaCommandCount >= 3, "Athena tool should call start, get-execution, and get-results");
+  console.log("AWS Athena query tool passed");
+
+  clearAthenaExecutor();
+  cfg.integrations.awsAccessKeyId = undefined;
+  cfg.integrations.awsSecretAccessKey = undefined;
+  const athenaUnconfigured = await runToolCall({
+    tool: "athena_query",
+    params: { query: "SELECT 1", database: "test", output_location: "s3://x/y/" },
+  });
+  assert(athenaUnconfigured.result.includes("AWS_ACCESS_KEY_ID"));
+
+  cfg.integrations.awsAccessKeyId = originalAwsAccessKey;
+  cfg.integrations.awsSecretAccessKey = originalAwsSecretKey;
 
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;

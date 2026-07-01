@@ -7,6 +7,7 @@ import { plausibleQueryTool } from "./plausible.js";
 import { esQueryTool } from "./es.js";
 import { searchSlackTool } from "./slack-search.js";
 import { mongoQueryTool } from "./mongo.js";
+import { athenaQueryTool } from "./athena.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
@@ -23,6 +24,7 @@ const staticTools: Tool[] = [
   esQueryTool,
   searchSlackTool,
   mongoQueryTool,
+  athenaQueryTool,
 ];
 
 let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));
