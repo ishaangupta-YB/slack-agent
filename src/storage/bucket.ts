@@ -1,10 +1,11 @@
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { uploadFiles, HUB_URL } from "@huggingface/hub";
+import { uploadFiles, downloadFile, HUB_URL } from "@huggingface/hub";
 import { cfg } from "../config.js";
 
 export interface Bucket {
   write(path: string, content: string | Buffer, contentType?: string): Promise<void>;
+  read(path: string): Promise<Buffer>;
   readUrl(path: string): string;
 }
 
@@ -22,6 +23,14 @@ class LocalBucket implements Bucket {
     const dir = dirname(target);
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(target, content);
+  }
+
+  async read(path: string): Promise<Buffer> {
+    const target = join(this.baseDir, path);
+    if (!existsSync(target)) {
+      throw new Error(`Bucket object not found: ${path}`);
+    }
+    return readFileSync(target);
   }
 
   readUrl(path: string): string {
@@ -54,6 +63,19 @@ export class HuggingFaceBucket implements Bucket {
       commitTitle: "Moon Bot artifact upload",
       commitDescription: `Upload ${path}`,
     });
+  }
+
+  async read(path: string): Promise<Buffer> {
+    const normalized = path.replace(/^\//, "");
+    const blob = await downloadFile({
+      repo: this.repo,
+      path: normalized,
+      accessToken: this.token,
+    });
+    if (!blob) {
+      throw new Error(`Bucket object not found: ${path}`);
+    }
+    return Buffer.from(await blob.arrayBuffer());
   }
 
   readUrl(path: string): string {

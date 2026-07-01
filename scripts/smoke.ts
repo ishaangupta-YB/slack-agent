@@ -5,6 +5,7 @@ import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
 import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
+import { bucket } from "../src/storage/bucket.js";
 import { cfg } from "../src/config.js";
 import { startScheduler, stopScheduler } from "../src/scheduler.js";
 import { app } from "../src/slack.js";
@@ -554,6 +555,44 @@ async function main() {
 
   clearChatOverride();
   console.log("End-to-end ReAct agent loop passed");
+
+  // Session restore from bucket after simulated pod restart
+  await bucket.write(`sessions/${e2eResult.sessionFilename}`, readFileSync(e2eSessionPath));
+  await bucket.write(
+    "thread-map.json",
+    JSON.stringify({
+      [e2eThreadKey]: {
+        sessionFilename: e2eResult.sessionFilename,
+        lastProcessedMessageTs: e2eMessageTs,
+      },
+    }),
+  );
+
+  rmSync(process.env.SESSIONS_DIR!, { recursive: true, force: true });
+
+  setChatOverride(async (messages) => {
+    const prior = messages.find(
+      (m) => m.role === "user" && String(m.content).includes("project name"),
+    );
+    if (prior) {
+      return `Recovered prior context: ${prior.content}`;
+    }
+    return "No prior context found.";
+  });
+
+  const restoreResult = await handleMessage(
+    e2eThreadKey,
+    "What was my previous question?",
+    "1776381044.000200",
+    e2eUserId,
+  );
+  assert(
+    restoreResult.text.includes("What is the project name"),
+    `Expected restore to recover prior question, got: ${restoreResult.text}`,
+  );
+
+  clearChatOverride();
+  console.log("Session restore from bucket passed");
 
   // Artifact upload
   const sessionsDir = process.env.SESSIONS_DIR || "./sessions";

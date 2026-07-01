@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
 import { join } from "node:path";
 import { cfg } from "./config.js";
+import { bucket } from "./storage/bucket.js";
 import { chat, type Message as LlmMessage } from "./llm/cloudflare.js";
 import { loadSkills, buildSkillPrompt } from "./skills/loader.js";
 import {
@@ -51,14 +52,28 @@ function threadMapPath(): string {
   return cfg.agent.threadMapFile;
 }
 
-function readThreadMap(): ThreadMap {
+async function ensureThreadMap(): Promise<ThreadMap> {
   const path = threadMapPath();
-  if (!existsSync(path)) return {};
-  return JSON.parse(readFileSync(path, "utf-8"));
+  if (existsSync(path)) {
+    return JSON.parse(readFileSync(path, "utf-8")) as ThreadMap;
+  }
+  try {
+    const content = await bucket.read("thread-map.json");
+    writeFileSync(path, content);
+    return JSON.parse(content.toString("utf-8")) as ThreadMap;
+  } catch {
+    return {};
+  }
 }
 
-function writeThreadMap(map: ThreadMap) {
-  writeFileSync(threadMapPath(), JSON.stringify(map, null, 2));
+async function writeThreadMap(map: ThreadMap) {
+  const payload = JSON.stringify(map, null, 2);
+  writeFileSync(threadMapPath(), payload);
+  try {
+    await bucket.write("thread-map.json", payload);
+  } catch (err) {
+    console.warn("Failed to sync thread-map to bucket:", err instanceof Error ? err.message : String(err));
+  }
 }
 
 function sessionFilePath(filename: string): string {
@@ -66,7 +81,20 @@ function sessionFilePath(filename: string): string {
   return join(cfg.agent.sessionsDir, filename);
 }
 
-function readSessionMessages(filename: string): StoredMessage[] {
+async function ensureSessionFile(filename: string): Promise<string> {
+  const path = sessionFilePath(filename);
+  if (existsSync(path)) return path;
+  try {
+    const content = await bucket.read(`sessions/${filename}`);
+    writeFileSync(path, content);
+    return path;
+  } catch {
+    return path;
+  }
+}
+
+async function readSessionMessages(filename: string): Promise<StoredMessage[]> {
+  await ensureSessionFile(filename);
   const path = sessionFilePath(filename);
   if (!existsSync(path)) return [];
   return readFileSync(path, "utf-8")
@@ -144,7 +172,7 @@ export async function handleMessage(
 ): Promise<HandleMessageResult> {
   const tier = await resolveAccessTier(userId, userEmail);
 
-  const map = readThreadMap();
+  const map = await ensureThreadMap();
   let entry = map[threadKey];
   if (!entry) {
     entry = {
@@ -152,6 +180,7 @@ export async function handleMessage(
       lastProcessedMessageTs: messageTs,
     };
     map[threadKey] = entry;
+    await ensureSessionFile(entry.sessionFilename);
     appendSessionMessage(entry.sessionFilename, {
       role: "system",
       content: systemPrompt(tier),
@@ -160,8 +189,11 @@ export async function handleMessage(
   }
 
   entry.lastProcessedMessageTs = messageTs;
-  writeThreadMap(map);
+  await writeThreadMap(map);
 
+  // On restarts the session file may only exist in the bucket. Download it
+  // before appending so the full conversation history is available.
+  await ensureSessionFile(entry.sessionFilename);
   appendSessionMessage(entry.sessionFilename, {
     role: "user",
     content: text,
@@ -169,7 +201,7 @@ export async function handleMessage(
     userId,
   });
 
-  const history = readSessionMessages(entry.sessionFilename);
+  const history = await readSessionMessages(entry.sessionFilename);
   const messages: LlmMessage[] = history.map((m) => ({
     role: m.role,
     content: m.content,
