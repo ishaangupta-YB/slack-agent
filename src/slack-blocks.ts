@@ -1,15 +1,17 @@
 import type { KnownBlock } from "@slack/types";
 
 const MAX_RESPONSE_CHARS = 2900;
+const MAX_FALLBACK_CHARS = 39900;
 
 export function buildResponseBlocks(
   text: string,
   responseUrl: string,
   sessionUrl: string,
 ): KnownBlock[] {
-  const truncated = text.length > MAX_RESPONSE_CHARS
-    ? text.slice(0, MAX_RESPONSE_CHARS) + "\n\n_(truncated — see full response below)_"
-    : text;
+  const displayText = text.trim() || "_No response generated._";
+  const truncated = displayText.length > MAX_RESPONSE_CHARS
+    ? displayText.slice(0, MAX_RESPONSE_CHARS) + "\n\n_(truncated — see full response below)_"
+    : displayText;
 
   return [
     {
@@ -34,4 +36,17 @@ export function buildResponseBlocks(
       ],
     },
   ] as unknown as KnownBlock[];
+}
+
+export function prepareSlackMessage(
+  text: string,
+  responseUrl: string,
+  sessionUrl: string,
+): { text: string; blocks: KnownBlock[] } {
+  const blocks = buildResponseBlocks(text, responseUrl, sessionUrl);
+  let fallbackText = text.trim() || "_No response generated._";
+  if (fallbackText.length > MAX_FALLBACK_CHARS) {
+    fallbackText = fallbackText.slice(0, MAX_FALLBACK_CHARS) + "\n\n_(truncated — see full response in thread)_";
+  }
+  return { text: fallbackText, blocks };
 }

@@ -3,6 +3,7 @@ import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
+import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
 import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
@@ -1433,6 +1434,23 @@ rLQ+epZplw==
   assert.strictEqual(stripBotMention("<@U123> hello <@U456>", "U123"), "hello <@U456>");
   assert.strictEqual(stripBotMention("<@U123> hi"), "hi");
   console.log("Bot mention stripping passed");
+
+  // Slack message delivery safety: fallback text respects Slack's 40,000 char limit and empty replies are handled.
+  const shortMsg = prepareSlackMessage("hello", "https://example.com/r", "https://example.com/s");
+  assert.strictEqual(shortMsg.text, "hello");
+  assert.strictEqual(shortMsg.blocks.length, 2);
+
+  const emptyMsg = prepareSlackMessage("   ", "https://example.com/r", "https://example.com/s");
+  assert.strictEqual(emptyMsg.text, "_No response generated._");
+  assert((emptyMsg.blocks[0] as { text?: { text?: string } }).text?.text?.includes("No response generated"));
+
+  const longReply = "a".repeat(50000);
+  const longMsg = prepareSlackMessage(longReply, "https://example.com/r", "https://example.com/s");
+  assert(longMsg.text.length <= 40000, `fallback text length ${longMsg.text.length} exceeds Slack limit`);
+  assert(longMsg.text.endsWith("_(truncated — see full response in thread)_"));
+  const blockText = (longMsg.blocks[0] as { text?: { text?: string } }).text?.text ?? "";
+  assert(blockText.length <= 3000, `block text length ${blockText.length} exceeds Block Kit section limit`);
+  console.log("Slack message delivery safety passed");
 
   console.log("smoke tests passed");
   clean();

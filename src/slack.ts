@@ -10,7 +10,7 @@ import { WebClient } from "@slack/web-api";
 import { cfg } from "./config.js";
 import { handleMessage } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
-import { buildResponseBlocks } from "./slack-blocks.js";
+import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
 
 export const app = new App({
@@ -164,9 +164,14 @@ async function handleIncomingMessage({
       reply,
     );
     const threadTs = event.thread_ts ?? ts;
+    const { text: fallbackText, blocks } = prepareSlackMessage(
+      reply,
+      responseUrl,
+      sessionUrl,
+    );
     await say({
-      text: reply,
-      blocks: buildResponseBlocks(reply, responseUrl, sessionUrl),
+      text: fallbackText,
+      blocks,
       thread_ts: threadTs,
       unfurl_links: false,
     });
