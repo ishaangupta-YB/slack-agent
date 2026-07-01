@@ -21,6 +21,8 @@ Parameters:
 
 Requires `SIZZLE_DATA_DIR` to point at the directory containing DuckLake files. No other credentials are needed for local files.
 
+When querying remote DuckLake files hosted on HuggingFace, a local credential proxy can be enabled with `HF_TOKEN`, `HF_PROXY_PORT`, and `HF_PROXY_TOKEN`. The proxy only forwards `GET` requests under the configured dataset repository (default `huggingface/storage-visualization-data`) and injects the HF token server-side so the runner never sees it.
+
 ## Examples
 
 Total storage by day for a Parquet dataset:

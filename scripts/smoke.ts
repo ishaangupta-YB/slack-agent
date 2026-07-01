@@ -20,6 +20,7 @@ import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
+import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -483,6 +484,89 @@ async function main() {
   cfg.integrations.plausibleProxyToken = originalPlausibleProxyToken;
   cfg.integrations.plausibleUpstreamUrl = originalPlausibleUpstreamUrl;
   console.log("Plausible credential proxy passed");
+
+  // HuggingFace local credential proxy
+  const originalHfToken = cfg.hf.token;
+  const originalHfProxyPort = cfg.integrations.hfProxyPort;
+  const originalHfProxyToken = cfg.integrations.hfProxyToken;
+  const originalHfProxyRepo = cfg.integrations.hfProxyRepo;
+  const originalHfUpstreamUrl = cfg.integrations.hfUpstreamUrl;
+
+  let hfUpstreamRequest: { path?: string; headers?: Record<string, string>; method?: string } | undefined;
+  const hfUpstreamServer = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      hfUpstreamRequest = {
+        path: req.url,
+        headers: req.headers as Record<string, string>,
+        method: req.method,
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ ok: true, message: "hf proxied" }));
+    });
+  });
+  await new Promise<void>((resolve) => hfUpstreamServer.listen(0, resolve));
+  const hfUpstreamPort = (hfUpstreamServer.address() as { port: number }).port;
+
+  const hfProxyToken = "hf-proxy-token-xyz";
+  cfg.hf.token = "real-hf-token";
+  cfg.integrations.hfProxyToken = hfProxyToken;
+  cfg.integrations.hfProxyPort = 0;
+  cfg.integrations.hfProxyRepo = "huggingface/storage-visualization-data";
+  cfg.integrations.hfUpstreamUrl = `http://127.0.0.1:${hfUpstreamPort}`;
+
+  // Port 0 disables the proxy.
+  let hfProxyServer = await startHfProxy();
+  assert.strictEqual(hfProxyServer, undefined, "HF proxy should not start when port is 0");
+
+  cfg.integrations.hfProxyPort = hfUpstreamPort + 3000;
+  hfProxyServer = await startHfProxy();
+  assert(hfProxyServer, "HF proxy should start when configured");
+
+  const hfProxyBase = `http://127.0.0.1:${cfg.integrations.hfProxyPort}`;
+
+  const hfNoAuth = await fetch(`${hfProxyBase}/datasets/huggingface/storage-visualization-data/resolve/main/catalog.json`);
+  assert.strictEqual(hfNoAuth.status, 401, "Missing HF proxy token should be rejected");
+
+  const hfBadAuth = await fetch(
+    `${hfProxyBase}/datasets/huggingface/storage-visualization-data/resolve/main/catalog.json`,
+    { headers: { Authorization: "Bearer wrong-token" } },
+  );
+  assert.strictEqual(hfBadAuth.status, 401, "Wrong HF proxy token should be rejected");
+
+  const hfMethodNotAllowed = await fetch(`${hfProxyBase}/datasets/huggingface/storage-visualization-data/resolve/main/catalog.json`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${hfProxyToken}` },
+  });
+  assert.strictEqual(hfMethodNotAllowed.status, 405, "POST should not be allowed");
+
+  const hfForbidden = await fetch(`${hfProxyBase}/datasets/someone/else/resolve/main/file.json`, {
+    headers: { Authorization: `Bearer ${hfProxyToken}` },
+  });
+  assert.strictEqual(hfForbidden.status, 403, "Paths outside allow-listed repo should be rejected");
+
+  const hfGood = await fetch(`${hfProxyBase}/datasets/huggingface/storage-visualization-data/resolve/main/catalog.json`, {
+    headers: { Authorization: `Bearer ${hfProxyToken}` },
+  });
+  assert.strictEqual(hfGood.status, 200, "Valid HF proxy token and path should be forwarded");
+  assert.strictEqual(hfUpstreamRequest?.headers?.authorization, "Bearer real-hf-token", "Proxy should inject HF token");
+  assert.strictEqual(
+    hfUpstreamRequest?.path,
+    "/datasets/huggingface/storage-visualization-data/resolve/main/catalog.json",
+    "Proxy should preserve request path",
+  );
+  assert.strictEqual(hfUpstreamRequest?.method, "GET");
+
+  stopHfProxy();
+  await new Promise<void>((resolve) => hfUpstreamServer.close(() => resolve()));
+
+  cfg.hf.token = originalHfToken;
+  cfg.integrations.hfProxyPort = originalHfProxyPort;
+  cfg.integrations.hfProxyToken = originalHfProxyToken;
+  cfg.integrations.hfProxyRepo = originalHfProxyRepo;
+  cfg.integrations.hfUpstreamUrl = originalHfUpstreamUrl;
+  console.log("HF credential proxy passed");
 
   // MongoDB query tool
   const originalMongoUri = cfg.integrations.mongoUri;

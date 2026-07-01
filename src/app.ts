@@ -5,6 +5,7 @@ import { initializeTools, shutdownTools } from "./tools/registry.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
 import { startEsProxy, stopEsProxy } from "./proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "./proxy/plausible.js";
+import { startHfProxy, stopHfProxy } from "./proxy/hf.js";
 
 (async () => {
   if (cfg.storage.enableBucketServer) {
@@ -12,6 +13,7 @@ import { startPlausibleProxy, stopPlausibleProxy } from "./proxy/plausible.js";
   }
   await startEsProxy();
   await startPlausibleProxy();
+  await startHfProxy();
   await initializeTools();
   startScheduler(app);
   await app.start();
@@ -23,6 +25,7 @@ async function shutdown(signal: string) {
   stopScheduler();
   stopEsProxy();
   stopPlausibleProxy();
+  stopHfProxy();
   try {
     await app.stop();
   } catch {
