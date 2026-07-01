@@ -47,6 +47,26 @@ async function main() {
   const bashResult = await runToolCall({ tool: "bash", params: { command: "echo hi" } });
   assert(bashResult.result.includes("disabled"));
 
+  // GitHub tools are gated when GITHUB_TOKEN is missing
+  const originalGhToken = process.env.GITHUB_TOKEN;
+  delete process.env.GITHUB_TOKEN;
+  const prResult = await runToolCall({
+    tool: "open_pr",
+    params: {
+      title: "Test PR",
+      body: "Test body",
+      repo: "owner/repo",
+      branch: "test-branch",
+    },
+  });
+  assert(prResult.result.includes("GITHUB_TOKEN is not configured"));
+  const issueResult = await runToolCall({
+    tool: "create_issue",
+    params: { repo: "owner/repo", title: "Test issue", body: "Test body" },
+  });
+  assert(issueResult.result.includes("GITHUB_TOKEN is not configured"));
+  if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
+
   // Artifact upload
   const sessionsDir = process.env.SESSIONS_DIR || "./sessions";
   const sessionFilename = "test-session.jsonl";

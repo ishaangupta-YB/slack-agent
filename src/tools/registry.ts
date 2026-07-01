@@ -3,7 +3,7 @@ import type { Tool, ToolCall, ToolResult } from "./types.js";
 import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { memoryTool } from "./memory.js";
-import { openPrTool } from "./github.js";
+import { openPrTool, createIssueTool } from "./github.js";
 import { truncateOutput } from "./types.js";
 
 const tools: Tool[] = [
@@ -13,6 +13,7 @@ const tools: Tool[] = [
   editFileTool,
   memoryTool,
   openPrTool,
+  createIssueTool,
 ];
 
 const registry = new Map<string, Tool>(tools.map((t) => [t.name, t]));
