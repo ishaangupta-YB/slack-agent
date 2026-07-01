@@ -3,6 +3,7 @@ import { cfg } from "./config.js";
 import { handleMessage } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { buildResponseBlocks } from "./slack-blocks.js";
+import { runWithToolContext } from "./context.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -31,6 +32,7 @@ async function routeEvent({
   const text = (event as { text?: string }).text ?? "";
   const ts = (event as { ts: string }).ts;
   const channel = (event as { channel: string }).channel;
+  const actionToken = (event as { action_token?: string }).action_token;
 
   if (!userId || (event as { bot_id?: string }).bot_id) return;
   if (!userIsAuthorized(userId)) {
@@ -45,7 +47,10 @@ async function routeEvent({
   const threadKey = getThreadKey(event);
 
   try {
-    const { text: reply, sessionFilename } = await handleMessage(threadKey, text.trim(), ts, userId);
+    const { text: reply, sessionFilename } = await runWithToolContext(
+      { actionToken, channelId: channel, threadKey, userId },
+      () => handleMessage(threadKey, text.trim(), ts, userId),
+    );
     const { responseUrl, sessionUrl } = await uploadArtifacts(
       threadKey,
       sessionFilename,

@@ -5,6 +5,7 @@ export const cfg = {
   slack: {
     botToken: requireEnv("SLACK_BOT_TOKEN"),
     appToken: requireEnv("SLACK_APP_TOKEN"),
+    userToken: process.env.SLACK_USER_TOKEN || "",
   },
   cloudflare: {
     accountId: requireEnv("CLOUDFLARE_ACCOUNT_ID"),

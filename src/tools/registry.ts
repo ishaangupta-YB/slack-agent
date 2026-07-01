@@ -4,6 +4,7 @@ import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { memoryTool } from "./memory.js";
 import { openPrTool, createIssueTool } from "./github.js";
+import { searchSlackTool } from "./slack-search.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, getMcpTools, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
@@ -16,6 +17,7 @@ const staticTools: Tool[] = [
   memoryTool,
   openPrTool,
   createIssueTool,
+  searchSlackTool,
 ];
 
 let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));

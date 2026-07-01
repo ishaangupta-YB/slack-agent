@@ -68,6 +68,54 @@ async function main() {
   const bashResult = await runToolCall({ tool: "bash", params: { command: "echo hi" } });
   assert(bashResult.result.includes("disabled"));
 
+  // Slack Real-Time Search API
+  const originalFetch = globalThis.fetch;
+  cfg.slack.userToken = "xoxp-test";
+  let capturedSearchRequest: { url?: string; body?: Record<string, unknown> } | undefined;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : undefined;
+    capturedSearchRequest = { url, body };
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        results: {
+          messages: [
+            {
+              content: "Project Gizmo ships next week",
+              permalink: "https://example.slack.com/archives/C1/p123",
+              channel_name: "proj-gizmo",
+              author_name: "alice",
+            },
+          ],
+          channels: [
+            {
+              name: "proj-gizmo",
+              permalink: "https://example.slack.com/archives/C1",
+            },
+          ],
+        },
+        response_metadata: { next_cursor: "" },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  const slackSearchResult = await runToolCall({
+    tool: "search_slack",
+    params: { query: "project gizmo", limit: 3 },
+  });
+  assert.strictEqual(slackSearchResult.error, undefined);
+  assert(slackSearchResult.result.includes("Project Gizmo ships next week"));
+  assert(capturedSearchRequest?.url?.includes("assistant.search.context"));
+  assert.strictEqual(capturedSearchRequest?.body?.query, "project gizmo");
+  assert.strictEqual(capturedSearchRequest?.body?.limit, 3);
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;
   delete process.env.GITHUB_TOKEN;
