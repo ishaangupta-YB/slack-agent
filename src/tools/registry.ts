@@ -5,8 +5,10 @@ import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { memoryTool } from "./memory.js";
 import { openPrTool, createIssueTool } from "./github.js";
 import { truncateOutput } from "./types.js";
+import { closeMcpClients, getMcpTools, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
+import { cfg } from "../config.js";
 
-const tools: Tool[] = [
+const staticTools: Tool[] = [
   bashTool,
   readFileTool,
   writeFileTool,
@@ -16,10 +18,29 @@ const tools: Tool[] = [
   createIssueTool,
 ];
 
-const registry = new Map<string, Tool>(tools.map((t) => [t.name, t]));
+let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));
+let initialized = false;
+
+export async function initializeTools(): Promise<Tool[]> {
+  if (initialized) return listTools();
+
+  const serversConfig = parseMcpServersConfig(cfg.mcp.serversRaw);
+  const mcpTools = await initializeMcpClients(serversConfig);
+
+  const merged = [...staticTools, ...mcpTools];
+  registry = new Map<string, Tool>(merged.map((t) => [t.name, t]));
+  initialized = true;
+  return listTools();
+}
+
+export async function shutdownTools(): Promise<void> {
+  await closeMcpClients();
+  initialized = false;
+  registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));
+}
 
 export function listTools(): Tool[] {
-  return [...tools];
+  return [...registry.values()];
 }
 
 export function getTool(name: string): Tool | undefined {

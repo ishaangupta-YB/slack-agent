@@ -1,21 +1,27 @@
 import { app } from "./slack.js";
 import { cfg } from "./config.js";
 import { startBucketServer } from "./storage/server.js";
+import { initializeTools, shutdownTools } from "./tools/registry.js";
 
 (async () => {
   if (cfg.storage.enableBucketServer) {
     await startBucketServer();
   }
+  await initializeTools();
   await app.start();
   console.log("Moon Bot is running in Socket Mode");
 })();
 
-process.on("SIGINT", async () => {
-  await app.stop();
+async function shutdown(signal: string) {
+  console.log(`Received ${signal}, shutting down...`);
+  try {
+    await app.stop();
+  } catch {
+    // ignore
+  }
+  await shutdownTools();
   process.exit(0);
-});
+}
 
-process.on("SIGTERM", async () => {
-  await app.stop();
-  process.exit(0);
-});
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));

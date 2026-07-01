@@ -3,8 +3,9 @@ import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node
 import { dirname, join } from "node:path";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
-import { runToolCall } from "../src/tools/registry.js";
+import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
+import { cfg } from "../src/config.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -14,6 +15,15 @@ function clean() {
 
 async function main() {
   clean();
+
+  // Configure and initialize a mock MCP stdio server for this test run.
+  cfg.mcp.serversRaw = JSON.stringify({
+    mock: {
+      command: "node",
+      args: ["--import=tsx", "scripts/mock-mcp-server.ts"],
+    },
+  });
+  await initializeTools();
 
   // Parser
   const text =
@@ -34,6 +44,16 @@ async function main() {
   });
   assert.strictEqual(getMemoryRecent(10).length, 1);
   assert.strictEqual(searchMemory("hello").length, 1);
+
+  // MCP tools are dynamically discovered and registered.
+  const toolNames = listTools().map((t) => t.name);
+  assert(toolNames.includes("mcp_mock_echo"), `Expected mcp_mock_echo in tools: ${toolNames.join(", ")}`);
+  const echoResult = await runToolCall({
+    tool: "mcp_mock_echo",
+    params: { message: "hello from MCP" },
+  });
+  assert.strictEqual(echoResult.error, undefined);
+  assert(echoResult.result.includes("hello from MCP"));
 
   // Real tool execution
   const result = await runToolCall({ tool: "read_file", params: { path: "package.json" } });
@@ -88,6 +108,7 @@ async function main() {
 
   console.log("smoke tests passed");
   clean();
+  await shutdownTools();
 }
 
 main().catch((err) => {

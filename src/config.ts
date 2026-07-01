@@ -33,6 +33,9 @@ export const cfg = {
     bucketHttpPort: parseInt(process.env.BUCKET_HTTP_PORT || "3001", 10),
     enableBucketServer: process.env.BUCKET_HTTP_PORT !== "0",
   },
+  mcp: {
+    serversRaw: process.env.MCP_SERVERS,
+  },
 };
 
 function requireEnv(name: string): string {

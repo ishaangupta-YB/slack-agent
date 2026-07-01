@@ -28,18 +28,17 @@ export interface StoredMessage {
 }
 
 const skills = loadSkills();
-const tools = listTools();
-
-const systemPromptBase =
-  "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
-  "You answer questions about code, metrics, and operations. " +
-  "You have access to tools. Use them when facts are not in your context. " +
-  "Be concise but thorough, defaulting to Slack-compatible markdown." +
-  formatToolInstructions(tools) +
-  buildSkillPrompt(skills);
 
 function systemPrompt(): string {
-  return cfg.agent.systemPromptOverride || systemPromptBase;
+  if (cfg.agent.systemPromptOverride) return cfg.agent.systemPromptOverride;
+  return (
+    "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
+    "You answer questions about code, metrics, and operations. " +
+    "You have access to tools. Use them when facts are not in your context. " +
+    "Be concise but thorough, defaulting to Slack-compatible markdown." +
+    formatToolInstructions(listTools()) +
+    buildSkillPrompt(skills)
+  );
 }
 
 function ensureDir(dir: string) {
