@@ -237,6 +237,27 @@ async function main() {
   assert(assistantCalls.some((c) => c.method === "setSuggestedPrompts"));
   console.log("Assistant threadStarted handler invoked");
 
+  // Slack app manifest validation
+  const manifestRaw = readFileSync("manifest.json", "utf-8");
+  const manifest = JSON.parse(manifestRaw) as {
+    oauth_config?: { scopes?: { bot?: string[] } };
+    settings?: { event_subscriptions?: { bot_events?: string[] }; socket_mode_enabled?: boolean };
+    features?: { assistant_view?: { name?: string } };
+  };
+  const botScopes = manifest.oauth_config?.scopes?.bot ?? [];
+  assert(botScopes.includes("assistant:write"), "manifest must include assistant:write scope");
+  assert(botScopes.includes("search:read.public"), "manifest must include search:read.public scope");
+  assert(botScopes.includes("app_mentions:read"), "manifest must include app_mentions:read scope");
+  assert(botScopes.includes("chat:write"), "manifest must include chat:write scope");
+  assert(botScopes.includes("im:history"), "manifest must include im:history scope");
+
+  const botEvents = manifest.settings?.event_subscriptions?.bot_events ?? [];
+  assert(botEvents.includes("app_mention"), "manifest must subscribe to app_mention events");
+  assert(botEvents.includes("assistant_thread_started"), "manifest must subscribe to assistant_thread_started events");
+  assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
+  assert(manifest.features?.assistant_view?.name === "Moon Bot", "manifest must define assistant_view name");
+  console.log("Slack app manifest validated");
+
   console.log("smoke tests passed");
   clean();
   await shutdownTools();

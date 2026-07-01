@@ -1,0 +1,60 @@
+{
+  "display_information": {
+    "name": "Moon Bot",
+    "description": "A Slack-native engineering agent that uses AI, MCP servers, and real-time search to answer questions, write code, open PRs, and monitor ops.",
+    "background_color": "#1a1a1a"
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": false,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "assistant_view": {
+      "name": "Moon Bot"
+    },
+    "bot_user": {
+      "display_name": "Moon Bot",
+      "always_online": true
+    }
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "app_mentions:read",
+        "assistant:write",
+        "channels:read",
+        "chat:write",
+        "chat:write.public",
+        "groups:read",
+        "im:history",
+        "im:read",
+        "im:write",
+        "mpim:history",
+        "mpim:read",
+        "mpim:write",
+        "search:read.public",
+        "search:read.private",
+        "search:read.im",
+        "search:read.mpim",
+        "search:read.files",
+        "search:read.users"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "app_mention",
+        "message.im",
+        "message.channels",
+        "message.groups",
+        "message.mpim",
+        "assistant_thread_started",
+        "assistant_thread_context_changed"
+      ]
+    },
+    "socket_mode_enabled": true,
+    "org_deploy_enabled": false
+  }
+}
