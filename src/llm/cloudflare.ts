@@ -13,7 +13,21 @@ interface RunResponse {
 const endpoint =
   `https://api.cloudflare.com/client/v4/accounts/${cfg.cloudflare.accountId}/ai/run/${cfg.cloudflare.model}`;
 
+let chatOverride: ((messages: Message[]) => Promise<string>) | undefined;
+
+export function setChatOverride(fn: (messages: Message[]) => Promise<string>): void {
+  chatOverride = fn;
+}
+
+export function clearChatOverride(): void {
+  chatOverride = undefined;
+}
+
 export async function chat(messages: Message[]): Promise<string> {
+  if (chatOverride) {
+    return chatOverride(messages);
+  }
+
   const resp = await fetch(endpoint, {
     method: "POST",
     headers: {

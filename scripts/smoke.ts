@@ -9,6 +9,8 @@ import { cfg } from "../src/config.js";
 import { startScheduler, stopScheduler } from "../src/scheduler.js";
 import { app } from "../src/slack.js";
 import { startBucketServer } from "../src/storage/server.js";
+import { handleMessage } from "../src/agent.js";
+import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -137,6 +139,50 @@ async function main() {
   });
   assert(issueResult.result.includes("GITHUB_TOKEN is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
+
+  // End-to-end ReAct agent loop with a mocked LLM
+  setChatOverride(async (messages) => {
+    const lastMessage = messages[messages.length - 1];
+    const isObservation =
+      lastMessage?.role === "user" &&
+      typeof lastMessage?.content === "string" &&
+      lastMessage.content.includes("[tool result] read_file");
+    if (isObservation) {
+      return "The project name is moon-bot-slack-agent (from package.json).";
+    }
+    return '<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}}\n</tool_call>';
+  });
+
+  const e2eThreadKey = "C1:1776379256.075999";
+  const e2eMessageTs = "1776379256.075999";
+  const e2eUserId = "U1";
+  const e2eResult = await handleMessage(
+    e2eThreadKey,
+    "What is the project name in package.json?",
+    e2eMessageTs,
+    e2eUserId,
+  );
+  assert(
+    e2eResult.text.includes("moon-bot-slack-agent"),
+    `Expected final answer to mention project name, got: ${e2eResult.text}`,
+  );
+
+  const e2eSessionPath = join(process.env.SESSIONS_DIR!, e2eResult.sessionFilename);
+  assert(existsSync(e2eSessionPath), "Session file should be written");
+  const e2eSessionLines = readFileSync(e2eSessionPath, "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const e2eSession = e2eSessionLines.map((line) => JSON.parse(line) as Record<string, unknown>);
+  assert(e2eSession.some((m) => m.role === "system"), "Session should contain system prompt");
+  assert(e2eSession.some((m) => m.role === "user" && String(m.content).includes("project name")), "Session should contain user message");
+  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("tool_call")), "Session should contain assistant tool call");
+  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("moon-bot-slack-agent")), "Session should contain final answer");
+
+  const e2eMemory = searchMemory("project name");
+  assert(e2eMemory.length >= 1, "Memory should record the end-to-end interaction");
+
+  clearChatOverride();
+  console.log("End-to-end ReAct agent loop passed");
 
   // Artifact upload
   const sessionsDir = process.env.SESSIONS_DIR || "./sessions";
