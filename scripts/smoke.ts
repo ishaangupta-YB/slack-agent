@@ -28,6 +28,7 @@ import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
 import { clearGitHubTokenCache } from "../src/integrations/github.js";
+import { loadSkills } from "../src/skills/loader.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -1301,6 +1302,34 @@ rLQ+epZplw==
   assert(assistantCalls.some((c) => c.method === "setStatus"));
   assert(assistantCalls.some((c) => c.method === "setSuggestedPrompts"));
   console.log("Assistant threadStarted handler invoked");
+
+  // Skill discovery: ensure key skills from WRITEUP.md are loaded and available to the agent.
+  const skills = loadSkills();
+  const skillNames = skills.map((s) => s.name);
+  for (const expected of [
+    "hub-code",
+    "workloads",
+    "github",
+    "es",
+    "mongo",
+    "athena",
+    "sizzle",
+    "plausible",
+    "mcp",
+    "security",
+    "slack-search",
+    "memory",
+  ]) {
+    assert(
+      skillNames.includes(expected),
+      `Expected skill "${expected}" to be discovered in ./skills`,
+    );
+  }
+  const workloadsSkill = skills.find((s) => s.name === "workloads")!;
+  assert(workloadsSkill.content.includes("Spaces"));
+  assert(workloadsSkill.content.includes("Endpoints"));
+  assert(workloadsSkill.content.includes("Jobs"));
+  console.log("Skill discovery passed");
 
   // Slack app manifest validation
   const manifestRaw = readFileSync("manifest.json", "utf-8");
