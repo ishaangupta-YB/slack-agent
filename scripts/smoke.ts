@@ -120,6 +120,48 @@ async function main() {
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
 
+  // Plausible analytics query
+  const plausibleApiKey = cfg.integrations.plausibleApiKey;
+  cfg.integrations.plausibleApiKey = "plausible-test-key";
+  const originalFetch2 = globalThis.fetch;
+  let capturedPlausibleRequest: { url?: string; body?: Record<string, unknown> } | undefined;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : undefined;
+    capturedPlausibleRequest = { url, body };
+    return new Response(
+      JSON.stringify({
+        results: [
+          { "event:page": "/docs", visitors: 1234, pageviews: 5678 },
+          { "event:page": "/blog", visitors: 900, pageviews: 3200 },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  const plausibleResult = await runToolCall({
+    tool: "plausible_query",
+    params: {
+      site_id: "huggingface.co",
+      metrics: ["visitors", "pageviews"],
+      dimensions: ["event:page"],
+      date_range: "7d",
+      limit: 10,
+    },
+  });
+  assert.strictEqual(plausibleResult.error, undefined);
+  assert(plausibleResult.result.includes("/docs"));
+  assert(plausibleResult.result.includes("1234"));
+  assert(capturedPlausibleRequest?.url?.includes("plausible.io/api/v2/query"));
+  assert.strictEqual((capturedPlausibleRequest?.body as { site_id?: string })?.site_id, "huggingface.co");
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch2;
+  cfg.integrations.plausibleApiKey = plausibleApiKey;
+
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;
   delete process.env.GITHUB_TOKEN;

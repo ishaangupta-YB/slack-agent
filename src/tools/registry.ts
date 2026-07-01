@@ -3,6 +3,7 @@ import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { memoryTool } from "./memory.js";
 import { openPrTool, createIssueTool } from "./github.js";
+import { plausibleQueryTool } from "./plausible.js";
 import { searchSlackTool } from "./slack-search.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
@@ -16,6 +17,7 @@ const staticTools: Tool[] = [
   memoryTool,
   openPrTool,
   createIssueTool,
+  plausibleQueryTool,
   searchSlackTool,
 ];
 
