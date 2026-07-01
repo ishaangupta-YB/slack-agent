@@ -6,6 +6,7 @@ import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory
 import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
 import { cfg } from "../src/config.js";
+import { startScheduler, stopScheduler } from "../src/scheduler.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -105,6 +106,42 @@ async function main() {
   assert(existsSync(urls.sessionUrl));
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
   assert(responseContent.includes("Hello from smoke test"));
+
+  // Scheduler
+  const postedMessages: Array<Record<string, unknown>> = [];
+  const deployHandlers: Array<(...args: unknown[]) => unknown> = [];
+  const mockApp = {
+    client: {
+      chat: {
+        postMessage: async (args: Record<string, unknown>) => {
+          postedMessages.push(args);
+          return {};
+        },
+      },
+    },
+    message: (handler: (...args: unknown[]) => Promise<void>) => {
+      deployHandlers.push(handler as (...args: unknown[]) => unknown);
+    },
+  } as unknown as Parameters<typeof startScheduler>[0];
+
+  const scheduler = startScheduler(mockApp);
+  assert.strictEqual(scheduler.cronTasks.length, 1, "Weekly report cron should be scheduled");
+  assert.strictEqual(deployHandlers.length, 1, "Deploy monitor handler should be registered");
+
+  // Simulate a deploy message in the monitored channel.
+  await deployHandlers[0]({
+    message: {
+      channel: cfg.scheduler.deployChannel,
+      text: "Deploying moon-bot v1.2.3 to prod",
+      ts: "1776379256.075999",
+      user: "U1",
+    },
+    client: mockApp.client,
+    say: async () => {},
+  });
+  assert.strictEqual(scheduler.deployTimeouts.length, 1, "Deploy follow-up should be scheduled");
+
+  stopScheduler();
 
   console.log("smoke tests passed");
   clean();

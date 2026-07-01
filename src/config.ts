@@ -36,6 +36,14 @@ export const cfg = {
   mcp: {
     serversRaw: process.env.MCP_SERVERS,
   },
+  scheduler: {
+    weeklyReportChannel: process.env.SCHEDULED_WEEKLY_REPORT_CHANNEL || "",
+    deployChannel: process.env.SCHEDULED_DEPLOY_CHANNEL || "",
+    deployMonitorDelayMs: parseInt(
+      process.env.SCHEDULED_DEPLOY_MONITOR_DELAY_MS || "900000",
+      10,
+    ),
+  },
 };
 
 function requireEnv(name: string): string {
