@@ -7,6 +7,7 @@ import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/t
 import { uploadArtifacts } from "../src/artifacts.js";
 import { cfg } from "../src/config.js";
 import { startScheduler, stopScheduler } from "../src/scheduler.js";
+import { app } from "../src/slack.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -190,6 +191,51 @@ async function main() {
   assert.strictEqual(scheduler.deployTimeouts.length, 1, "Deploy follow-up should be scheduled");
 
   stopScheduler();
+
+  // Slack AI Assistant integration
+  // Importing src/slack.ts already validated Assistant registration. Process a mocked
+  // assistant_thread_started event to confirm our handler runs and uses Slack AI methods.
+  const assistantCalls: Array<{ method: string; args: unknown[] }> = [];
+  app.client.auth.test = async () => ({ ok: true });
+  app.client.assistant = {
+    threads: {
+      setStatus: async (...args: unknown[]) => {
+        assistantCalls.push({ method: "setStatus", args });
+        return { ok: true };
+      },
+      setSuggestedPrompts: async (...args: unknown[]) => {
+        assistantCalls.push({ method: "setSuggestedPrompts", args });
+        return { ok: true };
+      },
+    },
+  } as never;
+  app.client.chat = { postMessage: async () => ({ ok: true }) } as never;
+  (app as unknown as { authorize: () => Promise<Record<string, string>> }).authorize = async () => ({
+    botId: "B123",
+    botUserId: "UBOT",
+    userId: "UBOT",
+    teamId: "T1",
+  });
+
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "assistant_thread_started",
+        assistant_thread: {
+          user_id: "U1",
+          context: { channel_id: "C1", team_id: "T1" },
+          channel_id: "D1",
+          thread_ts: "1776379256.075999",
+        },
+        event_ts: "1234567890.000000",
+      },
+    },
+    ack: async () => {},
+  });
+  assert(assistantCalls.some((c) => c.method === "setStatus"));
+  assert(assistantCalls.some((c) => c.method === "setSuggestedPrompts"));
+  console.log("Assistant threadStarted handler invoked");
 
   console.log("smoke tests passed");
   clean();
