@@ -38,6 +38,11 @@ export const cfg = {
   },
   integrations: {
     githubToken: process.env.GITHUB_TOKEN,
+    githubApp: {
+      appId: process.env.GITHUB_APP_ID || "",
+      privateKey: process.env.GITHUB_PRIVATE_KEY || "",
+      installationId: process.env.GITHUB_INSTALLATION_ID || "",
+    },
     githubUserMap: parseJsonMap(process.env.GITHUB_USER_MAP),
     plausibleApiKey: process.env.PLAUSIBLE_API_KEY,
     esUrl: process.env.ES_URL,

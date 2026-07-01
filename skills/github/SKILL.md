@@ -1,6 +1,8 @@
 # github
 
-Use this skill to inspect GitHub repositories, open pull requests, and create issues, all from a Slack thread.
+Use this skill to inspect GitHub repositories, open pull requests, add commits to PRs, and create issues, all from a Slack thread.
+
+All GitHub write tools use short-lived, narrowly-scoped GitHub App tokens when configured; otherwise they fall back to a static `GITHUB_TOKEN`. In either case the actual credential never enters the sandboxed shell.
 
 ## Read-only browsing
 
@@ -22,6 +24,14 @@ Writes go through dedicated in-process tools, not the sandboxed shell, so any us
 - `files`: optional array of `{ path, content }` objects to commit
 
 The Slack requester and a link to the agent session trace are appended automatically from the conversation context (override with `requestedBy` / `traceUrl` if needed).
+
+## Adding commits to an existing PR
+
+Use the `commit_to_pr` tool to push more changes to a PR branch that already exists:
+- `repo`: owner/name
+- `branch`: the existing PR branch
+- `message`: commit message
+- `files`: array of `{ path, content }` objects
 
 ## Creating issues
 

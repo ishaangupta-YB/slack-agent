@@ -4,7 +4,7 @@ import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { searchCodeTool } from "./code.js";
 import { memoryTool } from "./memory.js";
-import { openPrTool, createIssueTool } from "./github.js";
+import { openPrTool, commitToPrTool, createIssueTool } from "./github.js";
 import { plausibleQueryTool } from "./plausible.js";
 import { esQueryTool } from "./es.js";
 import { searchSlackTool } from "./slack-search.js";
@@ -24,6 +24,7 @@ const staticTools: Tool[] = [
   searchCodeTool,
   memoryTool,
   openPrTool,
+  commitToPrTool,
   createIssueTool,
   plausibleQueryTool,
   esQueryTool,

@@ -27,6 +27,7 @@ import { runWithToolContext } from "../src/context.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
+import { clearGitHubTokenCache } from "../src/integrations/github.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -835,7 +836,7 @@ async function main() {
     8_000,
     "privileged",
   );
-  assert(prResult.result.includes("GITHUB_TOKEN is not configured"));
+  assert(prResult.result.includes("GitHub is not configured"));
   const issueResult = await runToolCall(
     {
       tool: "create_issue",
@@ -844,7 +845,7 @@ async function main() {
     8_000,
     "privileged",
   );
-  assert(issueResult.result.includes("GITHUB_TOKEN is not configured"));
+  assert(issueResult.result.includes("GitHub is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
 
   // GitHub PR/issue context is auto-filled from the Slack conversation.
@@ -908,6 +909,89 @@ async function main() {
     "Expected issue body to include trace URL from session filename",
   );
   console.log("GitHub context injection passed");
+
+  // GitHub App token path + commit_to_pr tool: mint a short-lived installation token and use it to push a commit.
+  const testPrivateKey = `-----BEGIN PRIVATE KEY-----
+MIIBUwIBADANBgkqhkiG9w0BAQEFAASCAT0wggE5AgEAAkEAuf8t6hc0e+eu+XgR
+3BeeduMeCpyy6dUuj92zFwhZmMkyhF9MM/4HoY+ow9m2R27oEBhtNuFZ+ngCUL1l
+4khp8QIDAQABAkBH5WjlJQUnpB4R1qTos8SQZih1p67NDpfKCsOwcozXrrySvUZS
+cXc7hvlTUg5QRJdW7EK+euwmV7qnT4k1QeZBAiEA8nQe6c+tKDhUmUs0FUTnnwPG
+iQS7EvvLETHNQDWYDqkCIQDEY4qtuGexp2WizhL7rqzClzPPnSODHodrqyicYn52
+CQIgEt/zYCRoyI7KFz0Biv5YQcrbc+NIZQvxHR+RaQRDGDECIBfjk+b124c8uZxI
+PP7ojJNPGTpT/xHgENEEDPiY8pEhAiBGiOF67k0TtKTIMbeVoJXKoPcNwbhmjQga
+rLQ+epZplw==
+-----END PRIVATE KEY-----`;
+  const originalGhTokenCfg2 = cfg.integrations.githubToken;
+  const originalGhAppCfg = { ...cfg.integrations.githubApp };
+  cfg.integrations.githubToken = undefined;
+  cfg.integrations.githubApp = {
+    appId: "123456",
+    privateKey: testPrivateKey,
+    installationId: "12345678",
+  };
+  clearGitHubTokenCache();
+
+  let appTokenSeen = false;
+  let commitBranchUpdated = false;
+  const originalFetch6 = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    const authHeader = (((init?.headers as Record<string, string> | undefined)?.Authorization || "") as string).toString();
+
+    if (url.includes("/app/installations/12345678/access_tokens")) {
+      return new Response(
+        JSON.stringify({
+          token: "app-installation-token-abc",
+          expires_at: new Date(Date.now() + 3600000).toISOString(),
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }
+    if (authHeader.includes("app-installation-token-abc")) {
+      appTokenSeen = true;
+    }
+    if (url.includes("/repos/commit-test/commit-test/git/refs/heads/feature-1") && init?.method === "PATCH") {
+      commitBranchUpdated = true;
+      return new Response(JSON.stringify({ object: { sha: "commit123abc" } }), { status: 200 });
+    }
+    if (url.includes("/repos/commit-test/commit-test/git/refs/heads/feature-1")) {
+      return new Response(JSON.stringify({ object: { sha: "base123abc" } }), { status: 200 });
+    }
+    if (url.includes("/repos/commit-test/commit-test/git/blobs")) {
+      return new Response(JSON.stringify({ sha: "blob123abc" }), { status: 201 });
+    }
+    if (url.includes("/repos/commit-test/commit-test/git/trees")) {
+      return new Response(JSON.stringify({ sha: "tree123abc" }), { status: 201 });
+    }
+    if (url.includes("/repos/commit-test/commit-test/git/commits")) {
+      return new Response(JSON.stringify({ sha: "commit123abc" }), { status: 201 });
+    }
+    return originalFetch6(input, init);
+  };
+
+  const commitPrResult = await runToolCall(
+    {
+      tool: "commit_to_pr",
+      params: {
+        repo: "commit-test/commit-test",
+        branch: "feature-1",
+        message: "Add feature",
+        files: [{ path: "feature.txt", content: "hello" }],
+      },
+    },
+    8_000,
+    "basic",
+  );
+  cfg.integrations.githubToken = originalGhTokenCfg2;
+  cfg.integrations.githubApp = originalGhAppCfg;
+  globalThis.fetch = originalFetch6;
+  clearGitHubTokenCache();
+
+  assert(commitPrResult.result.includes("Pushed commit to"), `commit_to_pr failed: ${commitPrResult.result}`);
+  assert(commitBranchUpdated, "Expected commit_to_pr to update the PR branch ref");
+  assert(appTokenSeen, "Expected GitHub API calls to use the app installation token");
+
+  console.log("GitHub App auth and commit_to_pr passed");
 
   // End-to-end ReAct agent loop with a mocked LLM
   setChatOverride(async (messages) => {

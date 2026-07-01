@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { cfg } from "../config.js";
 import { getToolContext } from "../context.js";
+import { githubApi } from "../integrations/github.js";
 import { bucket } from "../storage/bucket.js";
 import type { Tool } from "./types.js";
 
@@ -27,6 +28,18 @@ const openPrParams = z.object({
   traceUrl: z.string().optional(),
 });
 
+const commitToPrParams = z.object({
+  repo: z.string(),
+  branch: z.string(),
+  files: z.array(
+    z.object({
+      path: z.string(),
+      content: z.string(),
+    }),
+  ),
+  message: z.string(),
+});
+
 const createIssueParams = z.object({
   repo: z.string(),
   title: z.string(),
@@ -34,42 +47,6 @@ const createIssueParams = z.object({
   requestedBy: z.string().optional(),
   traceUrl: z.string().optional(),
 });
-
-const GH_API_BASE = "https://api.github.com";
-
-function authHeaders(): Record<string, string> {
-  const token = cfg.integrations.githubToken;
-  if (!token) {
-    throw new Error("GITHUB_TOKEN is not configured");
-  }
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/vnd.github+json",
-    "X-GitHub-Api-Version": "2022-11-28",
-    "Content-Type": "application/json",
-  };
-}
-
-async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const url = path.startsWith("http") ? path : `${GH_API_BASE}${path}`;
-  const resp = await fetch(url, {
-    ...options,
-    headers: {
-      ...authHeaders(),
-      ...(options.headers || {}),
-    },
-  });
-
-  if (!resp.ok) {
-    const body = await resp.text();
-    throw new Error(`GitHub API ${options.method || "GET"} ${path} failed (${resp.status}): ${body}`);
-  }
-
-  if (resp.status === 204) {
-    return undefined as T;
-  }
-  return (await resp.json()) as T;
-}
 
 interface GitRef {
   object: { sha: string };
@@ -126,28 +103,78 @@ function buildFooter(requestedBy?: string, traceUrl?: string): string {
   return lines.join("\n");
 }
 
-async function openPullRequest(input: z.infer<typeof openPrParams>): Promise<string> {
-  if (!cfg.integrations.githubToken) {
-    return "Error: GITHUB_TOKEN is not configured.";
+function parseRepo(repo: string): [string, string] {
+  const [owner, name] = repo.split("/");
+  if (!owner || !name) {
+    throw new Error(`repo must be in "owner/name" format, got "${repo}".`);
   }
+  return [owner, name];
+}
 
-  const [owner, repo] = input.repo.split("/");
-  if (!owner || !repo) {
-    return `Error: repo must be in "owner/name" format, got "${input.repo}".`;
-  }
+async function createFilesCommit(
+  repoPath: string,
+  branch: string,
+  files: PrFile[],
+  message: string,
+): Promise<string> {
+  const baseRef = await githubApi<GitRef>(`${repoPath}/git/refs/heads/${branch}`);
+  const baseSha = baseRef.object.sha;
+
+  const fileBlobs = await Promise.all(
+    files.map(async (f: PrFile) => {
+      const blob = await githubApi<GitBlob>(`${repoPath}/git/blobs`, {
+        method: "POST",
+        body: JSON.stringify({
+          content: Buffer.from(f.content).toString("base64"),
+          encoding: "base64",
+        }),
+      });
+      return { path: f.path, sha: blob.sha };
+    }),
+  );
+
+  const tree = await githubApi<GitTree>(`${repoPath}/git/trees`, {
+    method: "POST",
+    body: JSON.stringify({
+      base_tree: baseSha,
+      tree: fileBlobs.map((b) => ({
+        path: b.path,
+        mode: "100644",
+        type: "blob",
+        sha: b.sha,
+      })),
+    }),
+  });
+
+  const commit = await githubApi<GitCommit>(`${repoPath}/git/commits`, {
+    method: "POST",
+    body: JSON.stringify({
+      message,
+      tree: tree.sha,
+      parents: [baseSha],
+    }),
+  });
+
+  await githubApi<void>(`${repoPath}/git/refs/heads/${branch}`, {
+    method: "PATCH",
+    body: JSON.stringify({ sha: commit.sha }),
+  });
+
+  return commit.sha;
+}
+
+async function openPullRequest(input: z.infer<typeof openPrParams>): Promise<string> {
+  parseRepo(input.repo);
+  const repoPath = `/repos/${input.repo}`;
 
   await applyContextDefaults(input);
 
-  const repoPath = `/repos/${input.repo}`;
-
   try {
-    // 1. Resolve base branch SHA.
-    const baseRef = await api<GitRef>(`${repoPath}/git/refs/heads/${input.base}`);
+    const baseRef = await githubApi<GitRef>(`${repoPath}/git/refs/heads/${input.base}`);
     const baseSha = baseRef.object.sha;
 
-    // 2. Create (or reuse) the head branch.
     try {
-      await api<GitRef>(`${repoPath}/git/refs`, {
+      await githubApi<GitRef>(`${repoPath}/git/refs`, {
         method: "POST",
         body: JSON.stringify({
           ref: `refs/heads/${input.branch}`,
@@ -161,54 +188,13 @@ async function openPullRequest(input: z.infer<typeof openPrParams>): Promise<str
       }
     }
 
-    // 3. If files are provided, build a commit; otherwise the branch already points at base.
     let headSha = baseSha;
     if (input.files && input.files.length > 0) {
-      const fileBlobs = await Promise.all(
-        input.files.map(async (f: PrFile) => {
-          const blob = await api<GitBlob>(`${repoPath}/git/blobs`, {
-            method: "POST",
-            body: JSON.stringify({
-              content: Buffer.from(f.content).toString("base64"),
-              encoding: "base64",
-            }),
-          });
-          return { path: f.path, sha: blob.sha };
-        }),
-      );
-
-      const tree = await api<GitTree>(`${repoPath}/git/trees`, {
-        method: "POST",
-        body: JSON.stringify({
-          base_tree: baseSha,
-          tree: fileBlobs.map((b) => ({
-            path: b.path,
-            mode: "100644",
-            type: "blob",
-            sha: b.sha,
-          })),
-        }),
-      });
-
-      const commit = await api<GitCommit>(`${repoPath}/git/commits`, {
-        method: "POST",
-        body: JSON.stringify({
-          message: input.title,
-          tree: tree.sha,
-          parents: [baseSha],
-        }),
-      });
-
-      await api<void>(`${repoPath}/git/refs/heads/${input.branch}`, {
-        method: "PATCH",
-        body: JSON.stringify({ sha: commit.sha }),
-      });
-      headSha = commit.sha;
+      headSha = await createFilesCommit(repoPath, input.branch, input.files, input.title);
     }
 
-    // 4. Open the pull request.
     const prBody = `${input.body}${buildFooter(input.requestedBy, input.traceUrl)}`;
-    const pr = await api<PullRequest>(`${repoPath}/pulls`, {
+    const pr = await githubApi<PullRequest>(`${repoPath}/pulls`, {
       method: "POST",
       body: JSON.stringify({
         title: input.title,
@@ -224,21 +210,25 @@ async function openPullRequest(input: z.infer<typeof openPrParams>): Promise<str
   }
 }
 
+async function commitToPullRequest(input: z.infer<typeof commitToPrParams>): Promise<string> {
+  parseRepo(input.repo);
+  const repoPath = `/repos/${input.repo}`;
+
+  try {
+    const headSha = await createFilesCommit(repoPath, input.branch, input.files, input.message);
+    return `Pushed commit to ${input.repo}@${input.branch}: ${headSha.slice(0, 7)}`;
+  } catch (err) {
+    return `Error committing to PR: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
 async function createGitHubIssue(input: z.infer<typeof createIssueParams>): Promise<string> {
-  if (!cfg.integrations.githubToken) {
-    return "Error: GITHUB_TOKEN is not configured.";
-  }
-
-  const [owner, repo] = input.repo.split("/");
-  if (!owner || !repo) {
-    return `Error: repo must be in "owner/name" format, got "${input.repo}".`;
-  }
-
+  parseRepo(input.repo);
   await applyContextDefaults(input);
 
   try {
     const issueBody = `${input.body}${buildFooter(input.requestedBy, input.traceUrl)}`;
-    const issue = await api<Issue>(`/repos/${input.repo}/issues`, {
+    const issue = await githubApi<Issue>(`/repos/${input.repo}/issues`, {
       method: "POST",
       body: JSON.stringify({
         title: input.title,
@@ -254,16 +244,25 @@ async function createGitHubIssue(input: z.infer<typeof createIssueParams>): Prom
 export const openPrTool: Tool = {
   name: "open_pr",
   description:
-    "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. Requires GITHUB_TOKEN. The Slack requester and agent trace URL are appended automatically from the conversation context.",
+    "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: openPrParams,
   tier: "basic",
   run: openPullRequest,
 };
 
+export const commitToPrTool: Tool = {
+  name: "commit_to_pr",
+  description:
+    "Push an additional commit to an existing pull request branch. Provide repo (owner/name), branch name, commit message, and files. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback.",
+  params: commitToPrParams,
+  tier: "basic",
+  run: commitToPullRequest,
+};
+
 export const createIssueTool: Tool = {
   name: "create_issue",
   description:
-    "Create a GitHub issue. Provide repo (owner/name), title, and body. Requires GITHUB_TOKEN. The Slack requester and agent trace URL are appended automatically from the conversation context.",
+    "Create a GitHub issue. Provide repo (owner/name), title, and body. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: createIssueParams,
   tier: "basic",
   run: createGitHubIssue,
