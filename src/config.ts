@@ -43,6 +43,8 @@ export const cfg = {
     esApiKey: process.env.ES_API_KEY,
     esUsername: process.env.ES_USERNAME,
     esPassword: process.env.ES_PASSWORD,
+    esProxyPort: parseInt(process.env.ES_PROXY_PORT || "9201", 10),
+    esProxyToken: process.env.ES_PROXY_TOKEN || "",
     mongoUri: process.env.MONGODB_URI,
     mongoDatabase: process.env.MONGODB_DATABASE,
     awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,

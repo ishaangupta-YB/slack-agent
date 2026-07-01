@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
@@ -17,6 +18,7 @@ import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
+import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -289,6 +291,93 @@ async function main() {
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch3;
   cfg.integrations.esUrl = originalEsUrl;
   cfg.integrations.esApiKey = originalEsApiKey;
+
+  // Elasticsearch local credential proxy
+  const originalEsProxyPort = cfg.integrations.esProxyPort;
+  const originalEsProxyToken = cfg.integrations.esProxyToken;
+  const originalEsUsername = cfg.integrations.esUsername;
+  const originalEsPassword = cfg.integrations.esPassword;
+
+  let upstreamRequest: { path?: string; headers?: Record<string, string>; body?: string } | undefined;
+  const upstreamServer = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      upstreamRequest = {
+        path: req.url,
+        headers: req.headers as Record<string, string>,
+        body: Buffer.concat(chunks).toString(),
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          took: 5,
+          hits: {
+            total: { value: 1, relation: "eq" },
+            hits: [{ _id: "proxy1", _index: "logs", _source: { message: "proxied" } }],
+          },
+        }),
+      );
+    });
+  });
+  await new Promise<void>((resolve) => upstreamServer.listen(0, resolve));
+  const upstreamPort = (upstreamServer.address() as { port: number }).port;
+
+  const proxyToken = "proxy-test-token-xyz";
+  cfg.integrations.esUrl = `http://127.0.0.1:${upstreamPort}`;
+  cfg.integrations.esApiKey = "real-es-api-key";
+  cfg.integrations.esUsername = undefined;
+  cfg.integrations.esPassword = undefined;
+  cfg.integrations.esProxyPort = 0;
+  cfg.integrations.esProxyToken = proxyToken;
+
+  // With port=0 the proxy should be disabled.
+  let proxyServer = await startEsProxy();
+  assert.strictEqual(proxyServer, undefined, "ES proxy should not start when port is 0");
+
+  cfg.integrations.esProxyPort = upstreamPort + 1000;
+  proxyServer = await startEsProxy();
+  assert(proxyServer, "ES proxy should start when configured");
+
+  const proxyUrl = `http://127.0.0.1:${cfg.integrations.esProxyPort}/logs-*/_search`;
+
+  const noAuthResp = await fetch(proxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query: { match_all: {} } }),
+  });
+  assert.strictEqual(noAuthResp.status, 401, "Missing proxy token should be rejected");
+
+  const badAuthResp = await fetch(proxyUrl, {
+    method: "POST",
+    headers: { Authorization: "Bearer wrong-token", "Content-Type": "application/json" },
+    body: JSON.stringify({ query: { match_all: {} } }),
+  });
+  assert.strictEqual(badAuthResp.status, 401, "Wrong proxy token should be rejected");
+
+  const goodResp = await fetch(proxyUrl, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${proxyToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query: { match_all: {} } }),
+  });
+  assert.strictEqual(goodResp.status, 200, "Valid proxy token should be forwarded");
+  const goodBody = (await goodResp.json()) as { hits?: { hits?: unknown[] } };
+  assert.strictEqual(goodBody.hits?.hits?.length, 1);
+  assert.strictEqual(
+    upstreamRequest?.headers?.authorization,
+    "ApiKey real-es-api-key",
+    "Proxy should inject upstream ES API key",
+  );
+  assert.strictEqual(upstreamRequest?.path, "/logs-*/_search", "Proxy should preserve request path");
+
+  stopEsProxy();
+  await new Promise<void>((resolve) => upstreamServer.close(() => resolve()));
+
+  cfg.integrations.esProxyPort = originalEsProxyPort;
+  cfg.integrations.esProxyToken = originalEsProxyToken;
+  cfg.integrations.esUsername = originalEsUsername;
+  cfg.integrations.esPassword = originalEsPassword;
+  console.log("ES credential proxy passed");
 
   // MongoDB query tool
   const originalMongoUri = cfg.integrations.mongoUri;

@@ -3,11 +3,13 @@ import { cfg } from "./config.js";
 import { startBucketServer } from "./storage/server.js";
 import { initializeTools, shutdownTools } from "./tools/registry.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
+import { startEsProxy, stopEsProxy } from "./proxy/es.js";
 
 (async () => {
   if (cfg.storage.enableBucketServer) {
     await startBucketServer();
   }
+  await startEsProxy();
   await initializeTools();
   startScheduler(app);
   await app.start();
@@ -17,6 +19,7 @@ import { startScheduler, stopScheduler } from "./scheduler.js";
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, shutting down...`);
   stopScheduler();
+  stopEsProxy();
   try {
     await app.stop();
   } catch {

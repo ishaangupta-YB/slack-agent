@@ -29,6 +29,10 @@ Get error-rate overview with an aggregation:
 
 The tool reads from `ES_URL`. Use `ES_API_KEY` for Elastic Cloud, or `ES_USERNAME` + `ES_PASSWORD` for basic auth. If none are set, the tool reports that Elasticsearch is not configured.
 
+## Local credential proxy
+
+When `ES_PROXY_TOKEN` and `ES_PROXY_PORT` are configured, the bot starts a local HTTP proxy. The `es_query` tool then routes traffic through `http://127.0.0.1:${ES_PROXY_PORT}` and presents the proxy token, while the proxy injects the real upstream credentials. Tool execution never sees the raw ES API key.
+
 ## Notes
 
 - The `query` parameter must be a valid Elasticsearch Query DSL JSON string.

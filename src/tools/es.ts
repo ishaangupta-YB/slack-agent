@@ -91,7 +91,13 @@ async function esQuery(input: z.infer<typeof esQueryParams>): Promise<string> {
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (cfg.integrations.esApiKey) {
+  let baseUrl = cfg.integrations.esUrl.replace(/\/$/, "");
+
+  // Prefer the local credential proxy so the tool never handles the upstream secret.
+  if (cfg.integrations.esProxyToken && cfg.integrations.esProxyPort) {
+    baseUrl = `http://127.0.0.1:${cfg.integrations.esProxyPort}`;
+    headers.Authorization = `Bearer ${cfg.integrations.esProxyToken}`;
+  } else if (cfg.integrations.esApiKey) {
     headers.Authorization = `ApiKey ${cfg.integrations.esApiKey}`;
   } else if (cfg.integrations.esUsername && cfg.integrations.esPassword) {
     const credentials = Buffer.from(`${cfg.integrations.esUsername}:${cfg.integrations.esPassword}`).toString("base64");
@@ -99,7 +105,7 @@ async function esQuery(input: z.infer<typeof esQueryParams>): Promise<string> {
   }
 
   try {
-    const url = `${cfg.integrations.esUrl.replace(/\/$/, "")}/${encodeURIComponent(input.index)}/_search`;
+    const url = `${baseUrl}/${encodeURIComponent(input.index)}/_search`;
     const resp = await fetch(url, {
       method: "POST",
       headers,
@@ -121,7 +127,7 @@ async function esQuery(input: z.infer<typeof esQueryParams>): Promise<string> {
 export const esQueryTool: Tool = {
   name: "es_query",
   description:
-    "Query an Elasticsearch cluster using the Query DSL. Requires ES_URL. Optional ES_API_KEY or ES_USERNAME + ES_PASSWORD. Returns a markdown table of hits. (elastic tier)",
+    "Query an Elasticsearch cluster using the Query DSL. Requires ES_URL. When ES_PROXY_TOKEN and ES_PROXY_PORT are set, queries are routed through the local credential proxy so the upstream key never reaches tool execution. Optional direct auth: ES_API_KEY or ES_USERNAME + ES_PASSWORD. Returns a markdown table of hits. (elastic tier)",
   params: esQueryParams,
   tier: "elastic",
   run: esQuery,
