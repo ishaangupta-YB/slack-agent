@@ -4,12 +4,14 @@ import { startBucketServer } from "./storage/server.js";
 import { initializeTools, shutdownTools } from "./tools/registry.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
 import { startEsProxy, stopEsProxy } from "./proxy/es.js";
+import { startPlausibleProxy, stopPlausibleProxy } from "./proxy/plausible.js";
 
 (async () => {
   if (cfg.storage.enableBucketServer) {
     await startBucketServer();
   }
   await startEsProxy();
+  await startPlausibleProxy();
   await initializeTools();
   startScheduler(app);
   await app.start();
@@ -20,6 +22,7 @@ async function shutdown(signal: string) {
   console.log(`Received ${signal}, shutting down...`);
   stopScheduler();
   stopEsProxy();
+  stopPlausibleProxy();
   try {
     await app.stop();
   } catch {

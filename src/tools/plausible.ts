@@ -3,8 +3,6 @@ import { cfg } from "../config.js";
 import { truncateOutput } from "./types.js";
 import type { Tool } from "./types.js";
 
-const PLAUSIBLE_API_BASE = "https://plausible.io/api/v2";
-
 const plausibleQueryParams = z.object({
   site_id: z.string().describe("Plausible site/domain id, e.g. huggingface.co"),
   metrics: z
@@ -74,18 +72,31 @@ function buildQueryPayload(input: z.infer<typeof plausibleQueryParams>): Record<
   return payload;
 }
 
+function isPlausibleConfigured(): boolean {
+  return Boolean(cfg.integrations.plausibleApiKey) || Boolean(cfg.integrations.plausibleProxyToken);
+}
+
 async function plausibleQuery(input: z.infer<typeof plausibleQueryParams>): Promise<string> {
-  if (!cfg.integrations.plausibleApiKey) {
-    return "Plausible is not configured. Set PLAUSIBLE_API_KEY to query analytics.";
+  if (!isPlausibleConfigured()) {
+    return "Plausible is not configured. Set PLAUSIBLE_API_KEY (direct) or PLAUSIBLE_PROXY_TOKEN (via local credential proxy) to query analytics.";
+  }
+
+  const proxyEnabled = cfg.integrations.plausibleProxyPort && cfg.integrations.plausibleProxyToken;
+  const baseUrl = proxyEnabled
+    ? `http://127.0.0.1:${cfg.integrations.plausibleProxyPort}`
+    : cfg.integrations.plausibleUpstreamUrl?.replace(/\/$/, "") || "https://plausible.io";
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (proxyEnabled) {
+    headers.Authorization = `Bearer ${cfg.integrations.plausibleProxyToken}`;
+  } else if (cfg.integrations.plausibleApiKey) {
+    headers.Authorization = `Bearer ${cfg.integrations.plausibleApiKey}`;
   }
 
   try {
-    const resp = await fetch(`${PLAUSIBLE_API_BASE}/query`, {
+    const resp = await fetch(`${baseUrl}/api/v2/query`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${cfg.integrations.plausibleApiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
       body: JSON.stringify(buildQueryPayload(input)),
     });
 
@@ -105,7 +116,7 @@ async function plausibleQuery(input: z.infer<typeof plausibleQueryParams>): Prom
 export const plausibleQueryTool: Tool = {
   name: "plausible_query",
   description:
-    "Query privacy-preserving web analytics from Plausible Stats API v2. Requires PLAUSIBLE_API_KEY. Common metrics: visitors, pageviews, bounce_rate, visit_duration. Common dimensions: event:page, visit:source, visit:country.",
+    "Query privacy-preserving web analytics from Plausible Stats API v2. When PLAUSIBLE_PROXY_TOKEN and PLAUSIBLE_PROXY_PORT are set, queries are routed through the local credential proxy so the upstream API key never reaches tool execution. Falls back to direct PLAUSIBLE_API_KEY auth. Common metrics: visitors, pageviews, bounce_rate, visit_duration. Common dimensions: event:page, visit:source, visit:country.",
   params: plausibleQueryParams,
   tier: "basic",
   run: plausibleQuery,

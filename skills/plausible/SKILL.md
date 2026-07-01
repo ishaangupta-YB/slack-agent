@@ -11,7 +11,7 @@ Use this skill when the user asks about public web traffic:
 
 ## Tool
 
-Use the `plausible_query` tool. It requires `PLAUSIBLE_API_KEY` to be configured.
+Use the `plausible_query` tool. It requires either `PLAUSIBLE_API_KEY` (direct auth) or `PLAUSIBLE_PROXY_TOKEN` + `PLAUSIBLE_PROXY_PORT` + `PLAUSIBLE_API_KEY` (local credential proxy) to be configured.
 
 Common parameters:
 - `site_id`: the site/domain in Plausible, e.g. `huggingface.co`.
@@ -43,5 +43,6 @@ Visits to a specific page over time:
 
 ## Notes
 
-- If `PLAUSIBLE_API_KEY` is missing, the tool returns a clear configuration error.
+- If neither `PLAUSIBLE_API_KEY` nor the local proxy token is configured, the tool returns a clear configuration error.
+- When the local credential proxy is enabled, the upstream `PLAUSIBLE_API_KEY` is injected server-side and never reaches tool execution.
 - Results are rendered as a Slack-compatible markdown table.

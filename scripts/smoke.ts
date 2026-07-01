@@ -19,6 +19,7 @@ import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
+import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -378,6 +379,110 @@ async function main() {
   cfg.integrations.esUsername = originalEsUsername;
   cfg.integrations.esPassword = originalEsPassword;
   console.log("ES credential proxy passed");
+
+  // Plausible local credential proxy
+  const originalPlausibleApiKey = cfg.integrations.plausibleApiKey;
+  const originalPlausibleProxyPort = cfg.integrations.plausibleProxyPort;
+  const originalPlausibleProxyToken = cfg.integrations.plausibleProxyToken;
+  const originalPlausibleUpstreamUrl = cfg.integrations.plausibleUpstreamUrl;
+
+  let plausibleUpstreamRequest: { path?: string; headers?: Record<string, string>; body?: string } | undefined;
+  const plausibleUpstreamServer = createServer((req, res) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (c) => chunks.push(c));
+    req.on("end", () => {
+      plausibleUpstreamRequest = {
+        path: req.url,
+        headers: req.headers as Record<string, string>,
+        body: Buffer.concat(chunks).toString(),
+      };
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(
+        JSON.stringify({
+          results: [{ "event:page": "/blog", visitors: 42, pageviews: 100 }],
+        }),
+      );
+    });
+  });
+  await new Promise<void>((resolve) => plausibleUpstreamServer.listen(0, resolve));
+  const plausibleUpstreamPort = (plausibleUpstreamServer.address() as { port: number }).port;
+
+  const plausibleProxyToken = "plausible-proxy-token-xyz";
+  cfg.integrations.plausibleApiKey = "real-plausible-api-key";
+  cfg.integrations.plausibleProxyToken = plausibleProxyToken;
+  cfg.integrations.plausibleProxyPort = 0;
+  cfg.integrations.plausibleUpstreamUrl = `http://127.0.0.1:${plausibleUpstreamPort}`;
+
+  // Port 0 disables the proxy.
+  let plausibleProxyServer = await startPlausibleProxy();
+  assert.strictEqual(plausibleProxyServer, undefined, "Plausible proxy should not start when port is 0");
+
+  cfg.integrations.plausibleProxyPort = plausibleUpstreamPort + 2000;
+  plausibleProxyServer = await startPlausibleProxy();
+  assert(plausibleProxyServer, "Plausible proxy should start when configured");
+
+  const plausibleProxyUrl = `http://127.0.0.1:${cfg.integrations.plausibleProxyPort}/api/v2/query`;
+
+  const plausibleNoAuth = await fetch(plausibleProxyUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ site_id: "huggingface.co", metrics: [{ metric: "visitors" }] }),
+  });
+  assert.strictEqual(plausibleNoAuth.status, 401, "Missing proxy token should be rejected");
+
+  const plausibleBadAuth = await fetch(plausibleProxyUrl, {
+    method: "POST",
+    headers: { Authorization: "Bearer wrong-token", "Content-Type": "application/json" },
+    body: JSON.stringify({ site_id: "huggingface.co", metrics: [{ metric: "visitors" }] }),
+  });
+  assert.strictEqual(plausibleBadAuth.status, 401, "Wrong proxy token should be rejected");
+
+  const plausibleMethodNotAllowed = await fetch(
+    `http://127.0.0.1:${cfg.integrations.plausibleProxyPort}/api/v2/query`,
+    {
+      method: "GET",
+      headers: { Authorization: `Bearer ${plausibleProxyToken}` },
+    },
+  );
+  assert.strictEqual(plausibleMethodNotAllowed.status, 405, "GET should not be allowed");
+
+  const plausibleGood = await fetch(plausibleProxyUrl, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${plausibleProxyToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      site_id: "huggingface.co",
+      metrics: [{ metric: "visitors" }, { metric: "pageviews" }],
+      date_range: "7d",
+    }),
+  });
+  assert.strictEqual(plausibleGood.status, 200, "Valid proxy token should be forwarded");
+  assert.strictEqual(
+    plausibleUpstreamRequest?.headers?.authorization,
+    "Bearer real-plausible-api-key",
+    "Proxy should inject upstream Plausible API key",
+  );
+  assert.strictEqual(plausibleUpstreamRequest?.path, "/api/v2/query", "Proxy should preserve request path");
+
+  const plausibleToolResult = await runToolCall({
+    tool: "plausible_query",
+    params: {
+      site_id: "huggingface.co",
+      metrics: ["visitors"],
+      dimensions: ["event:page"],
+      date_range: "7d",
+    },
+  });
+  assert.strictEqual(plausibleToolResult.error, undefined);
+  assert(plausibleToolResult.result.includes("/blog"));
+  assert(plausibleToolResult.result.includes("42"));
+
+  stopPlausibleProxy();
+  await new Promise<void>((resolve) => plausibleUpstreamServer.close(() => resolve()));
+  cfg.integrations.plausibleApiKey = originalPlausibleApiKey;
+  cfg.integrations.plausibleProxyPort = originalPlausibleProxyPort;
+  cfg.integrations.plausibleProxyToken = originalPlausibleProxyToken;
+  cfg.integrations.plausibleUpstreamUrl = originalPlausibleUpstreamUrl;
+  console.log("Plausible credential proxy passed");
 
   // MongoDB query tool
   const originalMongoUri = cfg.integrations.mongoUri;
