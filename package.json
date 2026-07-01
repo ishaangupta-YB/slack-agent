@@ -8,7 +8,7 @@
     "dev": "tsx src/app.ts",
     "start": "node dist/app.js",
     "lint": "eslint src --ext .ts",
-    "smoke": "SLACK_BOT_TOKEN=xoxb-test SLACK_APP_TOKEN=xapp-test CLOUDFLARE_ACCOUNT_ID=test CLOUDFLARE_API_TOKEN=test MEMORY_FILE=/tmp/moon-bot-smoke-memory.json tsx scripts/smoke.ts",
+    "smoke": "SLACK_BOT_TOKEN=xoxb-test SLACK_APP_TOKEN=xapp-test CLOUDFLARE_ACCOUNT_ID=test CLOUDFLARE_API_TOKEN=test MEMORY_FILE=/tmp/moon-bot-smoke-memory.json BUCKET_DIR=/tmp/moon-bot-smoke-bucket SESSIONS_DIR=/tmp/moon-bot-smoke-sessions tsx scripts/smoke.ts",
     "typecheck": "tsc --noEmit"
   },
   "engines": {

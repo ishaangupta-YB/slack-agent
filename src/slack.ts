@@ -1,6 +1,8 @@
 import { App, type AllMiddlewareArgs, type SlackEventMiddlewareArgs, type KnownEventFromType } from "@slack/bolt";
 import { cfg } from "./config.js";
 import { handleMessage } from "./agent.js";
+import { uploadArtifacts } from "./artifacts.js";
+import { buildResponseBlocks } from "./slack-blocks.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -43,10 +45,17 @@ async function routeEvent({
   const threadKey = getThreadKey(event);
 
   try {
-    const reply = await handleMessage(threadKey, text.trim(), ts, userId);
+    const { text: reply, sessionFilename } = await handleMessage(threadKey, text.trim(), ts, userId);
+    const { responseUrl, sessionUrl } = await uploadArtifacts(
+      threadKey,
+      sessionFilename,
+      reply,
+    );
+    const threadTs = (event as { thread_ts?: string }).thread_ts ?? ts;
     await say({
       text: reply,
-      thread_ts: (event as { thread_ts?: string }).thread_ts ?? ts,
+      blocks: buildResponseBlocks(reply, responseUrl, sessionUrl),
+      thread_ts: threadTs,
       unfurl_links: false,
     });
   } catch (err) {

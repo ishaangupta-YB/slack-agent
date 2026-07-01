@@ -1,11 +1,15 @@
 import assert from "node:assert";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
 import { runToolCall } from "../src/tools/registry.js";
+import { uploadArtifacts } from "../src/artifacts.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
+  if (existsSync(process.env.BUCKET_DIR!)) rmSync(process.env.BUCKET_DIR!, { recursive: true, force: true });
+  if (existsSync(process.env.SESSIONS_DIR!)) rmSync(process.env.SESSIONS_DIR!, { recursive: true, force: true });
 }
 
 async function main() {
@@ -42,6 +46,25 @@ async function main() {
   // Bash disabled by default
   const bashResult = await runToolCall({ tool: "bash", params: { command: "echo hi" } });
   assert(bashResult.result.includes("disabled"));
+
+  // Artifact upload
+  const sessionsDir = process.env.SESSIONS_DIR || "./sessions";
+  const sessionFilename = "test-session.jsonl";
+  const sessionPathOriginal = join(sessionsDir, sessionFilename);
+  mkdirSync(dirname(sessionPathOriginal), { recursive: true });
+  writeFileSync(sessionPathOriginal, '{"role":"user","content":"hello"}\n', "utf-8");
+
+  const urls = await uploadArtifacts(
+    "C1:1776379256.075999",
+    sessionFilename,
+    "Hello from smoke test",
+  );
+  assert(urls.responseUrl.includes("responses/"));
+  assert(urls.sessionUrl.includes("sessions/test-session.jsonl"));
+  assert(existsSync(urls.responseUrl));
+  assert(existsSync(urls.sessionUrl));
+  const responseContent = readFileSync(urls.responseUrl, "utf-8");
+  assert(responseContent.includes("Hello from smoke test"));
 
   console.log("smoke tests passed");
   clean();

@@ -127,12 +127,17 @@ async function runToolLoop(
   return "I reached the maximum number of tool calls for this turn. Please ask me to continue if needed.";
 }
 
+export interface HandleMessageResult {
+  text: string;
+  sessionFilename: string;
+}
+
 export async function handleMessage(
   threadKey: string,
   text: string,
   messageTs: string,
   userId: string,
-): Promise<string> {
+): Promise<HandleMessageResult> {
   const map = readThreadMap();
   let entry = map[threadKey];
   if (!entry) {
@@ -175,5 +180,5 @@ export async function handleMessage(
     outcome: reply,
   });
 
-  return reply;
+  return { text: reply, sessionFilename: entry.sessionFilename };
 }

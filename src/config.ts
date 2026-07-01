@@ -27,6 +27,12 @@ export const cfg = {
     githubToken: process.env.GITHUB_TOKEN,
     plausibleApiKey: process.env.PLAUSIBLE_API_KEY,
   },
+  storage: {
+    bucketDir: process.env.BUCKET_DIR || "./bucket",
+    bucketPublicUrl: process.env.BUCKET_PUBLIC_URL || "",
+    bucketHttpPort: parseInt(process.env.BUCKET_HTTP_PORT || "3001", 10),
+    enableBucketServer: process.env.BUCKET_HTTP_PORT !== "0",
+  },
 };
 
 function requireEnv(name: string): string {
