@@ -12,6 +12,7 @@ import { searchSlackTool } from "./slack-search.js";
 import { mongoQueryTool } from "./mongo.js";
 import { athenaQueryTool } from "./athena.js";
 import { sizzleQueryTool } from "./sizzle.js";
+import { statusTool } from "./status.js";
 import { reportInjectionTool } from "./security.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
@@ -34,6 +35,7 @@ const staticTools: Tool[] = [
   mongoQueryTool,
   athenaQueryTool,
   sizzleQueryTool,
+  statusTool,
   reportInjectionTool,
 ];
 

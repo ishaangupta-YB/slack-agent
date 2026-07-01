@@ -142,6 +142,16 @@ async function main() {
   );
   console.log("Security audit logging passed");
 
+  // System status tool reports configuration without exposing secrets.
+  const statusResult = await runToolCall({ tool: "system_status", params: {} });
+  assert.strictEqual(statusResult.error, undefined);
+  assert(statusResult.result.includes("Moon Bot status"));
+  assert(statusResult.result.includes(cfg.cloudflare.model));
+  assert(statusResult.result.includes("Socket Mode"));
+  assert(statusResult.result.includes("Bash execution: disabled"));
+  assert(statusResult.result.includes("Guest accounts: refused"));
+  console.log("System status tool passed");
+
   // Slack Real-Time Search API
   const originalFetch = globalThis.fetch;
   cfg.slack.userToken = "xoxp-test";
@@ -1392,6 +1402,7 @@ rLQ+epZplw==
     "security",
     "slack-search",
     "memory",
+    "status",
   ]) {
     assert(
       skillNames.includes(expected),

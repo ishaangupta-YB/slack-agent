@@ -1,0 +1,66 @@
+import { readFileSync } from "node:fs";
+import { cfg } from "../config.js";
+import { loadSkills } from "../skills/loader.js";
+import { z } from "zod";
+
+const statusParams = z.object({});
+
+function isConfigured(value: string | undefined): string {
+  return value && value.trim().length > 0 ? "configured" : "not configured";
+}
+
+function packageVersion(): string {
+  try {
+    const pkg = JSON.parse(readFileSync("package.json", "utf-8")) as {
+      version?: string;
+    };
+    return pkg.version ?? "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+
+export const statusTool = {
+  name: "system_status",
+  description:
+    "Report Moon Bot's current configuration, enabled integrations, scheduled tasks, and security posture. Useful for health-checking the bot during setup or demos.",
+  tier: "basic" as const,
+  params: statusParams,
+  run: async (): Promise<string> => {
+    const skills = loadSkills();
+    const mcpServers = cfg.mcp.serversRaw
+      ? `${Object.keys(JSON.parse(cfg.mcp.serversRaw) as Record<string, unknown>).length} MCP server(s)`
+      : "none";
+
+    const lines = [
+      `*Moon Bot status* 🌙`,
+      ``,
+      `*Version:* ${packageVersion()}`,
+      `*Model:* ${cfg.cloudflare.model}`,
+      `*Slack mode:* Socket Mode + Slack AI Assistant`,
+      `*Loaded skills:* ${skills.map((s) => s.name).join(", ")}`,
+      `*MCP servers:* ${mcpServers}`,
+      ``,
+      `*Integrations:*`,
+      `• GitHub static token: ${isConfigured(cfg.integrations.githubToken)}`,
+      `• GitHub App auth: ${cfg.integrations.githubApp.appId ? "configured" : "not configured"}`,
+      `• Elasticsearch: ${isConfigured(cfg.integrations.esUrl)}`,
+      `• MongoDB: ${isConfigured(cfg.integrations.mongoUri)}`,
+      `• AWS Athena: ${isConfigured(cfg.integrations.awsAccessKeyId)}`,
+      `• Plausible: ${isConfigured(cfg.integrations.plausibleApiKey)}`,
+      `• Sizzle data: ${isConfigured(cfg.integrations.sizzleDataDir)}`,
+      `• HuggingFace Bucket: ${cfg.hf.token && cfg.hf.bucketRepo ? cfg.hf.bucketRepo : "not configured (local filesystem bucket in use)"}`,
+      ``,
+      `*Scheduled tasks:*`,
+      `• Weekly report channel: ${cfg.scheduler.weeklyReportChannel || "disabled"}`,
+      `• Deploy monitor channel: ${cfg.scheduler.deployChannel || "disabled"}`,
+      ``,
+      `*Security:*`,
+      `• Guest accounts: ${cfg.security.allowGuests ? "allowed" : "refused"}`,
+      `• Bash execution: ${cfg.security.allowBash ? "enabled" : "disabled"}`,
+      `• Local credential proxies: ES ${cfg.integrations.esProxyToken ? "on" : "off"}, Plausible ${cfg.integrations.plausibleProxyToken ? "on" : "off"}, HF ${cfg.integrations.hfProxyToken ? "on" : "off"}`,
+    ];
+
+    return lines.join("\n");
+  },
+};
