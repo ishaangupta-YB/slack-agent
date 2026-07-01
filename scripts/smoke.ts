@@ -59,7 +59,7 @@ async function main() {
   assert.strictEqual((calls[0].params as { path: string }).path, "package.json");
 
   // Memory
-  appendMemory({
+  await appendMemory({
     id: "1",
     timestamp: new Date().toISOString(),
     threadKey: "test",
@@ -67,8 +67,11 @@ async function main() {
     prompt: "hello",
     outcome: "hi",
   });
-  assert.strictEqual(getMemoryRecent(10).length, 1);
-  assert.strictEqual(searchMemory("hello").length, 1);
+  assert.strictEqual((await getMemoryRecent(10)).length, 1);
+  assert.strictEqual((await searchMemory("hello")).length, 1);
+  if (cfg.storage.bucketDir) {
+    assert(existsSync(join(cfg.storage.bucketDir, "memory.json")), "memory.json should be synced to the bucket");
+  }
 
   // MCP tools are dynamically discovered and registered.
   const toolNames = listTools().map((t) => t.name);
@@ -1034,7 +1037,7 @@ rLQ+epZplw==
   assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("tool_call")), "Session should contain assistant tool call");
   assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("moon-bot-slack-agent")), "Session should contain final answer");
 
-  const e2eMemory = searchMemory("project name");
+  const e2eMemory = await searchMemory("project name");
   assert(e2eMemory.length >= 1, "Memory should record the end-to-end interaction");
 
   clearChatOverride();

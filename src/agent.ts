@@ -219,7 +219,7 @@ export async function handleMessage(
 
   const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
 
-  appendMemory({
+  await appendMemory({
     id: randomUUID(),
     timestamp: new Date().toISOString(),
     threadKey,
