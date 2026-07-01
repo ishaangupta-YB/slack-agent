@@ -1,4 +1,4 @@
-import type { Block, KnownBlock } from "@slack/types";
+import type { KnownBlock } from "@slack/types";
 
 const MAX_RESPONSE_CHARS = 2900;
 

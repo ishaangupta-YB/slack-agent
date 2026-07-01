@@ -1,4 +1,3 @@
-import { z } from "zod";
 import type { Tool, ToolCall, ToolResult } from "./types.js";
 import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
@@ -6,7 +5,7 @@ import { memoryTool } from "./memory.js";
 import { openPrTool, createIssueTool } from "./github.js";
 import { searchSlackTool } from "./slack-search.js";
 import { truncateOutput } from "./types.js";
-import { closeMcpClients, getMcpTools, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
+import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
 
 const staticTools: Tool[] = [

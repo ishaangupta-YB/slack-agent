@@ -5,7 +5,6 @@ import { cfg } from "./config.js";
 import { chat, type Message as LlmMessage } from "./llm/cloudflare.js";
 import { loadSkills, buildSkillPrompt } from "./skills/loader.js";
 import {
-  formatToolCallsForAssistant,
   formatToolInstructions,
   formatToolResult,
   parseToolCalls,
