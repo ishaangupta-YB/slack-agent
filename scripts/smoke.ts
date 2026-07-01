@@ -14,6 +14,7 @@ import { handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
+import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -403,6 +404,51 @@ async function main() {
 
   cfg.integrations.awsAccessKeyId = originalAwsAccessKey;
   cfg.integrations.awsSecretAccessKey = originalAwsSecretKey;
+
+  // Sizzle / DuckDB query tool
+  const originalSizzleDir = cfg.integrations.sizzleDataDir;
+  cfg.integrations.sizzleDataDir = "/tmp/moon-bot-smoke-sizzle";
+
+  setSizzleExecutor(async (_command, args) => {
+    const query = args[args.indexOf("-c") + 1] ?? "";
+    const matched = query.match(/SELECT \* FROM _query LIMIT (\d+)/);
+    if (matched) {
+      const limit = Number.parseInt(matched[1]!, 10);
+      const rows = Array.from({ length: Math.min(limit, 3) }, (_, i) =>
+        `shard_${i + 1},${(i + 1) * 1024}`
+      ).join("\n");
+      return {
+        stdout: `shard_id,bytes_deduplicated\n${rows}`,
+        stderr: "",
+        exitCode: 0,
+      };
+    }
+    return { stdout: "", stderr: `Unexpected Sizzle query: ${query}`, exitCode: 1 };
+  });
+
+  const sizzleResult = await runToolCall({
+    tool: "sizzle_query",
+    params: {
+      query: "SELECT * FROM __source_0",
+      files: ["shards.parquet"],
+      max_rows: 3,
+    },
+  });
+  assert.strictEqual(sizzleResult.error, undefined);
+  assert(sizzleResult.result.includes("shard_id"));
+  assert(sizzleResult.result.includes("shard_1"));
+  assert(sizzleResult.result.includes("1024"));
+  console.log("Sizzle query tool passed");
+
+  clearSizzleExecutor();
+  cfg.integrations.sizzleDataDir = undefined;
+  const sizzleUnconfigured = await runToolCall({
+    tool: "sizzle_query",
+    params: { query: "SELECT 1", max_rows: 1 },
+  });
+  assert(sizzleUnconfigured.result.includes("SIZZLE_DATA_DIR"));
+
+  cfg.integrations.sizzleDataDir = originalSizzleDir;
 
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;

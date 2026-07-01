@@ -49,6 +49,7 @@ export const cfg = {
     awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
     awsSessionToken: process.env.AWS_SESSION_TOKEN,
     awsRegion: process.env.AWS_REGION || "us-east-1",
+    sizzleDataDir: process.env.SIZZLE_DATA_DIR,
   },
   storage: {
     bucketDir: process.env.BUCKET_DIR || "./bucket",
