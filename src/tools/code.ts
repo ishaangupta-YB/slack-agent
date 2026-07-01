@@ -192,5 +192,6 @@ export const searchCodeTool: Tool = {
   description:
     "Search across local cloned code repositories by file path or content. Use this to find symbols, implementations, or examples in codebase(s).",
   params: searchCodeSchema,
+  tier: "basic",
   run: searchCode,
 };

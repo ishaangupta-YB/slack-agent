@@ -229,6 +229,7 @@ export const openPrTool: Tool = {
   description:
     "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. Requires GITHUB_TOKEN. Optionally include requestedBy (Slack user mention) and traceUrl.",
   params: openPrParams,
+  tier: "privileged",
   run: openPullRequest,
 };
 
@@ -236,5 +237,6 @@ export const createIssueTool: Tool = {
   name: "create_issue",
   description: "Create a GitHub issue. Provide repo (owner/name), title, and body. Requires GITHUB_TOKEN.",
   params: createIssueParams,
+  tier: "privileged",
   run: createGitHubIssue,
 };

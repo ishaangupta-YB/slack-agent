@@ -20,6 +20,7 @@ export const readFileTool: Tool = {
   description:
     "Read a file relative to the project root. Optionally provide offset/limit for line ranges.",
   params: readParams,
+  tier: "basic",
   run(input) {
     if (!isPathSafe(input.path)) return "Error: unsafe path";
     if (!existsSync(input.path)) return `Error: file not found: ${input.path}`;
@@ -38,8 +39,9 @@ const writeParams = z.object({
 export const writeFileTool: Tool = {
   name: "write_file",
   description:
-    "Create or overwrite a file relative to the project root. Use with caution.",
+    "Create or overwrite a file relative to the project root. Use with caution. (privileged)",
   params: writeParams,
+  tier: "privileged",
   run(input) {
     if (!isPathSafe(input.path)) return "Error: unsafe path";
     const dir = dirname(input.path);
@@ -58,8 +60,9 @@ const editParams = z.object({
 export const editFileTool: Tool = {
   name: "edit_file",
   description:
-    "Replace an exact string inside a file relative to the project root.",
+    "Replace an exact string inside a file relative to the project root. (privileged)",
   params: editParams,
+  tier: "privileged",
   run(input) {
     if (!isPathSafe(input.path)) return "Error: unsafe path";
     if (!existsSync(input.path)) return `Error: file not found: ${input.path}`;

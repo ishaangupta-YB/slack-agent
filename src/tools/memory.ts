@@ -76,6 +76,7 @@ export const memoryTool: Tool = {
   description:
     "Read the shared memory store. mode=recent returns recent interactions; mode=search filters by query.",
   params,
+  tier: "basic",
   run(input) {
     const limit = input.limit ?? 10;
     let entries: MemoryEntry[];

@@ -153,7 +153,8 @@ async function mongoQuery(input: z.infer<typeof mongoQueryParams>): Promise<stri
 export const mongoQueryTool: Tool = {
   name: "mongo_query",
   description:
-    "Query a MongoDB collection using the find API. Requires MONGODB_URI and either MONGODB_DATABASE or a database parameter. Returns a markdown table of documents.",
+    "Query a MongoDB collection using the find API. Requires MONGODB_URI and either MONGODB_DATABASE or a database parameter. Returns a markdown table of documents. (privileged tier)",
   params: mongoQueryParams,
+  tier: "privileged",
   run: mongoQuery,
 };

@@ -1,9 +1,11 @@
 import { z, type ZodTypeAny } from "zod";
+import type { AccessTier } from "../auth/tiers.js";
 
 export interface Tool {
   name: string;
   description: string;
   params: ZodTypeAny;
+  tier?: AccessTier;
   run: (params: z.infer<ZodTypeAny>) => Promise<string> | string;
 }
 

@@ -1,4 +1,5 @@
 import type { Tool, ToolCall, ToolResult } from "./types.js";
+import { isAtLeast, type AccessTier } from "../auth/tiers.js";
 import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
 import { searchCodeTool } from "./code.js";
@@ -54,24 +55,28 @@ export async function shutdownTools(): Promise<void> {
   registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));
 }
 
-export function listTools(): Tool[] {
-  return [...registry.values()];
+export function listTools(tier: AccessTier = "basic"): Tool[] {
+  return [...registry.values()].filter((t) => isAtLeast(tier, t.tier ?? "basic"));
 }
 
-export function getTool(name: string): Tool | undefined {
-  return registry.get(name);
+export function getTool(name: string, tier: AccessTier = "basic"): Tool | undefined {
+  const tool = registry.get(name);
+  if (!tool) return undefined;
+  if (!isAtLeast(tier, tool.tier ?? "basic")) return undefined;
+  return tool;
 }
 
 export async function runToolCall(
   call: ToolCall,
   maxOutputChars = 8_000,
+  tier: AccessTier = "basic",
 ): Promise<ToolResult> {
-  const tool = getTool(call.tool);
+  const tool = getTool(call.tool, tier);
   if (!tool) {
     return {
       tool: call.tool,
       params: call.params,
-      result: `Unknown tool: ${call.tool}`,
+      result: `Tool ${call.tool} is not available for your access tier (${tier}).`,
       error: true,
     };
   }

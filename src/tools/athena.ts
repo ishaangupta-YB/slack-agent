@@ -256,7 +256,8 @@ async function athenaQuery(input: z.infer<typeof athenaQueryParams>): Promise<st
 export const athenaQueryTool: Tool = {
   name: "athena_query",
   description:
-    "Run a SQL query against AWS Athena (ALB/WAF/CloudFront logs, etc.). Requires AWS credentials and an S3 output_location. Returns a markdown table of results.",
+    "Run a SQL query against AWS Athena (ALB/WAF/CloudFront logs, etc.). Requires AWS credentials and an S3 output_location. Returns a markdown table of results. (elastic tier)",
   params: athenaQueryParams,
+  tier: "elastic",
   run: athenaQuery,
 };

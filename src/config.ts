@@ -72,7 +72,21 @@ export const cfg = {
       10,
     ),
   },
+  okta: {
+    domain: process.env.OKTA_DOMAIN || "",
+    apiToken: process.env.OKTA_API_TOKEN || "",
+    privilegedGroups: csv(process.env.OKTA_PRIVILEGED_GROUPS),
+    elasticGroups: csv(process.env.OKTA_ELASTIC_GROUPS),
+    userTiers: process.env.USER_TIERS || "",
+    defaultTier: normalizeTier(process.env.DEFAULT_ACCESS_TIER) || "basic",
+  },
 };
+
+function normalizeTier(value?: string): "basic" | "elastic" | "privileged" | undefined {
+  const t = value?.toLowerCase().trim();
+  if (t === "basic" || t === "elastic" || t === "privileged") return t;
+  return undefined;
+}
 
 function requireEnv(name: string): string {
   const value = process.env[name];

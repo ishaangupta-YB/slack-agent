@@ -121,7 +121,8 @@ async function esQuery(input: z.infer<typeof esQueryParams>): Promise<string> {
 export const esQueryTool: Tool = {
   name: "es_query",
   description:
-    "Query an Elasticsearch cluster using the Query DSL. Requires ES_URL. Optional ES_API_KEY or ES_USERNAME + ES_PASSWORD. Returns a markdown table of hits.",
+    "Query an Elasticsearch cluster using the Query DSL. Requires ES_URL. Optional ES_API_KEY or ES_USERNAME + ES_PASSWORD. Returns a markdown table of hits. (elastic tier)",
   params: esQueryParams,
+  tier: "elastic",
   run: esQuery,
 };

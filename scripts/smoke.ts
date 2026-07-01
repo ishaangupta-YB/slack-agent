@@ -15,6 +15,7 @@ import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
+import { resolveAccessTier } from "../src/auth/tiers.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -250,15 +251,19 @@ async function main() {
     );
   };
 
-  const esResult = await runToolCall({
-    tool: "es_query",
-    params: {
-      index: "logs-*",
-      query: '{"query":{"match_all":{}}}',
-      size: 5,
-      source_includes: ["@timestamp", "status", "message"],
+  const esResult = await runToolCall(
+    {
+      tool: "es_query",
+      params: {
+        index: "logs-*",
+        query: '{"query":{"match_all":{}}}',
+        size: 5,
+        source_includes: ["@timestamp", "status", "message"],
+      },
     },
-  });
+    8_000,
+    "elastic",
+  );
   assert.strictEqual(esResult.error, undefined);
   assert(esResult.result.includes("timeout"));
   assert(esResult.result.includes("500"));
@@ -270,10 +275,14 @@ async function main() {
 
   cfg.integrations.esUrl = undefined;
   cfg.integrations.esApiKey = undefined;
-  const esUnconfigured = await runToolCall({
-    tool: "es_query",
-    params: { index: "logs-*", query: "{\"query\":{\"match_all\":{}}}", size: 1 },
-  });
+  const esUnconfigured = await runToolCall(
+    {
+      tool: "es_query",
+      params: { index: "logs-*", query: "{\"query\":{\"match_all\":{}}}", size: 1 },
+    },
+    8_000,
+    "elastic",
+  );
   assert(esUnconfigured.result.includes("ES_URL"));
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch3;
@@ -290,15 +299,19 @@ async function main() {
     { _id: "def", username: "bob", plan: "basic" },
   ]);
 
-  const mongoResult = await runToolCall({
-    tool: "mongo_query",
-    params: {
-      collection: "users",
-      filter: '{"plan": "pro"}',
-      projection: ["username", "plan"],
-      limit: 5,
+  const mongoResult = await runToolCall(
+    {
+      tool: "mongo_query",
+      params: {
+        collection: "users",
+        filter: '{"plan": "pro"}',
+        projection: ["username", "plan"],
+        limit: 5,
+      },
     },
-  });
+    8_000,
+    "privileged",
+  );
   assert.strictEqual(mongoResult.error, undefined);
   assert(mongoResult.result.includes("alice"));
   assert(mongoResult.result.includes("pro"));
@@ -307,10 +320,14 @@ async function main() {
   clearMongoExecutor();
   cfg.integrations.mongoUri = undefined;
   cfg.integrations.mongoDatabase = undefined;
-  const mongoUnconfigured = await runToolCall({
-    tool: "mongo_query",
-    params: { collection: "users", limit: 1 },
-  });
+  const mongoUnconfigured = await runToolCall(
+    {
+      tool: "mongo_query",
+      params: { collection: "users", limit: 1 },
+    },
+    8_000,
+    "privileged",
+  );
   assert(mongoUnconfigured.result.includes("MONGODB_URI"));
 
   cfg.integrations.mongoUri = originalMongoUri;
@@ -375,15 +392,19 @@ async function main() {
     return { stdout: "", stderr: `Unexpected Athena subcommand: ${subcommand}`, exitCode: 1 };
   });
 
-  const athenaResult = await runToolCall({
-    tool: "athena_query",
-    params: {
-      query: "SELECT status_code, COUNT(*) AS hits FROM alb_logs GROUP BY status_code ORDER BY hits DESC",
-      database: "alb_logs",
-      output_location: "s3://my-bucket/athena-results/",
-      max_results: 10,
+  const athenaResult = await runToolCall(
+    {
+      tool: "athena_query",
+      params: {
+        query: "SELECT status_code, COUNT(*) AS hits FROM alb_logs GROUP BY status_code ORDER BY hits DESC",
+        database: "alb_logs",
+        output_location: "s3://my-bucket/athena-results/",
+        max_results: 10,
+      },
     },
-  });
+    8_000,
+    "elastic",
+  );
   assert.strictEqual(athenaResult.error, undefined);
   assert(athenaResult.result.includes("athena-query-123"));
   assert(athenaResult.result.includes("status_code"));
@@ -396,10 +417,14 @@ async function main() {
   clearAthenaExecutor();
   cfg.integrations.awsAccessKeyId = undefined;
   cfg.integrations.awsSecretAccessKey = undefined;
-  const athenaUnconfigured = await runToolCall({
-    tool: "athena_query",
-    params: { query: "SELECT 1", database: "test", output_location: "s3://x/y/" },
-  });
+  const athenaUnconfigured = await runToolCall(
+    {
+      tool: "athena_query",
+      params: { query: "SELECT 1", database: "test", output_location: "s3://x/y/" },
+    },
+    8_000,
+    "elastic",
+  );
   assert(athenaUnconfigured.result.includes("AWS_ACCESS_KEY_ID"));
 
   cfg.integrations.awsAccessKeyId = originalAwsAccessKey;
@@ -426,14 +451,18 @@ async function main() {
     return { stdout: "", stderr: `Unexpected Sizzle query: ${query}`, exitCode: 1 };
   });
 
-  const sizzleResult = await runToolCall({
-    tool: "sizzle_query",
-    params: {
-      query: "SELECT * FROM __source_0",
-      files: ["shards.parquet"],
-      max_rows: 3,
+  const sizzleResult = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: {
+        query: "SELECT * FROM __source_0",
+        files: ["shards.parquet"],
+        max_rows: 3,
+      },
     },
-  });
+    8_000,
+    "elastic",
+  );
   assert.strictEqual(sizzleResult.error, undefined);
   assert(sizzleResult.result.includes("shard_id"));
   assert(sizzleResult.result.includes("shard_1"));
@@ -442,10 +471,14 @@ async function main() {
 
   clearSizzleExecutor();
   cfg.integrations.sizzleDataDir = undefined;
-  const sizzleUnconfigured = await runToolCall({
-    tool: "sizzle_query",
-    params: { query: "SELECT 1", max_rows: 1 },
-  });
+  const sizzleUnconfigured = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT 1", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
   assert(sizzleUnconfigured.result.includes("SIZZLE_DATA_DIR"));
 
   cfg.integrations.sizzleDataDir = originalSizzleDir;
@@ -453,20 +486,28 @@ async function main() {
   // GitHub tools are gated when GITHUB_TOKEN is missing
   const originalGhToken = process.env.GITHUB_TOKEN;
   delete process.env.GITHUB_TOKEN;
-  const prResult = await runToolCall({
-    tool: "open_pr",
-    params: {
-      title: "Test PR",
-      body: "Test body",
-      repo: "owner/repo",
-      branch: "test-branch",
+  const prResult = await runToolCall(
+    {
+      tool: "open_pr",
+      params: {
+        title: "Test PR",
+        body: "Test body",
+        repo: "owner/repo",
+        branch: "test-branch",
+      },
     },
-  });
+    8_000,
+    "privileged",
+  );
   assert(prResult.result.includes("GITHUB_TOKEN is not configured"));
-  const issueResult = await runToolCall({
-    tool: "create_issue",
-    params: { repo: "owner/repo", title: "Test issue", body: "Test body" },
-  });
+  const issueResult = await runToolCall(
+    {
+      tool: "create_issue",
+      params: { repo: "owner/repo", title: "Test issue", body: "Test body" },
+    },
+    8_000,
+    "privileged",
+  );
   assert(issueResult.result.includes("GITHUB_TOKEN is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
 
@@ -571,6 +612,44 @@ async function main() {
   cfg.code.reposDir = originalCodeReposDir;
   rmSync(codeReposDir, { recursive: true, force: true });
   console.log("Code search tool passed");
+
+  // Access tier gating
+  const originalUserTiers = cfg.okta.userTiers;
+  cfg.okta.userTiers = "U_BASIC:basic,U_ELASTIC:elastic,U_PRIVILEGED:privileged";
+  assert.strictEqual(await resolveAccessTier("U_BASIC"), "basic");
+  assert.strictEqual(await resolveAccessTier("U_ELASTIC"), "elastic");
+  assert.strictEqual(await resolveAccessTier("U_PRIVILEGED"), "privileged");
+
+  const basicTools = listTools("basic").map((t) => t.name);
+  const elasticTools = listTools("elastic").map((t) => t.name);
+  const privilegedTools = listTools("privileged").map((t) => t.name);
+
+  assert(basicTools.includes("read_file"), "basic should include read_file");
+  assert(basicTools.includes("search_code"), "basic should include search_code");
+  assert(!basicTools.includes("es_query"), "basic should not include es_query");
+  assert(!basicTools.includes("mongo_query"), "basic should not include mongo_query");
+  assert(!basicTools.includes("open_pr"), "basic should not include open_pr");
+
+  assert(elasticTools.includes("es_query"), "elastic should include es_query");
+  assert(elasticTools.includes("athena_query"), "elastic should include athena_query");
+  assert(elasticTools.includes("sizzle_query"), "elastic should include sizzle_query");
+  assert(!elasticTools.includes("mongo_query"), "elastic should not include mongo_query");
+  assert(!elasticTools.includes("open_pr"), "elastic should not include open_pr");
+
+  assert(privilegedTools.includes("mongo_query"), "privileged should include mongo_query");
+  assert(privilegedTools.includes("open_pr"), "privileged should include open_pr");
+  assert(privilegedTools.includes("write_file"), "privileged should include write_file");
+
+  const blockedForBasic = await runToolCall(
+    { tool: "open_pr", params: { repo: "test/repo", title: "x", body: "x", branch: "x" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(blockedForBasic.error, true);
+  assert(blockedForBasic.result.includes("not available for your access tier"));
+
+  cfg.okta.userTiers = originalUserTiers;
+  console.log("Access tier gating passed");
 
   // HuggingFace Bucket integration
   const uploaded: Array<{
@@ -715,6 +794,8 @@ async function main() {
   assert(botScopes.includes("app_mentions:read"), "manifest must include app_mentions:read scope");
   assert(botScopes.includes("chat:write"), "manifest must include chat:write scope");
   assert(botScopes.includes("im:history"), "manifest must include im:history scope");
+  assert(botScopes.includes("users:read"), "manifest must include users:read scope");
+  assert(botScopes.includes("users:read.email"), "manifest must include users:read.email scope");
 
   const botEvents = manifest.settings?.event_subscriptions?.bot_events ?? [];
   assert(botEvents.includes("app_mention"), "manifest must subscribe to app_mention events");

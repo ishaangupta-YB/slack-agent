@@ -48,6 +48,23 @@ function userIsAuthorized(userId: string): boolean {
   return cfg.security.allowedUserIds.includes(userId);
 }
 
+const emailCache = new Map<string, string | undefined>();
+
+async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
+  const cached = emailCache.get(userId);
+  if (cached !== undefined || emailCache.has(userId)) return cached;
+
+  try {
+    const resp = await client.users.info({ user: userId });
+    const email = (resp.user?.profile as { email?: string } | undefined)?.email;
+    emailCache.set(userId, email);
+    return email;
+  } catch {
+    emailCache.set(userId, undefined);
+    return undefined;
+  }
+}
+
 async function handleIncomingMessage({
   event,
   say,
@@ -74,11 +91,12 @@ async function handleIncomingMessage({
   }
 
   const threadKey = getThreadKey(event);
+  const userEmail = await getUserEmail(client, userId);
 
   try {
     const { text: reply, sessionFilename } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
-      () => handleMessage(threadKey, text.trim(), ts, userId),
+      () => handleMessage(threadKey, text.trim(), ts, userId, userEmail),
     );
     const { responseUrl, sessionUrl } = await uploadArtifacts(
       threadKey,

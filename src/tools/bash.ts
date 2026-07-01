@@ -39,6 +39,7 @@ export const bashTool: Tool = {
   description:
     "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected. Suspicious commands are blocked and logged.",
   params,
+  tier: "basic",
   run(input) {
     if (!cfg.security.allowBash) {
       return "Error: bash execution is disabled. Set ALLOW_BASH=true to enable it.";

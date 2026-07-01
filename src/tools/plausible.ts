@@ -107,5 +107,6 @@ export const plausibleQueryTool: Tool = {
   description:
     "Query privacy-preserving web analytics from Plausible Stats API v2. Requires PLAUSIBLE_API_KEY. Common metrics: visitors, pageviews, bounce_rate, visit_duration. Common dimensions: event:page, visit:source, visit:country.",
   params: plausibleQueryParams,
+  tier: "basic",
   run: plausibleQuery,
 };

@@ -11,6 +11,7 @@ import {
 } from "./tools/parser.js";
 import { listTools, runToolCall } from "./tools/registry.js";
 import { appendMemory } from "./tools/memory.js";
+import { resolveAccessTier, type AccessTier } from "./auth/tiers.js";
 
 interface ThreadMapEntry {
   sessionFilename: string;
@@ -28,14 +29,15 @@ export interface StoredMessage {
 
 const skills = loadSkills();
 
-function systemPrompt(): string {
+function systemPrompt(tier: AccessTier): string {
   if (cfg.agent.systemPromptOverride) return cfg.agent.systemPromptOverride;
   return (
     "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
     "You answer questions about code, metrics, and operations. " +
+    `Your access tier is ${tier}. Only use tools available at your tier. ` +
     "You have access to tools. Use them when facts are not in your context. " +
     "Be concise but thorough, defaulting to Slack-compatible markdown." +
-    formatToolInstructions(listTools()) +
+    formatToolInstructions(listTools(tier)) +
     buildSkillPrompt(skills)
   );
 }
@@ -91,6 +93,7 @@ function appendLlmMessages(filename: string, messages: LlmMessage[], userId?: st
 async function runToolLoop(
   filename: string,
   messages: LlmMessage[],
+  tier: AccessTier,
   userId?: string,
 ): Promise<string> {
   const maxIterations = 10;
@@ -114,7 +117,9 @@ async function runToolLoop(
     messages.push({ role: "assistant", content: reply });
 
     const results = await Promise.all(
-      calls.map((call) => runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000)),
+      calls.map((call) =>
+        runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier),
+      ),
     );
 
     const observation = results.map(formatToolResult).join("\n\n");
@@ -135,7 +140,10 @@ export async function handleMessage(
   text: string,
   messageTs: string,
   userId: string,
+  userEmail?: string,
 ): Promise<HandleMessageResult> {
+  const tier = await resolveAccessTier(userId, userEmail);
+
   const map = readThreadMap();
   let entry = map[threadKey];
   if (!entry) {
@@ -146,7 +154,7 @@ export async function handleMessage(
     map[threadKey] = entry;
     appendSessionMessage(entry.sessionFilename, {
       role: "system",
-      content: systemPrompt(),
+      content: systemPrompt(tier),
       ts: new Date().toISOString(),
     });
   }
@@ -167,7 +175,12 @@ export async function handleMessage(
     content: m.content,
   }));
 
-  const reply = await runToolLoop(entry.sessionFilename, messages, userId);
+  // Ensure the first system message always reflects the user's current tier.
+  if (messages.length > 0 && messages[0].role === "system") {
+    messages[0].content = systemPrompt(tier);
+  }
+
+  const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
 
   appendMemory({
     id: randomUUID(),

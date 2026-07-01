@@ -151,7 +151,8 @@ async function sizzleQuery(input: z.infer<typeof sizzleQueryParams>): Promise<st
 export const sizzleQueryTool: Tool = {
   name: "sizzle_query",
   description:
-    "Run a DuckDB SQL query against Xet storage statistics hosted in DuckLake (Parquet/CSV files). Useful for storage capacity, deduplication ratio, shard counts, and bandwidth metrics. Set SIZZLE_DATA_DIR to enable.",
+    "Run a DuckDB SQL query against Xet storage statistics hosted in DuckLake (Parquet/CSV files). Useful for storage capacity, deduplication ratio, shard counts, and bandwidth metrics. Set SIZZLE_DATA_DIR to enable. (elastic tier)",
   params: sizzleQueryParams,
+  tier: "elastic",
   run: sizzleQuery,
 };

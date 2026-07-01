@@ -168,5 +168,6 @@ export const searchSlackTool: Tool = {
   description:
     "Search across Slack messages, files, channels, and users using the Slack Real-Time Search API (assistant.search.context). Requires SLACK_USER_TOKEN or a bot token plus an action_token from a Slack AI event.",
   params: searchSlackParams,
+  tier: "basic",
   run: searchSlack,
 };
