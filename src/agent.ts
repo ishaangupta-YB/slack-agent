@@ -4,6 +4,14 @@ import { join } from "node:path";
 import { cfg } from "./config.js";
 import { chat, type Message as LlmMessage } from "./llm/cloudflare.js";
 import { loadSkills, buildSkillPrompt } from "./skills/loader.js";
+import {
+  formatToolCallsForAssistant,
+  formatToolInstructions,
+  formatToolResult,
+  parseToolCalls,
+} from "./tools/parser.js";
+import { listTools, runToolCall } from "./tools/registry.js";
+import { appendMemory } from "./tools/memory.js";
 
 interface ThreadMapEntry {
   sessionFilename: string;
@@ -12,23 +20,26 @@ interface ThreadMapEntry {
 
 type ThreadMap = Record<string, ThreadMapEntry>;
 
-interface StoredMessage {
+export interface StoredMessage {
   role: "system" | "user" | "assistant";
   content: string;
   ts?: string;
+  userId?: string;
 }
 
 const skills = loadSkills();
+const tools = listTools();
 
 const systemPromptBase =
   "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
   "You answer questions about code, metrics, and operations. " +
-  "You can use tools to read files, run shell commands (when enabled), search memory, and work with GitHub. " +
-  "Be concise but thorough, defaulting to Slack-compatible markdown.";
+  "You have access to tools. Use them when facts are not in your context. " +
+  "Be concise but thorough, defaulting to Slack-compatible markdown." +
+  formatToolInstructions(tools) +
+  buildSkillPrompt(skills);
 
 function systemPrompt(): string {
-  const sp = cfg.agent.systemPromptOverride || systemPromptBase;
-  return sp + buildSkillPrompt(skills);
+  return cfg.agent.systemPromptOverride || systemPromptBase;
 }
 
 function ensureDir(dir: string) {
@@ -68,11 +79,59 @@ function appendSessionMessage(filename: string, msg: StoredMessage) {
   appendFileSync(sessionFilePath(filename), JSON.stringify(msg) + "\n");
 }
 
+function appendLlmMessages(filename: string, messages: LlmMessage[], userId?: string) {
+  for (const m of messages) {
+    appendSessionMessage(filename, {
+      role: m.role,
+      content: m.content,
+      ts: new Date().toISOString(),
+      userId,
+    });
+  }
+}
+
+async function runToolLoop(
+  filename: string,
+  messages: LlmMessage[],
+  userId?: string,
+): Promise<string> {
+  const maxIterations = 10;
+
+  for (let i = 0; i < maxIterations; i++) {
+    const reply = await chat(messages);
+    const calls = parseToolCalls(reply);
+
+    if (calls.length === 0) {
+      appendLlmMessages(filename, [
+        { role: "assistant", content: reply },
+      ]);
+      return reply;
+    }
+
+    // Record assistant's tool-call message.
+    appendLlmMessages(filename, [
+      { role: "assistant", content: reply },
+    ]);
+
+    messages.push({ role: "assistant", content: reply });
+
+    const results = await Promise.all(
+      calls.map((call) => runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000)),
+    );
+
+    const observation = results.map(formatToolResult).join("\n\n");
+    messages.push({ role: "user", content: observation });
+    appendLlmMessages(filename, [{ role: "user", content: observation }], userId);
+  }
+
+  return "I reached the maximum number of tool calls for this turn. Please ask me to continue if needed.";
+}
+
 export async function handleMessage(
   threadKey: string,
   text: string,
   messageTs: string,
-  _userId: string,
+  userId: string,
 ): Promise<string> {
   const map = readThreadMap();
   let entry = map[threadKey];
@@ -96,6 +155,7 @@ export async function handleMessage(
     role: "user",
     content: text,
     ts: new Date().toISOString(),
+    userId,
   });
 
   const history = readSessionMessages(entry.sessionFilename);
@@ -104,12 +164,15 @@ export async function handleMessage(
     content: m.content,
   }));
 
-  const reply = await chat(messages);
+  const reply = await runToolLoop(entry.sessionFilename, messages, userId);
 
-  appendSessionMessage(entry.sessionFilename, {
-    role: "assistant",
-    content: reply,
-    ts: new Date().toISOString(),
+  appendMemory({
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+    threadKey,
+    userId,
+    prompt: text,
+    outcome: reply,
   });
 
   return reply;
