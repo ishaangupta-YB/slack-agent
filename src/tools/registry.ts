@@ -9,6 +9,7 @@ import { esQueryTool } from "./es.js";
 import { searchSlackTool } from "./slack-search.js";
 import { mongoQueryTool } from "./mongo.js";
 import { athenaQueryTool } from "./athena.js";
+import { reportInjectionTool } from "./security.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
@@ -27,6 +28,7 @@ const staticTools: Tool[] = [
   searchSlackTool,
   mongoQueryTool,
   athenaQueryTool,
+  reportInjectionTool,
 ];
 
 let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));

@@ -1,6 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { cfg } from "../config.js";
+import { logSecurityEvent } from "./security.js";
 import type { Tool } from "./types.js";
 
 const params = z.object({
@@ -16,10 +17,27 @@ const BLOCKED_COMMANDS = [
   /:\(\)\{\s*:\|:\s*&\s*\};/,
 ];
 
+const SUSPICIOUS_COMMANDS = [
+  /curl\s+.*\|.*sh/i,
+  /curl\s+.*\|.*bash/i,
+  /wget\s+.*\|.*sh/i,
+  /base64\s+--decode/i,
+  /base64\s+-d/i,
+  /curl\s+.*-d\s+.*/i,
+  /wget\s+.*--post-data/i,
+  /nc\s+.*-e\s+/i,
+  /netcat\s+.*-e\s+/i,
+  /python\s+.*http\.server/i,
+];
+
+function isSuspicious(command: string): boolean {
+  return SUSPICIOUS_COMMANDS.some((re) => re.test(command));
+}
+
 export const bashTool: Tool = {
   name: "bash",
   description:
-    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected.",
+    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected. Suspicious commands are blocked and logged.",
   params,
   run(input) {
     if (!cfg.security.allowBash) {
@@ -31,7 +49,18 @@ export const bashTool: Tool = {
       return "Error: compound commands are not allowed. Run one command at a time.";
     }
     if (BLOCKED_COMMANDS.some((re) => re.test(command))) {
+      logSecurityEvent({
+        type: "suspicious_command_blocked",
+        details: { command, reason: "matches destructive command blocklist" },
+      });
       return "Error: command blocked by safety policy.";
+    }
+    if (isSuspicious(command)) {
+      logSecurityEvent({
+        type: "suspicious_command_blocked",
+        details: { command, reason: "matches suspicious command pattern" },
+      });
+      return "Error: this command looks potentially unsafe (exfiltration, remote execution, or decoding) and was blocked.";
     }
 
     const [shell, flag] = ["/bin/sh", "-c"];

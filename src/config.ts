@@ -31,6 +31,10 @@ export const cfg = {
     allowBash: process.env.ALLOW_BASH === "true",
     allowedUserIds: csv(process.env.ALLOWED_USER_IDS),
     adminUserIds: csv(process.env.ADMIN_USER_IDS),
+    auditLogFile:
+      process.env.SECURITY_AUDIT_LOG_FILE ||
+      join(process.env.SESSIONS_DIR || "./sessions", "audit.jsonl"),
+    slackAlertChannel: process.env.SLACK_SECURITY_ALERT_CHANNEL || "",
   },
   integrations: {
     githubToken: process.env.GITHUB_TOKEN,
