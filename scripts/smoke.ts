@@ -441,6 +441,45 @@ async function main() {
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
   assert(responseContent.includes("Hello from smoke test"));
 
+  // Code search tool
+  const codeReposDir = "/tmp/moon-bot-smoke-repos";
+  if (existsSync(codeReposDir)) rmSync(codeReposDir, { recursive: true, force: true });
+  mkdirSync(join(codeReposDir, "repo-a"), { recursive: true });
+  mkdirSync(join(codeReposDir, "repo-b"), { recursive: true });
+  writeFileSync(join(codeReposDir, "repo-a", "index.ts"), "export function authenticate(): boolean {\n  return true;\n}\n", "utf-8");
+  writeFileSync(join(codeReposDir, "repo-a", "utils.ts"), "export const VERSION = '1.0.0';\n", "utf-8");
+  writeFileSync(join(codeReposDir, "repo-b", "main.py"), "def authenticate_user():\n    return True\n", "utf-8");
+
+  const originalCodeReposDir = cfg.code.reposDir;
+  cfg.code.reposDir = codeReposDir;
+
+  const codeFilesResult = await runToolCall({
+    tool: "search_code",
+    params: { repo: "repo-a", query: "index", mode: "files", glob: "*.ts" },
+  });
+  assert.strictEqual(codeFilesResult.error, undefined);
+  assert(codeFilesResult.result.includes("index.ts"));
+  assert(!codeFilesResult.result.includes("repo-b"));
+
+  const codeContentResult = await runToolCall({
+    tool: "search_code",
+    params: { query: "authenticate", mode: "content", max_results: 10 },
+  });
+  assert.strictEqual(codeContentResult.error, undefined);
+  assert(codeContentResult.result.includes("repo-a/index.ts"));
+  assert(codeContentResult.result.includes("repo-b/main.py"));
+  assert(codeContentResult.result.includes("authenticate_user"));
+
+  const emptyResult = await runToolCall({
+    tool: "search_code",
+    params: { repo: "repo-a", query: "notfoundxyz", mode: "files" },
+  });
+  assert(emptyResult.result.includes("No matching files found"));
+
+  cfg.code.reposDir = originalCodeReposDir;
+  rmSync(codeReposDir, { recursive: true, force: true });
+  console.log("Code search tool passed");
+
   // HuggingFace Bucket integration
   const uploaded: Array<{
     repo: string;

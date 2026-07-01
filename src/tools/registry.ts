@@ -1,6 +1,7 @@
 import type { Tool, ToolCall, ToolResult } from "./types.js";
 import { bashTool } from "./bash.js";
 import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
+import { searchCodeTool } from "./code.js";
 import { memoryTool } from "./memory.js";
 import { openPrTool, createIssueTool } from "./github.js";
 import { plausibleQueryTool } from "./plausible.js";
@@ -17,6 +18,7 @@ const staticTools: Tool[] = [
   readFileTool,
   writeFileTool,
   editFileTool,
+  searchCodeTool,
   memoryTool,
   openPrTool,
   createIssueTool,

@@ -24,6 +24,9 @@ export const cfg = {
     maxMemoryEntries: parseInt(process.env.MAX_MEMORY_ENTRIES || "200", 10),
     systemPromptOverride: process.env.AGENT_SYSTEM_PROMPT_OVERRIDE,
   },
+  code: {
+    reposDir: process.env.CODE_REPOS_DIR || "./repos",
+  },
   security: {
     allowBash: process.env.ALLOW_BASH === "true",
     allowedUserIds: csv(process.env.ALLOWED_USER_IDS),
