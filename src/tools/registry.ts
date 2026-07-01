@@ -13,6 +13,7 @@ import { mongoQueryTool } from "./mongo.js";
 import { athenaQueryTool } from "./athena.js";
 import { sizzleQueryTool } from "./sizzle.js";
 import { statusTool } from "./status.js";
+import { helpTool } from "./help.js";
 import { reportInjectionTool } from "./security.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
@@ -36,6 +37,7 @@ const staticTools: Tool[] = [
   athenaQueryTool,
   sizzleQueryTool,
   statusTool,
+  helpTool,
   reportInjectionTool,
 ];
 

@@ -179,6 +179,18 @@ async function main() {
   assert(statusResult.result.includes("Guest accounts: refused"));
   console.log("System status tool passed");
 
+  // Help tool gives a friendly capabilities overview without exposing secrets.
+  const helpResult = await runToolCall({ tool: "moon_help", params: {} });
+  assert.strictEqual(helpResult.error, undefined);
+  assert(helpResult.result.includes("Moon Bot"));
+  assert(helpResult.result.includes("code"));
+  assert(helpResult.result.includes("data"));
+  assert(helpResult.result.includes("slack"));
+  assert(!helpResult.result.includes(cfg.cloudflare.apiToken), "help must not expose secrets");
+  const codeHelp = await runToolCall({ tool: "moon_help", params: { topic: "code" } });
+  assert(codeHelp.result.includes("open_pr"));
+  console.log("Help tool passed");
+
   // Slack Real-Time Search API
   const originalFetch = globalThis.fetch;
   cfg.slack.userToken = "xoxp-test";
@@ -1430,6 +1442,7 @@ rLQ+epZplw==
     "slack-search",
     "memory",
     "status",
+    "help",
   ]) {
     assert(
       skillNames.includes(expected),
