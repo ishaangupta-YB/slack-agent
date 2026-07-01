@@ -14,7 +14,7 @@ import {
   generateWeeklyReport,
   generateDeployReport,
 } from "../src/scheduler.js";
-import { app } from "../src/slack.js";
+import { app, stripBotMention } from "../src/slack.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { handleMessage } from "../src/agent.js";
@@ -1240,6 +1240,14 @@ async function main() {
   assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
   assert(manifest.features?.assistant_view?.name === "Moon Bot", "manifest must define assistant_view name");
   console.log("Slack app manifest validated");
+
+  // Bot mention stripping from app_mention / DM text
+  assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
+  assert.strictEqual(stripBotMention("<@U123|moon bot>hello", "U123"), "hello");
+  assert.strictEqual(stripBotMention("hello <@U123>", "U123"), "hello");
+  assert.strictEqual(stripBotMention("<@U123> hello <@U456>", "U123"), "hello <@U456>");
+  assert.strictEqual(stripBotMention("<@U123> hi"), "hi");
+  console.log("Bot mention stripping passed");
 
   console.log("smoke tests passed");
   clean();

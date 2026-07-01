@@ -49,6 +49,7 @@ function userIsAuthorized(userId: string): boolean {
 }
 
 const emailCache = new Map<string, string | undefined>();
+let botUserIdCache: string | undefined | null = null;
 
 async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
   const cached = emailCache.get(userId);
@@ -63,6 +64,27 @@ async function getUserEmail(client: WebClient, userId: string): Promise<string |
     emailCache.set(userId, undefined);
     return undefined;
   }
+}
+
+async function ensureBotUserId(client: WebClient): Promise<string | undefined> {
+  if (botUserIdCache !== null) return botUserIdCache ?? undefined;
+  try {
+    const resp = await client.auth.test({ token: cfg.slack.botToken });
+    botUserIdCache = resp.user_id || undefined;
+    return botUserIdCache;
+  } catch {
+    botUserIdCache = undefined;
+    return undefined;
+  }
+}
+
+export function stripBotMention(text: string, botUserId?: string): string {
+  if (!text) return text;
+  if (botUserId) {
+    const escaped = botUserId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return text.replace(new RegExp(`<@${escaped}(?:\\|[^>]*)?>\\s*`, "g"), "").trim();
+  }
+  return text.replace(/^<@[A-Z0-9_-]+(?:\|[^>]*)?>\s*/, "").trim();
 }
 
 async function handleIncomingMessage({
@@ -92,11 +114,13 @@ async function handleIncomingMessage({
 
   const threadKey = getThreadKey(event);
   const userEmail = await getUserEmail(client, userId);
+  const botUserId = await ensureBotUserId(client);
+  const cleanText = stripBotMention(text, botUserId);
 
   try {
     const { text: reply, sessionFilename } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
-      () => handleMessage(threadKey, text.trim(), ts, userId, userEmail),
+      () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail),
     );
     const { responseUrl, sessionUrl } = await uploadArtifacts(
       threadKey,
