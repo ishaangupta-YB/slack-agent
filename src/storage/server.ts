@@ -1,4 +1,4 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync, existsSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { cfg } from "../config.js";
@@ -15,11 +15,30 @@ function serveError(res: ServerResponse, status: number, message: string) {
   res.end(message);
 }
 
-export function startBucketServer(): Promise<void> {
+function serveJson(res: ServerResponse, status: number, payload: unknown) {
+  res.writeHead(status, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(payload, null, 2));
+}
+
+function healthCheck(): { status: string; bucketDir: string; bucketReady: boolean } {
+  return {
+    status: "ok",
+    bucketDir: baseDir,
+    bucketReady: existsSync(baseDir),
+  };
+}
+
+export function startBucketServer(): Promise<Server> {
   return new Promise((resolveStart) => {
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
       try {
         const rawPath = req.url?.split("?")[0] || "/";
+
+        if (rawPath === "/health") {
+          serveJson(res, 200, healthCheck());
+          return;
+        }
+
         const safePath = normalize(join(baseDir, rawPath));
         if (!safePath.startsWith(baseDir)) {
           serveError(res, 403, "Forbidden");
@@ -39,7 +58,7 @@ export function startBucketServer(): Promise<void> {
 
     server.listen(cfg.storage.bucketHttpPort, () => {
       console.log(`Bucket server listening on port ${cfg.storage.bucketHttpPort}`);
-      resolveStart();
+      resolveStart(server);
     });
 
     server.on("error", (err) => {

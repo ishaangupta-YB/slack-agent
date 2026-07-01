@@ -1,0 +1,28 @@
+services:
+  moon-bot:
+    build: .
+    container_name: moon-bot-slack-agent
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - SESSIONS_DIR=/app/data/sessions
+      - MEMORY_FILE=/app/data/sessions/memory.json
+      - THREAD_MAP_FILE=/app/data/sessions/thread-map.json
+      - BUCKET_DIR=/app/data/bucket
+      - BUCKET_PUBLIC_URL=${BUCKET_PUBLIC_URL:-http://localhost:3001}
+      - BUCKET_HTTP_PORT=3001
+    ports:
+      - "${BUCKET_HTTP_PORT:-3001}:3001"
+    volumes:
+      - moon-bot-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  moon-bot-data:

@@ -8,6 +8,7 @@ import { uploadArtifacts } from "../src/artifacts.js";
 import { cfg } from "../src/config.js";
 import { startScheduler, stopScheduler } from "../src/scheduler.js";
 import { app } from "../src/slack.js";
+import { startBucketServer } from "../src/storage/server.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -155,6 +156,23 @@ async function main() {
   assert(existsSync(urls.sessionUrl));
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
   assert(responseContent.includes("Hello from smoke test"));
+
+  // Bucket server health endpoint
+  const bucketServer = await startBucketServer();
+  try {
+    const healthUrl = `http://localhost:${cfg.storage.bucketHttpPort}/health`;
+    const healthRes = await fetch(healthUrl);
+    assert.strictEqual(healthRes.status, 200);
+    const healthBody = (await healthRes.json()) as {
+      status: string;
+      bucketDir: string;
+      bucketReady: boolean;
+    };
+    assert.strictEqual(healthBody.status, "ok");
+    assert(healthBody.bucketReady);
+  } finally {
+    bucketServer.close();
+  }
 
   // Scheduler
   const postedMessages: Array<Record<string, unknown>> = [];

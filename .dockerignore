@@ -1,0 +1,16 @@
+node_modules
+dist
+sessions
+bucket
+logs
+.git
+.gnhf
+.env
+.env.local
+.env.*
+.github
+.vscode
+.idea
+*.md
+*.tsbuildinfo
+.DS_Store
