@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import { join } from "node:path";
 config();
 
 export const cfg = {
@@ -14,8 +15,12 @@ export const cfg = {
   },
   agent: {
     sessionsDir: process.env.SESSIONS_DIR || "./sessions",
-    memoryFile: process.env.MEMORY_FILE || "./sessions/memory.json",
-    threadMapFile: process.env.THREAD_MAP_FILE || "./sessions/thread-map.json",
+    memoryFile:
+      process.env.MEMORY_FILE ||
+      join(process.env.SESSIONS_DIR || "./sessions", "memory.json"),
+    threadMapFile:
+      process.env.THREAD_MAP_FILE ||
+      join(process.env.SESSIONS_DIR || "./sessions", "thread-map.json"),
     maxMemoryEntries: parseInt(process.env.MAX_MEMORY_ENTRIES || "200", 10),
     systemPromptOverride: process.env.AGENT_SYSTEM_PROMPT_OVERRIDE,
   },
