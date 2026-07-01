@@ -1,12 +1,18 @@
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname } from "node:path";
+import { dirname, normalize, resolve, sep } from "node:path";
 import { z } from "zod";
 import type { Tool } from "./types.js";
 
-function isPathSafe(path: string): boolean {
-  // Allow absolute and relative paths, but block traversal outside cwd.
-  const resolved = new URL(path, "file://" + process.cwd() + "/").pathname;
-  return !resolved.includes("..") && !resolved.includes("~");
+const WORKSPACE_ROOT = resolve(process.cwd());
+
+function safePath(inputPath: string): string | undefined {
+  const resolved = normalize(resolve(WORKSPACE_ROOT, inputPath));
+  const rootWithSep = WORKSPACE_ROOT.endsWith(sep) ? WORKSPACE_ROOT : WORKSPACE_ROOT + sep;
+  // Allow paths inside the workspace root. The workspace root itself is not writable,
+  // but resolving the empty/relative path should return the root, which we reject for writes.
+  if (resolved === WORKSPACE_ROOT) return WORKSPACE_ROOT;
+  if (resolved.startsWith(rootWithSep)) return resolved;
+  return undefined;
 }
 
 const readParams = z.object({
@@ -22,9 +28,10 @@ export const readFileTool: Tool = {
   params: readParams,
   tier: "basic",
   run(input) {
-    if (!isPathSafe(input.path)) return "Error: unsafe path";
-    if (!existsSync(input.path)) return `Error: file not found: ${input.path}`;
-    const content = readFileSync(input.path, "utf-8");
+    const path = safePath(input.path);
+    if (!path) return "Error: path is outside the workspace";
+    if (!existsSync(path)) return `Error: file not found: ${input.path}`;
+    const content = readFileSync(path, "utf-8");
     const lines = content.split("\n");
     const slice = lines.slice(input.offset, input.offset + input.limit).join("\n");
     return slice;
@@ -43,10 +50,11 @@ export const writeFileTool: Tool = {
   params: writeParams,
   tier: "privileged",
   run(input) {
-    if (!isPathSafe(input.path)) return "Error: unsafe path";
-    const dir = dirname(input.path);
+    const path = safePath(input.path);
+    if (!path) return "Error: path is outside the workspace";
+    const dir = dirname(path);
     if (dir && !existsSync(dir)) mkdirSync(dir, { recursive: true });
-    writeFileSync(input.path, input.content, "utf-8");
+    writeFileSync(path, input.content, "utf-8");
     return `Wrote ${input.path}`;
   },
 };
@@ -64,13 +72,14 @@ export const editFileTool: Tool = {
   params: editParams,
   tier: "privileged",
   run(input) {
-    if (!isPathSafe(input.path)) return "Error: unsafe path";
-    if (!existsSync(input.path)) return `Error: file not found: ${input.path}`;
-    const content = readFileSync(input.path, "utf-8");
+    const path = safePath(input.path);
+    if (!path) return "Error: path is outside the workspace";
+    if (!existsSync(path)) return `Error: file not found: ${input.path}`;
+    const content = readFileSync(path, "utf-8");
     const occurrences = content.split(input.oldString).length - 1;
     if (occurrences === 0) return "Error: oldString not found";
     if (occurrences > 1) return `Error: oldString found ${occurrences} times; provide more context.`;
-    writeFileSync(input.path, content.replace(input.oldString, input.newString), "utf-8");
+    writeFileSync(path, content.replace(input.oldString, input.newString), "utf-8");
     return `Edited ${input.path}`;
   },
 };

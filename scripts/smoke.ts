@@ -92,6 +92,33 @@ async function main() {
   const formatted = formatToolResult(result);
   assert(formatted.startsWith("[tool result] read_file"));
 
+  // Filesystem path traversal guard
+  const traversalRead = await runToolCall({ tool: "read_file", params: { path: "/etc/passwd" } });
+  assert(traversalRead.result.includes("outside the workspace"));
+
+  const dotdotRead = await runToolCall({ tool: "read_file", params: { path: "../package.json" } });
+  assert(dotdotRead.result.includes("outside the workspace"));
+
+  const writeOutside = await runToolCall(
+    { tool: "write_file", params: { path: "/tmp/moon-bot-smoke-escape.txt", content: "x" } },
+    8_000,
+    "privileged",
+  );
+  assert(writeOutside.result.includes("outside the workspace"));
+
+  const writeTestPath = ".moon-bot-smoke-write.txt";
+  const writeInside = await runToolCall(
+    { tool: "write_file", params: { path: writeTestPath, content: "hello workspace" } },
+    8_000,
+    "privileged",
+  );
+  assert.strictEqual(writeInside.error, undefined);
+  assert(writeInside.result.includes("Wrote"));
+  const readInside = await runToolCall({ tool: "read_file", params: { path: writeTestPath } });
+  assert(readInside.result.includes("hello workspace"));
+  rmSync(writeTestPath, { force: true });
+  console.log("Filesystem path traversal guard passed");
+
   // Bash disabled by default
   const bashResult = await runToolCall({ tool: "bash", params: { command: "echo hi" } });
   assert(bashResult.result.includes("disabled"));
