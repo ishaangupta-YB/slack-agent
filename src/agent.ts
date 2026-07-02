@@ -140,14 +140,27 @@ async function ensureSessionFile(filename: string): Promise<string> {
   }
 }
 
-async function readSessionMessages(filename: string): Promise<StoredMessage[]> {
+export async function readSessionMessages(filename: string): Promise<StoredMessage[]> {
   await ensureSessionFile(filename);
   const path = sessionFilePath(filename);
   if (!existsSync(path)) return [];
-  return readFileSync(path, "utf-8")
+
+  const lines = readFileSync(path, "utf-8")
     .split("\n")
-    .filter(Boolean)
-    .map((line) => JSON.parse(line) as StoredMessage);
+    .filter(Boolean);
+
+  const messages: StoredMessage[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    try {
+      messages.push(JSON.parse(lines[i]) as StoredMessage);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      console.warn(
+        `Skipping corrupt session line ${i + 1} in ${filename}: ${reason}`,
+      );
+    }
+  }
+  return messages;
 }
 
 /**
@@ -226,8 +239,14 @@ export function prepareLlmMessages(
     content: m.content,
   }));
 
+  const refreshedSystem: LlmMessage = {
+    role: "system",
+    content: systemPrompt(tier, memoryContext, environment),
+  };
   if (messages.length > 0 && messages[0].role === "system") {
-    messages[0].content = systemPrompt(tier, memoryContext, environment);
+    messages[0] = refreshedSystem;
+  } else {
+    messages.unshift(refreshedSystem);
   }
 
   return truncateLlmMessages(messages, maxContextMessages);

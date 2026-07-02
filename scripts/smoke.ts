@@ -36,7 +36,7 @@ import { feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer, stopBucketServer, getActiveBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
-import { getSessionFilenameByThreadKey, handleMessage, prepareLlmMessages } from "../src/agent.js";
+import { getSessionFilenameByThreadKey, handleMessage, prepareLlmMessages, readSessionMessages } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -1696,6 +1696,35 @@ rLQ+epZplw==
 
   clearChatOverride();
   console.log("Session restore from bucket passed");
+
+  // Corrupt session JSONL lines should be skipped instead of crashing the agent.
+  const corruptFilename = `${randomUUID()}.jsonl`;
+  const corruptSessionPath = join(process.env.SESSIONS_DIR!, corruptFilename);
+  writeFileSync(
+    corruptSessionPath,
+    '{"role":"system","content":"system prompt"}\n' +
+      'this is not valid json\n' +
+      '{"role":"user","content":"hello"}\n',
+  );
+
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (...args: unknown[]) => {
+    warnings.push(args.map(String).join(" "));
+  };
+  try {
+    const recoveredMessages = await readSessionMessages(corruptFilename);
+    assert.strictEqual(recoveredMessages.length, 2, "Corrupt line should be skipped");
+    assert.strictEqual(recoveredMessages[0].role, "system");
+    assert.strictEqual(recoveredMessages[1].role, "user");
+  } finally {
+    console.warn = originalWarn;
+  }
+  assert(
+    warnings.some((w) => w.includes("Skipping corrupt session line")),
+    "A warning should be logged for the corrupt line",
+  );
+  console.log("Corrupt session line handling passed");
 
   // Concurrent per-thread message handling should serialize safely and skip duplicates.
   const concurrentThreadKey = "C1:concurrent-thread";
