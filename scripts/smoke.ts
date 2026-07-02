@@ -17,6 +17,8 @@ import {
   stopScheduler,
   generateWeeklyReport,
   generateDeployReport,
+  checkPublicStatusPages,
+  type PublicStatusPageState,
 } from "../src/scheduler.js";
 import {
   app,
@@ -241,6 +243,7 @@ async function main() {
   assert(statusResult.result.includes("Guest accounts: refused"));
   assert(statusResult.result.includes("Default access tier:"));
   assert(statusResult.result.includes("Tier resolution:"));
+  assert(statusResult.result.includes("Public status monitor channel:"));
   console.log("System status tool passed");
 
   // Help tool gives a friendly capabilities overview without exposing secrets.
@@ -1838,6 +1841,90 @@ rLQ+epZplw==
   assert.strictEqual(scheduler.deployTimeouts.length, 1, "Deploy follow-up should be scheduled");
 
   stopScheduler();
+
+  // Public status monitor
+  {
+    const postedMessages: Array<Record<string, unknown>> = [];
+    const mockApp = {
+      client: {
+        chat: {
+          postMessage: async (args: Record<string, unknown>) => {
+            postedMessages.push(args);
+            return {};
+          },
+        },
+      },
+      message: () => {
+        // no-op
+      },
+    } as unknown as Parameters<typeof startScheduler>[0];
+
+    const savedChannel = cfg.scheduler.statusMonitorChannel;
+    const savedPages = cfg.scheduler.statusMonitorPages;
+    const savedCron = cfg.scheduler.statusMonitorCron;
+    cfg.scheduler.statusMonitorChannel = "CSTATUS";
+    cfg.scheduler.statusMonitorPages = ["https://status.example.com/api/v2/status.json"];
+    cfg.scheduler.statusMonitorCron = "*/5 * * * *";
+
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
+      const urlString = String(url);
+      if (urlString.includes("status.example.com")) {
+        return new Response(
+          JSON.stringify({
+            page: { name: "Example Service", updated_at: new Date().toISOString() },
+            status: { indicator: "major", description: "Major outage" },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
+        );
+      }
+      return originalFetch(url, init);
+    };
+
+    try {
+      const scheduler = startScheduler(mockApp);
+      assert.strictEqual(
+        scheduler.cronTasks.length,
+        2,
+        "Weekly report and public status monitor crons should both be scheduled",
+      );
+
+      await checkPublicStatusPages(
+        mockApp,
+        cfg.scheduler.statusMonitorChannel,
+        cfg.scheduler.statusMonitorPages,
+        new Map<string, PublicStatusPageState>(),
+      );
+      assert.strictEqual(postedMessages.length, 1, "Public status monitor should alert on first incident");
+      const alert = postedMessages[0];
+      assert.strictEqual(alert.channel, "CSTATUS");
+      assert((alert.text as string).includes("Example Service"));
+      assert((alert.text as string).includes("major"));
+
+      // Second check with the same incident should deduplicate (no new alert).
+      postedMessages.length = 0;
+      const state = new Map<string, PublicStatusPageState>();
+      state.set("https://status.example.com/api/v2/status.json", {
+        url: "https://status.example.com/api/v2/status.json",
+        lastIndicator: "major",
+      });
+      await checkPublicStatusPages(
+        mockApp,
+        cfg.scheduler.statusMonitorChannel,
+        cfg.scheduler.statusMonitorPages,
+        state,
+      );
+      assert.strictEqual(postedMessages.length, 0, "Public status monitor should not re-alert for unchanged incident");
+
+      console.log("Public status monitor passed");
+    } finally {
+      stopScheduler();
+      cfg.scheduler.statusMonitorChannel = savedChannel;
+      cfg.scheduler.statusMonitorPages = savedPages;
+      cfg.scheduler.statusMonitorCron = savedCron;
+      globalThis.fetch = originalFetch;
+    }
+  }
 
   // Guest account detection and access control
   const guestClient = {

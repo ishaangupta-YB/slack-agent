@@ -96,6 +96,9 @@ export const cfg = {
       process.env.SCHEDULED_DEPLOY_MONITOR_DELAY_MS || "900000",
       10,
     ),
+    statusMonitorChannel: process.env.STATUS_MONITOR_CHANNEL || "",
+    statusMonitorPages: csv(process.env.STATUS_MONITOR_PAGES || ""),
+    statusMonitorCron: process.env.STATUS_MONITOR_CRON || "*/15 * * * *",
   },
   feedback: {
     logFile:

@@ -30,7 +30,7 @@ export const helpTool: Tool = {
         `• GitHub PRs, issue filing, and follow-up commits\n` +
         `• Elasticsearch, MongoDB, AWS Athena, and DuckDB/Sizzle queries\n` +
         `• Plausible traffic analytics, public status pages, and Slack real-time search\n` +
-        `• Weekly ops reports and deploy-impact monitoring\n\n` +
+        `• Weekly ops reports, deploy-impact monitoring, and proactive public status monitoring\n\n` +
         `**How to talk to me**\n` +
         `• Mention me in a channel: \`@Moon Bot <your question>\`\n` +
         `• Send me a direct message — no mention needed\n` +
@@ -84,6 +84,7 @@ export const helpTool: Tool = {
         `**Automated reports**\n` +
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
+        `• Public status monitor — watches civic/nonprofit service status pages and posts incident alerts\n` +
         `• Slash commands: \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +

@@ -3,16 +3,32 @@ import { schedule, validate, type ScheduledTask } from "node-cron";
 import { cfg } from "./config.js";
 import { esSearch, totalHits, type EsSearchResponse } from "./integrations/es.js";
 
+export interface PublicStatusPageState {
+  url: string;
+  lastIndicator?: string;
+}
+
 export interface SchedulerState {
   cronTasks: ScheduledTask[];
   deployTimeouts: NodeJS.Timeout[];
   deployHandlers: Array<((args: SlackEventMiddlewareArgs<"message"> & AllMiddlewareArgs) => Promise<void>)>;
+  statusMonitorPageState?: Map<string, PublicStatusPageState>;
 }
 
 let activeScheduler: SchedulerState | undefined;
 
 const WEEKLY_CRON = "0 9 * * 1";
+const STATUS_MONITOR_CRON_DEFAULT = "*/15 * * * *";
 const DEPLOY_KEYWORDS = ["deploy", "deploying", "release", "releasing", "shipping", "rolled out"];
+const OPERATIONAL_STATUS_VALUES = new Set([
+  "none",
+  "operational",
+  "ok",
+  "up",
+  "available",
+  "healthy",
+  "green",
+]);
 
 function isDeployMessage(text: string): boolean {
   const lower = text.toLowerCase();
@@ -326,6 +342,112 @@ function registerDeployMonitor(app: App, state: SchedulerState): void {
   console.log(`Deploy monitor registered for ${channel}`);
 }
 
+function parseStatusPageJson(body: unknown): { name: string; indicator: string; description: string } | undefined {
+  if (!body || typeof body !== "object") return undefined;
+
+  if ("page" in body && "status" in body) {
+    const page = (body as { page?: { name?: string; updated_at?: string } }).page;
+    const status = (body as { status?: { indicator?: string; description?: string } }).status;
+    return {
+      name: page?.name ?? "Service",
+      indicator: status?.indicator ?? "unknown",
+      description: status?.description ?? "No status description provided.",
+    };
+  }
+
+  const record = body as Record<string, unknown>;
+  return {
+    name: (record.name as string) ?? "Service",
+    indicator: String(record.indicator ?? record.status ?? "unknown"),
+    description: String(record.description ?? record.message ?? "No status description provided."),
+  };
+}
+
+function isIncidentStatus(indicator: string): boolean {
+  return !OPERATIONAL_STATUS_VALUES.has(indicator.toLowerCase().trim());
+}
+
+async function postStatusAlert(
+  app: App,
+  channel: string,
+  pageName: string,
+  url: string,
+  indicator: string,
+  description: string,
+): Promise<void> {
+  try {
+    const text =
+      `*${pageName} status alert* 🚨\n` +
+      `• Indicator: \`${indicator}\`\n` +
+      `• Description: ${description}\n` +
+      `• Page: ${url}`;
+    await app.client.chat.postMessage({ channel, text, unfurl_links: false });
+    console.log(`Public status alert posted to ${channel} for ${pageName} (${indicator})`);
+  } catch (err) {
+    console.error("Public status alert failed:", err);
+  }
+}
+
+export async function checkPublicStatusPages(
+  app: App,
+  channel: string,
+  pages: string[],
+  state: Map<string, PublicStatusPageState>,
+): Promise<void> {
+  for (const url of pages) {
+    try {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        console.warn(`Status monitor: ${url} returned HTTP ${response.status}`);
+        continue;
+      }
+      const body = await response.json();
+      const parsed = parseStatusPageJson(body);
+      if (!parsed) {
+        console.warn(`Status monitor: unrecognized JSON shape from ${url}`);
+        continue;
+      }
+      const prev = state.get(url);
+      const wasIncident = prev?.lastIndicator ? isIncidentStatus(prev.lastIndicator) : false;
+      if (isIncidentStatus(parsed.indicator) && !wasIncident) {
+        await postStatusAlert(app, channel, parsed.name, url, parsed.indicator, parsed.description);
+      }
+      state.set(url, { url, lastIndicator: parsed.indicator });
+    } catch (err) {
+      console.error(`Status monitor: failed to check ${url}:`, err);
+    }
+  }
+}
+
+function registerPublicStatusMonitor(app: App, state: SchedulerState): void {
+  const channel = cfg.scheduler.statusMonitorChannel;
+  const pages = cfg.scheduler.statusMonitorPages;
+  const cron = cfg.scheduler.statusMonitorCron || STATUS_MONITOR_CRON_DEFAULT;
+  if (!channel || pages.length === 0) return;
+  if (!validate(cron)) {
+    console.error(`Invalid status monitor cron expression: ${cron}`);
+    return;
+  }
+
+  if (!state.statusMonitorPageState) {
+    state.statusMonitorPageState = new Map<string, PublicStatusPageState>();
+  }
+
+  const task = schedule(
+    cron,
+    async () => {
+      await checkPublicStatusPages(app, channel, pages, state.statusMonitorPageState!);
+    },
+    { timezone: "UTC" },
+  );
+
+  state.cronTasks.push(task);
+  console.log(`Public status monitor scheduled for ${channel} (${cron} UTC) watching ${pages.length} page(s)`);
+}
+
 function registerWeeklyReport(app: App, state: SchedulerState): void {
   const channel = cfg.scheduler.weeklyReportChannel;
   if (!channel) return;
@@ -357,6 +479,7 @@ export function startScheduler(app: App): SchedulerState {
 
   registerWeeklyReport(app, state);
   registerDeployMonitor(app, state);
+  registerPublicStatusMonitor(app, state);
 
   return state;
 }

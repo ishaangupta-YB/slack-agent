@@ -329,6 +329,15 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
   } else {
     checks.push({ name: "Scheduled deploy monitor", status: "warn", message: "SCHEDULED_DEPLOY_CHANNEL not set — deploy monitor disabled" });
   }
+  if (isSet("STATUS_MONITOR_CHANNEL")) {
+    if (isSet("STATUS_MONITOR_PAGES")) {
+      checks.push({ name: "STATUS_MONITOR_CHANNEL", status: "ok", message: env("STATUS_MONITOR_CHANNEL")! });
+    } else {
+      checks.push({ name: "Public status monitor", status: "warn", message: "STATUS_MONITOR_CHANNEL set but STATUS_MONITOR_PAGES is empty — monitor disabled" });
+    }
+  } else {
+    checks.push({ name: "Public status monitor", status: "warn", message: "STATUS_MONITOR_CHANNEL not set — public status monitor disabled" });
+  }
 
   // Bucket public URL
   const usesHfBucket = isSet("HF_TOKEN") && isSet("HF_BUCKET_REPO");
