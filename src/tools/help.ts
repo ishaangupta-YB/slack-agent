@@ -47,6 +47,7 @@ export const helpTool: Tool = {
         `• \`/moonbot diagnose\` — pre-flight configuration check\n` +
         `• \`/moonbot ping\` — live LLM connectivity check\n` +
         `• \`/moonbot whoami\` — your access tier and guest status\n` +
+        `• \`/moonbot thread\` — your current DM session info\n` +
         `• \`/moonbot search <query>\` — search Slack history with the Real-Time Search API\n` +
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
         `• \`/moonbot report deploy\` — deploy impact check on demand\n` +

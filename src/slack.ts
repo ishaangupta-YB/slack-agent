@@ -12,7 +12,7 @@ import {
 } from "@slack/bolt";
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
-import { handleMessage, hasThreadKey, resetThread } from "./agent.js";
+import { getThreadInfo, handleMessage, hasThreadKey, resetThread } from "./agent.js";
 import { resolveAccessTier } from "./auth/tiers.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
@@ -388,11 +388,11 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | status | diagnose | ping | whoami | search | report | statuspage].
+ * Slash command entry point: /moonbot [help | demo | status | diagnose | ping | whoami | thread | search | report | statuspage].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
- * configuration diagnostics, real-time search, and live LLM connectivity without
- * starting a threaded conversation.
+ * configuration diagnostics, real-time search, session info, and live LLM
+ * connectivity without starting a threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -429,6 +429,43 @@ export async function handleMoonbotCommand({
         `• Email: ${userEmail || "_not available_"}\n` +
         `• Resolved access tier: \`${tier}\`\n` +
         `• Guest account: ${guest ? "yes (access blocked)" : "no"}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "thread") {
+    // Slash commands do not receive thread_ts, so we can only introspect the
+    // single continuous session for a one-on-one DM (keyed by channel ID).
+    const channelId = command.channel_id;
+    if (!channelId.startsWith("D")) {
+      await respond({
+        text:
+          "*Thread info* 🧵\n" +
+          "Thread details are available for direct-message conversations via this command. " +
+          "In channel threads, tap *View trace* or *Session* on any Moon Bot reply to inspect the session.",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const info = await getThreadInfo(channelId);
+    if (!info.exists) {
+      await respond({
+        text: "*Thread info* 🧵\nYou don't have an active Moon Bot session in this DM yet. Send me a message to start one!",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const lastTs = info.lastProcessedMessageTs?.split(".")[0] ?? "";
+    const lastMsgLine = lastTs ? `• Last message: <!date^${lastTs}^{date_pretty} {time}|${info.lastProcessedMessageTs}>` : "";
+    await respond({
+      text:
+        `*Current DM session* 🧵\n` +
+        `• Session file: \`${info.sessionFilename}\`\n` +
+        `• Visible messages: ${info.messageCount}\n` +
+        lastMsgLine,
       response_type: "ephemeral",
     });
     return;
@@ -564,6 +601,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +
+      "• `/moonbot thread` — your current DM session info\n" +
       "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",

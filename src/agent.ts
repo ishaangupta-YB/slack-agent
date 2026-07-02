@@ -336,6 +336,36 @@ export async function getSessionFilenameByThreadKey(
   return map[threadKey]?.sessionFilename;
 }
 
+export interface ThreadInfo {
+  threadKey: string;
+  sessionFilename?: string;
+  messageCount: number;
+  lastProcessedMessageTs?: string;
+  exists: boolean;
+}
+
+/**
+ * Return a human-readable summary of an active thread session for the given
+ * thread key. Used by the `/moonbot thread` slash command so users can inspect
+ * their current DM session without invoking the full agent.
+ */
+export async function getThreadInfo(threadKey: string): Promise<ThreadInfo> {
+  const map = await ensureThreadMap();
+  const entry = map[threadKey];
+  if (!entry) {
+    return { threadKey, messageCount: 0, exists: false };
+  }
+  const messages = await readSessionMessages(entry.sessionFilename);
+  const visibleCount = messages.filter((m) => m.role === "user" || m.role === "assistant").length;
+  return {
+    threadKey,
+    sessionFilename: entry.sessionFilename,
+    messageCount: visibleCount,
+    lastProcessedMessageTs: entry.lastProcessedMessageTs,
+    exists: true,
+  };
+}
+
 /**
  * Returns true if the bot already has an active session for the given Slack
  * thread key. Used by the Slack routing layer to decide whether to respond to

@@ -57,6 +57,7 @@ function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
   if (existsSync(process.env.BUCKET_DIR!)) rmSync(process.env.BUCKET_DIR!, { recursive: true, force: true });
   if (existsSync(process.env.SESSIONS_DIR!)) rmSync(process.env.SESSIONS_DIR!, { recursive: true, force: true });
+  if (existsSync(".moon-bot-smoke-write.txt")) rmSync(".moon-bot-smoke-write.txt", { force: true });
 }
 
 async function main() {
@@ -271,6 +272,7 @@ async function main() {
   assert(helpResult.result.includes("code"));
   assert(helpResult.result.includes("data"));
   assert(helpResult.result.includes("slack"));
+  assert(helpResult.result.includes("/moonbot thread"), "general help should mention the thread slash command");
   assert(!helpResult.result.includes(cfg.cloudflare.apiToken), "help must not expose secrets");
   const codeHelp = await runToolCall({ tool: "moon_help", params: { topic: "code" } });
   assert(codeHelp.result.includes("open_pr"));
@@ -2955,6 +2957,7 @@ rLQ+epZplw==
     text: string,
     client?: WebClient,
     userId = "U1",
+    channelId = "C1",
   ): Promise<void> {
     slashResponses.length = 0;
     ackCount = 0;
@@ -2963,7 +2966,7 @@ rLQ+epZplw==
         command: "/moonbot",
         text,
         user_id: userId,
-        channel_id: "C1",
+        channel_id: channelId,
         team_id: "T1",
         token: "test-token",
         response_url: "https://example.com/response",
@@ -3067,6 +3070,33 @@ rLQ+epZplw==
   assert(whoamiText.includes("basic"), "whoami should show the resolved access tier");
   assert(whoamiText.includes("Guest account: no"), "whoami should show guest status");
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "whoami command should be ephemeral");
+
+  // /moonbot thread — show current DM session info; in channels it explains how
+  // to find thread details via response buttons.
+  await dispatchSlashCommand("thread", {} as WebClient, "U_THREAD", "C1");
+  assert(
+    slashResponses[0].text?.includes("Thread details are available for direct-message conversations"),
+    "thread command in channels should explain DM-only limitation",
+  );
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "thread command should be ephemeral");
+
+  await dispatchSlashCommand("thread", {} as WebClient, "U_THREAD", "DTHREAD");
+  assert(
+    slashResponses[0].text?.includes("You don't have an active Moon Bot session"),
+    "thread command in DM without session should prompt the user",
+  );
+
+  const threadDmKey = "DTHREAD";
+  setChatOverride(async () => "Hello from the thread test.");
+  await handleMessage(threadDmKey, "hello thread", "888001.000001", "U_THREAD");
+  clearChatOverride();
+
+  await dispatchSlashCommand("thread", {} as WebClient, "U_THREAD", "DTHREAD");
+  const threadInfoText = slashResponses[0].text ?? "";
+  assert(threadInfoText.includes("Current DM session"), "thread command should show session header");
+  assert(threadInfoText.includes("Session file:"), "thread command should list session filename");
+  assert(threadInfoText.includes("Visible messages:"), "thread command should list message count");
+  assert(threadInfoText.includes("1"), "thread command should count one visible user/assistant pair");
 
   await dispatchSlashCommand("report");
   assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");
