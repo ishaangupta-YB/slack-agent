@@ -47,6 +47,8 @@ interface MessageEventShape {
   bot_id?: string;
   channel_type?: string;
   action_token?: string;
+  /** Slack message subtype (e.g. message_changed, message_deleted). Non-chat subtypes are ignored. */
+  subtype?: string;
 }
 
 function getThreadKey(event: MessageEventShape): string {
@@ -156,6 +158,8 @@ async function handleIncomingMessage({
   const actionToken = event.action_token;
 
   if (!userId || event.bot_id) return;
+  // Ignore message edits, deletions, channel joins, and other non-chat message subtypes.
+  if (event.subtype) return;
   if (!userIsAuthorized(userId)) {
     await client.chat.postEphemeral({
       channel,
@@ -226,6 +230,7 @@ async function routeEvent({
   const botId = (event as { bot_id?: string }).bot_id;
   const channelType = (event as { channel_type?: string }).channel_type;
   const actionToken = (event as { action_token?: string }).action_token;
+  const subtype = (event as { subtype?: string }).subtype;
 
   await handleIncomingMessage({
     event: {
@@ -237,6 +242,7 @@ async function routeEvent({
       bot_id: botId,
       channel_type: channelType,
       action_token: actionToken,
+      subtype,
     },
     say,
     client,
@@ -330,6 +336,7 @@ const moonAssistant = new Assistant({
     const threadTs = (event as { thread_ts?: string }).thread_ts;
     const botId = (event as { bot_id?: string }).bot_id;
     const actionToken = (event as { action_token?: string }).action_token;
+    const subtype = (event as { subtype?: string }).subtype;
 
     try {
       await handleIncomingMessage({
@@ -342,6 +349,7 @@ const moonAssistant = new Assistant({
           bot_id: botId,
           channel_type: "im",
           action_token: actionToken,
+          subtype,
         },
         say,
         client,

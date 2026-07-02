@@ -2229,6 +2229,45 @@ rLQ+epZplw==
   });
   assert.strictEqual(routingCalls.length, 0, "unrelated channel message should be ignored");
 
+  // 6) Message edits and deletions must be ignored so Slack does not trigger
+  //    duplicate or broken agent replies when a user edits a previous message.
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        subtype: "message_changed",
+        channel_type: "channel",
+        channel: "C1",
+        ts: "1777000010.000000",
+        thread_ts: "1777000000.000000",
+        user: "U1",
+        text: "edited follow up in thread",
+      },
+      event_ts: "1234567890.000004",
+    },
+    ack: async () => {},
+  });
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        subtype: "message_deleted",
+        channel_type: "channel",
+        channel: "C1",
+        ts: "1777000011.000000",
+        thread_ts: "1777000000.000000",
+        user: "U1",
+        text: "deleted follow up in thread",
+      },
+      event_ts: "1234567890.000005",
+    },
+    ack: async () => {},
+  });
+  assert.strictEqual(routingCalls.length, 0, "message_changed and message_deleted events should be ignored");
+
   clearChatOverride();
   console.log("Channel / MPIM / DM message routing passed");
 
