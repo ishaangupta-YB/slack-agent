@@ -1860,7 +1860,55 @@ rLQ+epZplw==
     `Unexpected MPIM reply text: ${mpimCall.text}`,
   );
 
-  // 4) Unrelated channel message without mention or known thread is ignored.
+  // 4) Direct messages share one continuous session across multiple top-level
+  //    messages, so back-and-forth in a DM feels like a single conversation.
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: "D1",
+        ts: "1777000010.000000",
+        user: "U1",
+        text: "first DM message",
+      },
+      event_ts: "1234567890.000010",
+    },
+    ack: async () => {},
+  });
+  const firstDmCall = routingCalls.find((c) => c.channel === "D1");
+  assert(firstDmCall, "direct message should trigger a reply");
+  const firstDmSession = await getSessionFilenameByThreadKey("D1");
+  assert(firstDmSession, "DM should create an active session keyed by channel");
+
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: "D1",
+        ts: "1777000011.000000",
+        user: "U1",
+        text: "second DM message",
+      },
+      event_ts: "1234567890.000011",
+    },
+    ack: async () => {},
+  });
+  const secondDmCall = routingCalls.find((c) => c.channel === "D1");
+  assert(secondDmCall, "second direct message should trigger a reply");
+  const secondDmSession = await getSessionFilenameByThreadKey("D1");
+  assert.strictEqual(
+    secondDmSession,
+    firstDmSession,
+    "two top-level DMs should share the same session",
+  );
+
+  // 5) Unrelated channel message without mention or known thread is ignored.
   routingCalls = [];
   await app.processEvent({
     body: {
@@ -1880,7 +1928,7 @@ rLQ+epZplw==
   assert.strictEqual(routingCalls.length, 0, "unrelated channel message should be ignored");
 
   clearChatOverride();
-  console.log("Channel / MPIM message routing passed");
+  console.log("Channel / MPIM / DM message routing passed");
 
   // App Home view: opening the Home tab should publish a helpful view.
   let homeViewPayload: unknown;

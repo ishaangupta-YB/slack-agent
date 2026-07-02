@@ -50,6 +50,11 @@ interface MessageEventShape {
 
 function getThreadKey(event: MessageEventShape): string {
   const channel = event.channel ?? "unknown";
+  // Direct messages are one continuous conversation; all top-level and threaded
+  // messages in an IM channel should share the same session key. Channels,
+  // groups, and MPIMs keep per-thread sessions so multi-topic conversations
+  // stay isolated.
+  if (event.channel_type === "im") return channel;
   const threadTs = event.thread_ts;
   if (threadTs) return `${channel}:${threadTs}`;
   return `${channel}:${event.ts ?? Date.now()}`;
