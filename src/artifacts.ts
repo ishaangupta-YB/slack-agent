@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { cfg } from "./config.js";
 import { bucket } from "./storage/bucket.js";
+import { renderSessionTrace } from "./storage/trace-viewer.js";
 
 export interface ArtifactUrls {
   responseUrl: string;
@@ -40,7 +41,17 @@ export async function uploadArtifacts(
 
   const publicBase =
     cfg.storage.bucketPublicUrl || `http://localhost:${cfg.storage.bucketHttpPort}`;
-  const traceUrl = `${publicBase}/trace/${sanitizeFilename(sessionFilename)}`;
+
+  // For HuggingFace Buckets, render the session as a static HTML file and store
+  // it in the bucket so the trace viewer works without the local bucket server.
+  // For local filesystem buckets, keep using the local /trace endpoint.
+  let traceUrl = `${publicBase}/trace/${sanitizeFilename(sessionFilename)}`;
+  if (cfg.hf.bucketRepo && cfg.hf.token) {
+    const tracePath = `trace/${sanitizeFilename(sessionFilename)}.html`;
+    const traceHtml = renderSessionTrace(sessionFilename, sessionContent);
+    await bucket.write(tracePath, traceHtml, "text/html; charset=utf-8");
+    traceUrl = bucket.readUrl(tracePath);
+  }
 
   return {
     responseUrl: bucket.readUrl(responsePath),

@@ -1393,6 +1393,39 @@ rLQ+epZplw==
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
   assert(responseContent.includes("Hello from smoke test"));
 
+  // HuggingFace Bucket trace upload: when HF_BUCKET_REPO + HF_TOKEN are set,
+  // uploadArtifacts renders the session as a static HTML trace and stores it.
+  const originalWrite = bucket.write.bind(bucket);
+  const originalReadUrl = bucket.readUrl.bind(bucket);
+  const artifactOriginalHfRepo = cfg.hf.bucketRepo;
+  const artifactOriginalHfToken = cfg.hf.token;
+  try {
+    const traceWrites: Array<{ path: string; content: string }> = [];
+    bucket.write = async (path: string, content: string | Buffer) => {
+      traceWrites.push({ path, content: String(content) });
+    };
+    bucket.readUrl = (path: string) =>
+      `https://huggingface.co/buckets/huggingface/moon-bot-memory/resolve/main/${path.replace(/^\//, "")}`;
+    cfg.hf.bucketRepo = "huggingface/moon-bot-memory";
+    cfg.hf.token = "hf-test-token";
+
+    const hfSession = "hf-trace-session.jsonl";
+    writeFileSync(join(sessionsDir, hfSession), '{"role":"user","content":"hello hf"}\n', "utf-8");
+    const hfUrls = await uploadArtifacts("C2:1776379256.075999", hfSession, "HF trace test");
+    assert(
+      hfUrls.traceUrl.includes("resolve/main/trace/hf-trace-session.jsonl.html"),
+      `Expected HF traceUrl, got ${hfUrls.traceUrl}`,
+    );
+    const traceWrite = traceWrites.find((w) => w.path.includes("trace/hf-trace-session.jsonl.html"));
+    assert(traceWrite, "Expected HTML trace file to be uploaded to HF bucket");
+    assert(traceWrite.content.includes("Moon Bot Session Trace"), "HTML trace should render viewer");
+  } finally {
+    bucket.write = originalWrite;
+    bucket.readUrl = originalReadUrl;
+    cfg.hf.bucketRepo = artifactOriginalHfRepo;
+    cfg.hf.token = artifactOriginalHfToken;
+  }
+
   // Code search tool
   const codeReposDir = "/tmp/moon-bot-smoke-repos";
   if (existsSync(codeReposDir)) rmSync(codeReposDir, { recursive: true, force: true });
