@@ -12,6 +12,7 @@ import { handleMessage } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
+import { publishHomeView } from "./app-home.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -297,6 +298,24 @@ const moonAssistant = new Assistant({
 });
 
 app.assistant(moonAssistant);
+
+/**
+ * App Home tab: publishes a helpful landing view when a user opens the bot's
+ * Home tab in Slack. This improves discoverability and gives sandbox testers
+ * a quick overview of Moon Bot's capabilities and configuration.
+ */
+async function handleAppHomeOpened({
+  event,
+  client,
+}: {
+  event: { user: string; tab?: string };
+  client: WebClient;
+}): Promise<void> {
+  if (event.tab && event.tab !== "home") return;
+  await publishHomeView(client, event.user);
+}
+
+app.event("app_home_opened", handleAppHomeOpened as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);

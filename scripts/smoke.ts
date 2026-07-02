@@ -1425,6 +1425,36 @@ rLQ+epZplw==
   assert(assistantCalls.some((c) => c.method === "setSuggestedPrompts"));
   console.log("Assistant threadStarted handler invoked");
 
+  // App Home view: opening the Home tab should publish a helpful view.
+  let homeViewPayload: unknown;
+  app.client.views = {
+    publish: async (args: unknown) => {
+      homeViewPayload = args;
+      return { ok: true };
+    },
+  } as never;
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "app_home_opened",
+        user: "U1",
+        tab: "home",
+        event_ts: "1234567891.000000",
+      },
+    },
+    ack: async () => {},
+  });
+  assert(homeViewPayload, "app_home_opened should publish a Home view");
+  const homeView = (homeViewPayload as { view?: { type: string; blocks: unknown[] } }).view;
+  assert.strictEqual(homeView?.type, "home", "published view should be a home view");
+  assert(homeView?.blocks && homeView.blocks.length > 0, "home view should contain blocks");
+  assert(
+    JSON.stringify(homeView.blocks).includes("Moon Bot"),
+    "home view should mention Moon Bot",
+  );
+  console.log("App Home view published");
+
   // Skill discovery: ensure key skills from WRITEUP.md are loaded and available to the agent.
   const skills = loadSkills();
   const skillNames = skills.map((s) => s.name);
