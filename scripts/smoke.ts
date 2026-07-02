@@ -2688,6 +2688,7 @@ rLQ+epZplw==
   for (const expected of [
     "hub-code",
     "workloads",
+    "gradio",
     "github",
     "es",
     "mongo",
@@ -2713,6 +2714,10 @@ rLQ+epZplw==
   assert(workloadsSkill.content.includes("Spaces"));
   assert(workloadsSkill.content.includes("Endpoints"));
   assert(workloadsSkill.content.includes("Jobs"));
+  const gradioSkill = skills.find((s) => s.name === "gradio")!;
+  assert(gradioSkill.content.includes("gr.Blocks"));
+  assert(gradioSkill.content.includes("gr.Chatbot"));
+  assert(gradioSkill.content.includes("gradio-app/gradio"));
   console.log("Skill discovery passed");
 
   // Slack app manifest validation
