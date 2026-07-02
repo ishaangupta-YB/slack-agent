@@ -37,6 +37,8 @@ export const statusTool = {
       ``,
       `*Version:* ${packageVersion()}`,
       `*Model:* ${cfg.cloudflare.model}`,
+      `*LLM timeout:* ${cfg.cloudflare.timeoutMs}ms`,
+      `*LLM retries:* ${cfg.cloudflare.retries}`,
       `*Slack mode:* Socket Mode + Slack AI Assistant`,
       `*Loaded skills:* ${skills.map((s) => s.name).join(", ")}`,
       `*MCP servers:* ${mcpServers}`,

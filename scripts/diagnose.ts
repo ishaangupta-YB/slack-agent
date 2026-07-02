@@ -95,6 +95,18 @@ async function main(): Promise<number> {
   } else {
     add("warn", "CLOUDFLARE_MODEL", `${model} does not start with @cf/ — verify this model is available`);
   }
+  const cfTimeout = parseInt(env("CLOUDFLARE_TIMEOUT_MS") || "120000", 10);
+  const cfRetries = parseInt(env("CLOUDFLARE_RETRIES") || "2", 10);
+  if (Number.isNaN(cfTimeout) || cfTimeout <= 0) {
+    add("warn", "CLOUDFLARE_TIMEOUT_MS", "Invalid timeout value; must be a positive number of milliseconds");
+  } else {
+    add("ok", "CLOUDFLARE_TIMEOUT_MS", `${cfTimeout}ms`);
+  }
+  if (Number.isNaN(cfRetries) || cfRetries < 0) {
+    add("warn", "CLOUDFLARE_RETRIES", "Invalid retry count; must be a non-negative integer");
+  } else {
+    add("ok", "CLOUDFLARE_RETRIES", `${cfRetries} retries`);
+  }
 
   // Writable state directories
   const sessionsDir = env("SESSIONS_DIR") || "./sessions";

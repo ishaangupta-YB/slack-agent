@@ -175,6 +175,8 @@ async function main() {
   assert.strictEqual(statusResult.error, undefined);
   assert(statusResult.result.includes("Moon Bot status"));
   assert(statusResult.result.includes(cfg.cloudflare.model));
+  assert(statusResult.result.includes("LLM timeout:"));
+  assert(statusResult.result.includes("LLM retries:"));
   assert(statusResult.result.includes("Socket Mode"));
   assert(statusResult.result.includes("Bash execution: disabled"));
   assert(statusResult.result.includes("Guest accounts: refused"));
@@ -1131,6 +1133,35 @@ rLQ+epZplw==
 
   clearChatOverride();
   console.log("Session restore from bucket passed");
+
+  // Cloudflare Workers AI retry with timeout
+  assert.strictEqual(cfg.cloudflare.retries >= 1, true, "Expected at least one Cloudflare retry configured");
+  const originalFetch7 = globalThis.fetch;
+  let fetchAttempts = 0;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (!url.includes("/ai/run/")) {
+      return originalFetch7(input, init);
+    }
+    fetchAttempts += 1;
+    if (fetchAttempts < 3) {
+      return new Response("Service Unavailable", { status: 503 });
+    }
+    return new Response(JSON.stringify({ result: { response: "retry-success" } }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const { chat } = await import("../src/llm/cloudflare.js");
+  const retryResult = await chat([
+    { role: "system", content: "You are a helpful assistant." },
+    { role: "user", content: "Hello" },
+  ]);
+  assert.strictEqual(retryResult, "retry-success");
+  assert.strictEqual(fetchAttempts, 3, "Expected three fetch attempts before success");
+  globalThis.fetch = originalFetch7;
+  console.log("Cloudflare Workers AI retry passed");
 
   // Artifact upload
   const sessionsDir = process.env.SESSIONS_DIR || "./sessions";
