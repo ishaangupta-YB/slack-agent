@@ -20,6 +20,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bo
 - **Scheduled reports** — weekly ops report and post-deploy impact monitor backed by Elasticsearch.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
+- **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
 
 ---
 

@@ -34,6 +34,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Scheduled tasks** | Weekly ops report and post-deploy impact monitor backed by Elasticsearch. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | status` for quick discovery. |
+| **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 
 ---
 
@@ -155,7 +156,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
-5. **Status / help:**  
+5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
+6. **Status / help:**  
    `/moonbot status`
 
 ---

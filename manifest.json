@@ -17,6 +17,14 @@
       "display_name": "Moon Bot",
       "always_online": true
     },
+    "shortcuts": [
+      {
+        "name": "Ask Moon Bot",
+        "type": "message",
+        "callback_id": "ask_moon_bot",
+        "description": "Send the selected message to Moon Bot for a threaded reply"
+      }
+    ],
     "slash_commands": [
       {
         "command": "/moonbot",
@@ -35,6 +43,7 @@
         "channels:read",
         "chat:write",
         "chat:write.public",
+        "commands",
         "groups:read",
         "im:history",
         "im:read",
@@ -65,6 +74,11 @@
         "assistant_thread_context_changed",
         "app_home_opened"
       ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://example.com/slack/events",
+      "message_menu_options_url": "https://example.com/slack/options"
     },
     "socket_mode_enabled": true,
     "org_deploy_enabled": false

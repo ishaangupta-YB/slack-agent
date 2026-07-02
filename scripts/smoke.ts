@@ -18,8 +18,14 @@ import {
   generateWeeklyReport,
   generateDeployReport,
 } from "../src/scheduler.js";
-import { app, isGuestUser, stripBotMention, handleMoonbotCommand } from "../src/slack.js";
-import type { SlackCommandMiddlewareArgs } from "@slack/bolt";
+import {
+  app,
+  isGuestUser,
+  stripBotMention,
+  handleMoonbotCommand,
+  handleAskMoonBotShortcut,
+} from "../src/slack.js";
+import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs } from "@slack/bolt";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
@@ -1611,9 +1617,21 @@ rLQ+epZplw==
   assert(botScopes.includes("search:read.public"), "manifest must include search:read.public scope");
   assert(botScopes.includes("app_mentions:read"), "manifest must include app_mentions:read scope");
   assert(botScopes.includes("chat:write"), "manifest must include chat:write scope");
+  assert(botScopes.includes("commands"), "manifest must include commands scope for slash commands and shortcuts");
   assert(botScopes.includes("im:history"), "manifest must include im:history scope");
   assert(botScopes.includes("users:read"), "manifest must include users:read scope");
   assert(botScopes.includes("users:read.email"), "manifest must include users:read.email scope");
+
+  const shortcuts = (manifest as unknown as Record<string, unknown>).features &&
+    ((manifest as unknown as { features?: { shortcuts?: Array<{ callback_id: string }> } }).features?.shortcuts || []);
+  assert(
+    shortcuts.some((s) => s.callback_id === "ask_moon_bot"),
+    "manifest must register the ask_moon_bot message shortcut",
+  );
+  assert(
+    (manifest as unknown as { settings?: { interactivity?: { is_enabled?: boolean } } }).settings?.interactivity?.is_enabled === true,
+    "manifest must enable interactivity for slash commands and shortcuts",
+  );
 
   const botEvents = manifest.settings?.event_subscriptions?.bot_events ?? [];
   assert(botEvents.includes("app_mention"), "manifest must subscribe to app_mention events");
@@ -1807,6 +1825,64 @@ rLQ+epZplw==
   await dispatchSlashCommand("invalid_subcommand");
   assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
   console.log("Slash command /moonbot passed");
+
+  // Ask Moon Bot message shortcut: selecting a message should spawn a threaded reply.
+  clearChatOverride();
+  setChatOverride(async () => "I can help with that selected message.");
+
+  const shortcutPostCalls: Array<Record<string, unknown>> = [];
+  const shortcutClient = {
+    auth: {
+      test: async () => ({ ok: true, user_id: "UBOT" }),
+    },
+    users: {
+      info: async () =>
+        ({ user: { is_restricted: false, is_ultra_restricted: false, profile: { email: "alice@example.com" } } }) as never,
+    },
+    chat: {
+      postMessage: async (args: Record<string, unknown>) => {
+        shortcutPostCalls.push(args);
+        return { ok: true };
+      },
+      postEphemeral: async () => ({ ok: true }),
+    },
+  } as unknown as WebClient;
+
+  let shortcutAckCount = 0;
+  await handleAskMoonBotShortcut({
+    ack: async () => {
+      shortcutAckCount++;
+    },
+    shortcut: {
+      type: "message_action",
+      callback_id: "ask_moon_bot",
+      trigger_id: "T123",
+      message_ts: "1777777777.000000",
+      response_url: "https://example.com/response",
+      message: {
+        type: "message",
+        user: "U1",
+        ts: "1777777777.000000",
+        text: "Please explain this error message",
+      },
+      user: { id: "U1", name: "alice" },
+      channel: { id: "C1", name: "general" },
+      team: { id: "T1", domain: "demo" },
+      token: "test-token",
+      action_ts: "1234567890.000000",
+    },
+    client: shortcutClient,
+  } as SlackShortcutMiddlewareArgs);
+
+  assert.strictEqual(shortcutAckCount, 1, "message shortcut should ack exactly once");
+  assert(shortcutPostCalls.length >= 1, "message shortcut should post a threaded reply");
+  const shortcutPost = shortcutPostCalls.find((c) => c.channel === "C1" && c.thread_ts === "1777777777.000000");
+  assert(shortcutPost, "message shortcut should post to the original message's thread");
+  const shortcutText = String(shortcutPost.text ?? "");
+  assert(shortcutText.includes("I can help with that selected message"), `Expected shortcut reply text, got: ${shortcutText}`);
+  assert(Array.isArray(shortcutPost.blocks) && shortcutPost.blocks.length > 0, "shortcut reply should include Block Kit blocks");
+  clearChatOverride();
+  console.log("Ask Moon Bot message shortcut passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.
   const goodMockClient = {

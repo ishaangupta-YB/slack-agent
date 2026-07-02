@@ -4,10 +4,12 @@ import {
   type AllMiddlewareArgs,
   type SlackEventMiddlewareArgs,
   type SlackCommandMiddlewareArgs,
+  type SlackShortcutMiddlewareArgs,
+  type MessageShortcut,
   type KnownEventFromType,
   type SayFn,
 } from "@slack/bolt";
-import { WebClient } from "@slack/web-api";
+import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
 import { handleMessage } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
@@ -379,6 +381,56 @@ export async function handleMoonbotCommand({
 }
 
 app.command("/moonbot", handleMoonbotCommand);
+
+/**
+ * Message shortcut: Ask Moon Bot.
+ *
+ * When a user selects a message and chooses "Ask Moon Bot" from the actions
+ * menu, the bot starts a threaded session keyed to that message, runs the same
+ * ReAct agent, and posts the reply in the thread. This gives users a fast,
+ * context-aware way to ask about a specific Slack message without leaving the
+ * channel.
+ */
+export async function handleAskMoonBotShortcut({
+  ack,
+  shortcut,
+  client,
+}: SlackShortcutMiddlewareArgs<MessageShortcut> & AllMiddlewareArgs): Promise<void> {
+  await ack();
+
+  const userId = shortcut.user.id;
+  const channel = shortcut.channel.id;
+  const messageTs = shortcut.message.ts;
+  const text = shortcut.message.text ?? "";
+
+  // The native Bolt `say` helper is not present for message shortcuts, so build
+  // a minimal wrapper over chat.postMessage that injects the shortcut channel.
+  const shortcutSay: SayFn = async (message) => {
+    const args = typeof message === "string" ? { text: message } : message;
+    return client.chat.postMessage({
+      channel,
+      unfurl_links: false,
+      ...args,
+    }) as Promise<ChatPostMessageResponse>;
+  };
+
+  await handleIncomingMessage({
+    event: {
+      user: userId,
+      text,
+      ts: messageTs,
+      channel,
+      thread_ts: messageTs,
+      bot_id: undefined,
+      channel_type: undefined,
+      action_token: undefined,
+    },
+    say: shortcutSay,
+    client,
+  });
+}
+
+app.shortcut("ask_moon_bot", handleAskMoonBotShortcut as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);
