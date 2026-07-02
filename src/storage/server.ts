@@ -20,6 +20,39 @@ function serveJson(res: ServerResponse, status: number, payload: unknown) {
   res.end(JSON.stringify(payload, null, 2));
 }
 
+function addCorsHeaders(res: ServerResponse): void {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function getContentType(filePath: string): string {
+  const ext = filePath.toLowerCase().split(".").pop();
+  switch (ext) {
+    case "md":
+      return "text/markdown; charset=utf-8";
+    case "html":
+      return "text/html; charset=utf-8";
+    case "json":
+      return "application/json; charset=utf-8";
+    case "jsonl":
+      return "application/jsonlines; charset=utf-8";
+    case "js":
+      return "application/javascript; charset=utf-8";
+    case "css":
+      return "text/css; charset=utf-8";
+    case "png":
+      return "image/png";
+    case "jpg":
+    case "jpeg":
+      return "image/jpeg";
+    case "svg":
+      return "image/svg+xml";
+    default:
+      return "text/plain; charset=utf-8";
+  }
+}
+
 function healthCheck(): { status: string; bucketDir: string; bucketReady: boolean } {
   return {
     status: "ok",
@@ -32,10 +65,22 @@ export function startBucketServer(): Promise<Server> {
   return new Promise((resolveStart) => {
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
       try {
+        addCorsHeaders(res);
         const rawPath = req.url?.split("?")[0] || "/";
+
+        if (req.method === "OPTIONS") {
+          res.writeHead(204);
+          res.end();
+          return;
+        }
 
         if (rawPath === "/health") {
           serveJson(res, 200, healthCheck());
+          return;
+        }
+
+        if (req.method !== "GET" && req.method !== "HEAD") {
+          serveError(res, 405, "Method not allowed");
           return;
         }
 
@@ -49,7 +94,7 @@ export function startBucketServer(): Promise<Server> {
           return;
         }
         const content = readFileSync(safePath);
-        res.writeHead(200, { "Content-Type": "text/plain; charset=utf-8" });
+        res.writeHead(200, { "Content-Type": getContentType(safePath) });
         res.end(content);
       } catch (err) {
         serveError(res, 500, err instanceof Error ? err.message : "Internal error");

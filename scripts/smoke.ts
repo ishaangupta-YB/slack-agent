@@ -1396,6 +1396,35 @@ rLQ+epZplw==
     };
     assert.strictEqual(healthBody.status, "ok");
     assert(healthBody.bucketReady);
+
+    // Artifact files are served with useful Content-Type headers and CORS.
+    await bucket.write("responses/smoke.md", "# Smoke test response\n");
+    await bucket.write("sessions/smoke.jsonl", '{"role":"user","content":"hi"}\n');
+    await bucket.write("thread-map.json", "{}");
+
+    const baseUrl = `http://localhost:${cfg.storage.bucketHttpPort}`;
+
+    const mdRes = await fetch(`${baseUrl}/responses/smoke.md`);
+    assert.strictEqual(mdRes.status, 200);
+    assert.strictEqual(mdRes.headers.get("content-type"), "text/markdown; charset=utf-8");
+    assert.strictEqual(mdRes.headers.get("access-control-allow-origin"), "*");
+    const mdBody = await mdRes.text();
+    assert(mdBody.includes("Smoke test response"));
+
+    const jsonlRes = await fetch(`${baseUrl}/sessions/smoke.jsonl`);
+    assert.strictEqual(jsonlRes.status, 200);
+    assert.strictEqual(jsonlRes.headers.get("content-type"), "application/jsonlines; charset=utf-8");
+
+    const jsonRes = await fetch(`${baseUrl}/thread-map.json`);
+    assert.strictEqual(jsonRes.status, 200);
+    assert.strictEqual(jsonRes.headers.get("content-type"), "application/json; charset=utf-8");
+
+    const optionsRes = await fetch(`${baseUrl}/responses/smoke.md`, { method: "OPTIONS" });
+    assert.strictEqual(optionsRes.status, 204);
+    assert.strictEqual(optionsRes.headers.get("access-control-allow-origin"), "*");
+
+    const notFoundRes = await fetch(`${baseUrl}/does-not-exist.txt`);
+    assert.strictEqual(notFoundRes.status, 404);
   } finally {
     bucketServer.close();
   }
