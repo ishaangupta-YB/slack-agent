@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { WebClient } from "@slack/web-api";
@@ -34,6 +34,28 @@ function initializeAuditLog(): void {
   const path = auditLogPath();
   if (!existsSync(path)) {
     writeFileSync(path, "", "utf-8");
+  }
+}
+
+export function readRecentAuditEvents(limit = 20): SecurityAuditEvent[] {
+  const path = auditLogPath();
+  if (!existsSync(path)) return [];
+  try {
+    const content = readFileSync(path, "utf-8");
+    const lines = content
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        try {
+          return JSON.parse(line) as SecurityAuditEvent;
+        } catch {
+          return undefined;
+        }
+      })
+      .filter((evt): evt is SecurityAuditEvent => evt !== undefined);
+    return lines.slice(-Math.max(1, limit));
+  } catch {
+    return [];
   }
 }
 

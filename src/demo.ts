@@ -32,6 +32,11 @@ export function getDemoMessage(): string {
     `• \`/moonbot report deploy\`\n` +
     `• \`/moonbot statuspage https://status.cloudflare.com/api/v2/status.json\`\n\n` +
 
+    `*Security + compliance*\n` +
+    `• \`/moonbot audit\` — review recent security events if you have privileged access\n` +
+    `• \`/moonbot whoami\` — confirm your access tier and guest status\n` +
+    `• \`/moonbot diagnose\` — run pre-flight configuration checks\n\n` +
+
     `*Agent for Good — public service resilience*\n` +
     `• \`/moonbot impact\` — see which public services Moon Bot is monitoring and their current status\n` +
     `• \`Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.\`\n` +

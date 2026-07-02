@@ -35,6 +35,7 @@ import { getMetrics } from "./storage/metrics.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
+import { readRecentAuditEvents } from "./tools/security.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -554,6 +555,53 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "audit") {
+    const userId = command.user_id;
+    const userEmail = await getUserEmail(client, userId);
+    const tier = await resolveAccessTier(userId, userEmail);
+    if (tier !== "privileged") {
+      await respond({
+        text: "*Security audit log* \nOnly privileged-tier users can view the security audit log.",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const limit = Math.min(parseInt(args[1] || "10", 10) || 10, 50);
+    const events = readRecentAuditEvents(limit);
+
+    if (events.length === 0) {
+      await respond({
+        text: "*Security audit log* \nNo security events have been recorded yet.",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const lines = events
+      .map(
+        (evt, idx) =>
+          `${idx + 1}. *${evt.type}* — ${new Date(evt.timestamp).toLocaleString("en-US", {
+            month: "short",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })}` +
+          (evt.userId ? ` | user \`${evt.userId}\`` : "") +
+          (evt.threadKey ? ` | thread \`${evt.threadKey}\`` : "") +
+          (evt.details && Object.keys(evt.details).length > 0
+            ? `\n   \`${JSON.stringify(evt.details).slice(0, 180)}\``
+            : ""),
+      )
+      .join("\n");
+
+    await respond({
+      text: `*Security audit log* \nShowing the last ${events.length} event(s):\n\n${lines}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
   if (subcommand === "ping") {
     const result = await pingLLM();
     if (result.ok) {
@@ -671,6 +719,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot status` — my current configuration\n" +
       "• `/moonbot metrics` — runtime usage metrics\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
+      "• `/moonbot audit [limit]` — view recent security audit events (privileged only)\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +
       "• `/moonbot thread` — your current DM session info\n" +

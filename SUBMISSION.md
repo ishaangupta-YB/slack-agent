@@ -36,7 +36,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
 | **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | demo | status | metrics | diagnose | ping | whoami | thread | search | report | statuspage | impact` for quick discovery. |
+| **App Home + slash command** | Home tab overview and `/moonbot help | demo | status | metrics | diagnose | audit | ping | whoami | thread | search | report | statuspage | impact` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; they can also use emoji reactions 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
@@ -173,8 +173,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `/moonbot report weekly` and `/moonbot report deploy`
 8. **Public status page and impact monitoring on demand:**  
    `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json` and `/moonbot impact`
-9. **Live diagnostics, demo prompts, LLM ping, identity, and thread info:**  
-   `/moonbot diagnose`, `/moonbot demo`, `/moonbot ping`, `/moonbot whoami`, and `/moonbot thread`
+9. **Live diagnostics, demo prompts, LLM ping, identity, audit log, and thread info:**  
+    `/moonbot diagnose`, `/moonbot demo`, `/moonbot ping`, `/moonbot whoami`, `/moonbot audit` (privileged), and `/moonbot thread`
 10. **Agent for Good — public service monitoring:**  
     `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
 11. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
@@ -197,7 +197,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
 | 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/moonbot impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
-| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot ping`, `/moonbot status`, `/moonbot whoami`, `/moonbot thread`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
+| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot audit` (privileged), `/moonbot ping`, `/moonbot status`, `/moonbot whoami`, `/moonbot thread`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:55–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---

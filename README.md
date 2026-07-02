@@ -21,7 +21,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Runtime metrics** — the bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts.
 - **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
-- **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
+- **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/moonbot audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
 - **Inline feedback + reset** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. Users can also react to any Moon Bot message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
 - **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
@@ -148,7 +148,7 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 - Reply in any thread Moon Bot has joined without @-mentioning it again.
 - In DMs: just send a message — replies stay in the main DM view and the whole DM history shares one continuous session.
 - Open the Slack AI Assistant panel and select **Moon Bot**.
-- Use `/moonbot help`, `/moonbot demo`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
+- Use `/moonbot help`, `/moonbot demo`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
 
 ---
 
