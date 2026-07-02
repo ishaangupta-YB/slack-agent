@@ -33,7 +33,7 @@ import {
 } from "../src/slack.js";
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
 import { feedbackLogPath } from "../src/feedback.js";
-import { startBucketServer } from "../src/storage/server.js";
+import { startBucketServer, stopBucketServer, getActiveBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { getSessionFilenameByThreadKey, handleMessage } from "../src/agent.js";
@@ -1692,7 +1692,7 @@ rLQ+epZplw==
   console.log("HuggingFace Bucket integration passed");
 
   // Bucket server health endpoint
-  const bucketServer = await startBucketServer();
+  await startBucketServer();
   try {
     const healthUrl = `http://localhost:${cfg.storage.bucketHttpPort}/health`;
     const healthRes = await fetch(healthUrl);
@@ -1805,7 +1805,8 @@ rLQ+epZplw==
     assert.strictEqual(updatedMetrics.responseArtifacts, initialMetrics.responseArtifacts + 1, "responseArtifacts metric should increment");
     console.log("Bucket server metrics endpoint passed");
   } finally {
-    bucketServer.close();
+    stopBucketServer();
+    assert.strictEqual(getActiveBucketServer(), undefined, "stopBucketServer should clear the active server reference");
   }
 
   // Scheduler

@@ -1,6 +1,6 @@
 import { app } from "./slack.js";
 import { cfg } from "./config.js";
-import { startBucketServer } from "./storage/server.js";
+import { startBucketServer, stopBucketServer } from "./storage/server.js";
 import { initializeTools, shutdownTools } from "./tools/registry.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
 import { startEsProxy, stopEsProxy } from "./proxy/es.js";
@@ -21,6 +21,10 @@ const isCheckMode = process.argv.includes("--check");
   if (isCheckMode) {
     console.log("Moon Bot startup check passed — ready to start in Socket Mode");
     await shutdownTools();
+    stopEsProxy();
+    stopPlausibleProxy();
+    stopHfProxy();
+    stopBucketServer();
     process.exit(0);
   }
 
@@ -35,6 +39,7 @@ async function shutdown(signal: string) {
   stopEsProxy();
   stopPlausibleProxy();
   stopHfProxy();
+  stopBucketServer();
   try {
     await app.stop();
   } catch {

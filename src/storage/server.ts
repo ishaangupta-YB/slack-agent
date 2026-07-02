@@ -1,4 +1,6 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
+
+let activeServer: Server | undefined;
 import { readFileSync, existsSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { cfg } from "../config.js";
@@ -133,12 +135,28 @@ export function startBucketServer(): Promise<Server> {
     });
 
     server.listen(cfg.storage.bucketHttpPort, () => {
+      activeServer = server;
       console.log(`Bucket server listening on port ${cfg.storage.bucketHttpPort}`);
       resolveStart(server);
+    });
+
+    server.on("close", () => {
+      activeServer = undefined;
     });
 
     server.on("error", (err) => {
       console.error("Bucket server error:", err);
     });
   });
+}
+
+export function stopBucketServer(): void {
+  if (activeServer) {
+    activeServer.close();
+    activeServer = undefined;
+  }
+}
+
+export function getActiveBucketServer(): Server | undefined {
+  return activeServer;
 }
