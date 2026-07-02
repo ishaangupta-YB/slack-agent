@@ -48,6 +48,14 @@ const createIssueParams = z.object({
   traceUrl: z.string().optional(),
 });
 
+const commentOnIssueParams = z.object({
+  repo: z.string(),
+  issue_number: z.number().int(),
+  body: z.string(),
+  requestedBy: z.string().optional(),
+  traceUrl: z.string().optional(),
+});
+
 interface GitRef {
   object: { sha: string };
 }
@@ -241,6 +249,27 @@ async function createGitHubIssue(input: z.infer<typeof createIssueParams>): Prom
   }
 }
 
+async function commentOnGitHubIssue(input: z.infer<typeof commentOnIssueParams>): Promise<string> {
+  parseRepo(input.repo);
+  await applyContextDefaults(input);
+
+  try {
+    const commentBody = `${input.body}${buildFooter(input.requestedBy, input.traceUrl)}`;
+    const comment = await githubApi<{ html_url: string; id: number; body: string }>(
+      `/repos/${input.repo}/issues/${input.issue_number}/comments`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          body: commentBody,
+        }),
+      },
+    );
+    return `Commented on issue #${input.issue_number}: ${comment.html_url}`;
+  } catch (err) {
+    return `Error commenting on issue: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
 export const openPrTool: Tool = {
   name: "open_pr",
   description:
@@ -266,4 +295,13 @@ export const createIssueTool: Tool = {
   params: createIssueParams,
   tier: "basic",
   run: createGitHubIssue,
+};
+
+export const commentOnIssueTool: Tool = {
+  name: "comment_on_issue",
+  description:
+    "Post a comment on an existing GitHub issue or pull request. Provide repo (owner/name), issue_number, and body. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
+  params: commentOnIssueParams,
+  tier: "basic",
+  run: commentOnGitHubIssue,
 };

@@ -29,7 +29,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts and status updates. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
-| **Code Q&A** | Clone repos, search files by name or content, read/edit code, and open PRs. |
+| **Code Q&A** | Clone repos, search files by name or content, read/edit code, open PRs/issues, and comment on existing issues/PRs. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
@@ -160,7 +160,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `List the files in /tmp and tell me which ones were modified today.`
 3. **Code + GitHub:** in a channel, mention the bot:  
    `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
-   Then reply in the same thread without another @-mention to refine the PR.
+   Then reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.

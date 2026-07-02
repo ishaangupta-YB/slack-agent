@@ -1153,6 +1153,15 @@ async function main() {
     "privileged",
   );
   assert(issueResult.result.includes("GitHub is not configured"));
+  const commentResult = await runToolCall(
+    {
+      tool: "comment_on_issue",
+      params: { repo: "owner/repo", issue_number: 1, body: "Test comment" },
+    },
+    8_000,
+    "privileged",
+  );
+  assert(commentResult.result.includes("GitHub is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
 
   // GitHub PR/issue context is auto-filled from the Slack conversation.
@@ -1214,6 +1223,63 @@ async function main() {
   assert(
     createIssueBody.includes("github-injection-test.jsonl"),
     "Expected issue body to include trace URL from session filename",
+  );
+
+  // Commenting on an existing issue/PR also auto-fills requester + trace URL.
+  const originalGhTokenCfgForComment = cfg.integrations.githubToken;
+  const originalUserMapForComment = cfg.integrations.githubUserMap;
+  cfg.integrations.githubToken = "test-token";
+  cfg.integrations.githubUserMap = { U_COMMENT: "commenter-user" };
+  let commentRequestBody = "";
+  const originalFetchForComment = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("/repos/test-owner/test-repo/issues/7/comments")) {
+      const body = JSON.parse((init?.body as string) || "{}") as { body?: string };
+      commentRequestBody = body.body ?? "";
+      return new Response(
+        JSON.stringify({
+          id: 999,
+          html_url: "https://github.com/test-owner/test-repo/issues/7#issuecomment-999",
+          body: body.body,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }
+    return originalFetchForComment(input, init);
+  };
+
+  const commentOnIssueResult = await runWithToolContext(
+    {
+      userId: "U_COMMENT",
+      userEmail: "commenter@example.com",
+      sessionFilename: "github-comment-test.jsonl",
+      threadKey: "C_COMMENT:12345.67890",
+    },
+    () =>
+      runToolCall(
+        {
+          tool: "comment_on_issue",
+          params: {
+            repo: "test-owner/test-repo",
+            issue_number: 7,
+            body: "Context injection comment",
+          },
+        },
+        8_000,
+        "basic",
+      ),
+  );
+  cfg.integrations.githubToken = originalGhTokenCfgForComment;
+  cfg.integrations.githubUserMap = originalUserMapForComment;
+  globalThis.fetch = originalFetchForComment;
+
+  assert.strictEqual(commentOnIssueResult.error, undefined, `comment_on_issue failed: ${commentOnIssueResult.result}`);
+  assert(commentOnIssueResult.result.includes("Commented on issue #7"));
+  assert(commentRequestBody.includes("Requested by commenter-user"));
+  assert(
+    commentRequestBody.includes("github-comment-test.jsonl"),
+    "Expected comment body to include trace URL from session filename",
   );
   console.log("GitHub context injection passed");
 
@@ -1770,6 +1836,7 @@ rLQ+epZplw==
   assert(!basicTools.includes("mongo_query"), "basic should not include mongo_query");
   assert(basicTools.includes("open_pr"), "basic should include open_pr");
   assert(basicTools.includes("create_issue"), "basic should include create_issue");
+  assert(basicTools.includes("comment_on_issue"), "basic should include comment_on_issue");
 
   assert(elasticTools.includes("es_query"), "elastic should include es_query");
   assert(elasticTools.includes("athena_query"), "elastic should include athena_query");
@@ -2700,6 +2767,10 @@ rLQ+epZplw==
   await dispatchSlashCommand("help code");
   assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
   assert(slashResponses[0].text?.includes("open_pr"), "code help should mention open_pr");
+  assert(
+    slashResponses[0].text?.includes("comment_on_issue"),
+    "code help should mention comment_on_issue",
+  );
 
   await dispatchSlashCommand("status");
   const statusText = slashResponses[0].text ?? "";

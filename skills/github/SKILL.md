@@ -36,3 +36,12 @@ Use the `commit_to_pr` tool to push more changes to a PR branch that already exi
 ## Creating issues
 
 Use the `create_issue` tool with `repo`, `title`, and `body`. Like `open_pr`, the requester and trace URL are filled in automatically.
+
+## Commenting on issues
+
+Use the `comment_on_issue` tool to post an update on an existing issue or pull request:
+- `repo`: owner/name
+- `issue_number`: the issue or PR number
+- `body`: the comment text
+
+The Slack requester and agent trace URL are appended automatically, so every Moon Bot comment is auditable and attributed.

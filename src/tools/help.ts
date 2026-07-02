@@ -56,7 +56,7 @@ export const helpTool: Tool = {
         `• \`search_code\` — search cloned repos by file path or content\n` +
         `• \`read_file\` / \`write_file\` / \`edit_file\` — inspect and modify code in the workspace\n` +
         `• \`clone_repo\` — clone a GitHub repo into the workspace\n` +
-        `• \`open_pr\` / \`commit_to_pr\` / \`create_issue\` — open PRs/issues and push follow-up commits\n\n` +
+        `• \`open_pr\` / \`commit_to_pr\` / \`create_issue\` / \`comment_on_issue\` — open PRs/issues, push follow-up commits, and post comments\n\n` +
         `**Example prompts**\n` +
         `• “Search the Hub repo for how Gitaly timeouts are handled.”\n` +
         `• “Clone huggingface/hub and find the function that validates repo IDs.”\n` +
