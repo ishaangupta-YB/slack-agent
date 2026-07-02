@@ -30,7 +30,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Code Q&A** | Clone repos, search files by name or content, read/edit code, and open PRs. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions** | Every Slack thread is an independent, persistent session backed by a bucket; conversations survive restarts. |
-| **Auditable artifacts** | Every response uploads a markdown response and a JSONL session trace with Block Kit links. |
+| **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Scheduled tasks** | Weekly ops report and post-deploy impact monitor backed by Elasticsearch. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | status` for quick discovery. |
@@ -162,7 +162,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
 7. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
-8. **Status / help:**  
+8. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
+9. **Status / help:**  
    `/moonbot status`
 
 ---
@@ -177,7 +178,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 1:20–1:50 | Code Q&A + GitHub | Mention `@Moon Bot` and ask it to search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
-| 2:30–2:50 | Security + status | Show `/moonbot status`, tiered access explanation, and the JSONL session trace in the bucket. |
+| 2:30–2:50 | Security + trace viewer | Show `/moonbot status`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:50–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---

@@ -16,7 +16,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bo
 - **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, and DuckDB/Sizzle storage stats.
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
 - **Memory & continuity** — every thread is a resumable session backed by a bucket; conversations survive restarts.
-- **Auditable artifacts** — every response links to the full markdown response and a JSONL session trace.
+- **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
 - **Scheduled reports** — weekly ops report and post-deploy impact monitor backed by Elasticsearch.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
@@ -80,6 +80,7 @@ Runtime flow:
 3. `src/agent.ts` lazily restores the thread session from the bucket, builds the system prompt + skills, and runs a ReAct loop with the LLM.
 4. Tool calls are parsed from `<tool_call>` blocks, validated, and executed.
 5. The final response is uploaded to the bucket as markdown + JSONL, and a Slack message with Block Kit links is posted.
+6. The **trace viewer** (`/trace/<session>.jsonl` on the bucket server) renders the JSONL session as a readable HTML timeline for auditing and demos.
 
 ---
 

@@ -2,8 +2,10 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 import { readFileSync, existsSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { cfg } from "../config.js";
+import { renderSessionTrace, renderTraceError } from "./trace-viewer.js";
 
 const baseDir = resolve(cfg.storage.bucketDir);
+const sessionsDir = resolve(cfg.agent.sessionsDir);
 
 function notFound(res: ServerResponse, message: string) {
   res.writeHead(404, { "Content-Type": "text/plain" });
@@ -81,6 +83,29 @@ export function startBucketServer(): Promise<Server> {
 
         if (req.method !== "GET" && req.method !== "HEAD") {
           serveError(res, 405, "Method not allowed");
+          return;
+        }
+
+        if (rawPath.startsWith("/trace/")) {
+          const filename = rawPath.slice("/trace/".length).replace(/[^a-zA-Z0-9_.-]/g, "_");
+          if (!filename) {
+            serveError(res, 400, "Missing trace filename");
+            return;
+          }
+          const sessionPath = join(sessionsDir, filename);
+          const safePath = normalize(sessionPath);
+          if (!safePath.startsWith(sessionsDir)) {
+            serveError(res, 403, "Forbidden");
+            return;
+          }
+          if (!existsSync(safePath)) {
+            res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
+            res.end(renderTraceError(`Session not found: ${filename}`));
+            return;
+          }
+          const jsonl = readFileSync(safePath, "utf-8");
+          res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+          res.end(renderSessionTrace(filename, jsonl));
           return;
         }
 

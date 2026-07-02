@@ -7,6 +7,7 @@ import { bucket } from "./storage/bucket.js";
 export interface ArtifactUrls {
   responseUrl: string;
   sessionUrl: string;
+  traceUrl: string;
 }
 
 function sanitizeFilename(input: string): string {
@@ -37,8 +38,13 @@ export async function uploadArtifacts(
   const sessionPath = `sessions/${sanitizeFilename(sessionFilename)}`;
   await bucket.write(sessionPath, sessionContent, "application/jsonl; charset=utf-8");
 
+  const publicBase =
+    cfg.storage.bucketPublicUrl || `http://localhost:${cfg.storage.bucketHttpPort}`;
+  const traceUrl = `${publicBase}/trace/${sanitizeFilename(sessionFilename)}`;
+
   return {
     responseUrl: bucket.readUrl(responsePath),
     sessionUrl: bucket.readUrl(sessionPath),
+    traceUrl,
   };
 }

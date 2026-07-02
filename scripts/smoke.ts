@@ -1239,6 +1239,7 @@ rLQ+epZplw==
   );
   assert(urls.responseUrl.includes("responses/"));
   assert(urls.sessionUrl.includes("sessions/test-session.jsonl"));
+  assert(urls.traceUrl.includes("/trace/test-session.jsonl"), `Expected traceUrl to include /trace/test-session.jsonl, got ${urls.traceUrl}`);
   assert(existsSync(urls.responseUrl));
   assert(existsSync(urls.sessionUrl));
   const responseContent = readFileSync(urls.responseUrl, "utf-8");
@@ -1434,6 +1435,42 @@ rLQ+epZplw==
     const jsonRes = await fetch(`${baseUrl}/thread-map.json`);
     assert.strictEqual(jsonRes.status, 200);
     assert.strictEqual(jsonRes.headers.get("content-type"), "application/json; charset=utf-8");
+
+    // Trace viewer renders session JSONL as an HTML timeline.
+    const sessionFilename = `smoke-trace-${randomUUID().slice(0, 8)}.jsonl`;
+    const sessionDir = cfg.agent.sessionsDir;
+    mkdirSync(sessionDir, { recursive: true });
+    const toolCall = { id: "call-1", function: { name: "read_file", arguments: '{"path":"package.json"}' } };
+    const sampleJsonl = [
+      JSON.stringify({ role: "user", content: "hello" }),
+      JSON.stringify({ role: "assistant", content: "Hi! How can I help?" }),
+      JSON.stringify({ role: "assistant", tool_calls: [toolCall] }),
+      JSON.stringify({ role: "tool", name: "read_file", content: '{"name":"moon-bot"}' }),
+      "",
+    ].join("\n");
+    writeFileSync(join(sessionDir, sessionFilename), sampleJsonl);
+
+    const traceRes = await fetch(`${baseUrl}/trace/${sessionFilename}`);
+    assert.strictEqual(traceRes.status, 200);
+    assert.strictEqual(traceRes.headers.get("content-type"), "text/html; charset=utf-8");
+    const traceBody = await traceRes.text();
+    assert(traceBody.includes("Moon Bot Session Trace"), "trace viewer should render title");
+    assert(traceBody.includes("hello"), "trace viewer should include user content");
+    assert(traceBody.includes("read_file"), "trace viewer should include tool call name");
+    assert(traceBody.includes("moon-bot"), "trace viewer should include tool result content");
+
+    const traceMissingRes = await fetch(`${baseUrl}/trace/does-not-exist.jsonl`);
+    assert.strictEqual(traceMissingRes.status, 404);
+    const traceMissingBody = await traceMissingRes.text();
+    assert(traceMissingBody.includes("Session not found"), "missing trace should show friendly error");
+
+    const traceTraversalRes = await fetch(`${baseUrl}/trace/..%2F..%2Fetc%2Fpasswd`);
+    assert.notStrictEqual(traceTraversalRes.status, 200, "trace traversal should not succeed");
+    const traceTraversalBody = await traceTraversalRes.text();
+    assert(
+      !traceTraversalBody.includes("root:"),
+      "trace traversal should not leak arbitrary files",
+    );
 
     const optionsRes = await fetch(`${baseUrl}/responses/smoke.md`, { method: "OPTIONS" });
     assert.strictEqual(optionsRes.status, 204);
@@ -1794,16 +1831,16 @@ rLQ+epZplw==
   console.log("Bot mention stripping passed");
 
   // Slack message delivery safety: fallback text respects Slack's 40,000 char limit and empty replies are handled.
-  const shortMsg = prepareSlackMessage("hello", "https://example.com/r", "https://example.com/s");
+  const shortMsg = prepareSlackMessage("hello", "https://example.com/r", "https://example.com/s", "https://example.com/t");
   assert.strictEqual(shortMsg.text, "hello");
   assert.strictEqual(shortMsg.blocks.length, 2);
 
-  const emptyMsg = prepareSlackMessage("   ", "https://example.com/r", "https://example.com/s");
+  const emptyMsg = prepareSlackMessage("   ", "https://example.com/r", "https://example.com/s", "https://example.com/t");
   assert.strictEqual(emptyMsg.text, "_No response generated._");
   assert((emptyMsg.blocks[0] as { text?: { text?: string } }).text?.text?.includes("No response generated"));
 
   const longReply = "a".repeat(50000);
-  const longMsg = prepareSlackMessage(longReply, "https://example.com/r", "https://example.com/s");
+  const longMsg = prepareSlackMessage(longReply, "https://example.com/r", "https://example.com/s", "https://example.com/t");
   assert(longMsg.text.length <= 40000, `fallback text length ${longMsg.text.length} exceeds Slack limit`);
   assert(longMsg.text.endsWith("_(truncated — see full response in thread)_"));
   const blockText = (longMsg.blocks[0] as { text?: { text?: string } }).text?.text ?? "";
@@ -2024,10 +2061,11 @@ rLQ+epZplw==
 
   // Feedback buttons: every response should expose helpful / not-helpful actions,
   // and feedback should be persisted to a JSONL log.
-  const feedbackMsg = prepareSlackMessage("Here is my helpful answer.", "https://example.com/r", "https://example.com/s");
+  const feedbackMsg = prepareSlackMessage("Here is my helpful answer.", "https://example.com/r", "https://example.com/s", "https://example.com/t");
   const actionsBlock = feedbackMsg.blocks[1] as { elements?: Array<{ action_id?: string; style?: string }> };
   assert(Array.isArray(actionsBlock?.elements), "response actions block should contain elements");
   const actionIds = actionsBlock.elements!.map((e) => e.action_id);
+  assert(actionIds.includes("open_trace_viewer"), "response should include open_trace_viewer button");
   assert(actionIds.includes("feedback_helpful"), "response should include feedback_helpful button");
   assert(actionIds.includes("feedback_not_helpful"), "response should include feedback_not_helpful button");
   const helpfulButton = actionsBlock.elements!.find((e) => e.action_id === "feedback_helpful");

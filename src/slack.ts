@@ -169,7 +169,7 @@ async function handleIncomingMessage({
       () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail),
     );
     if (skipped) return;
-    const { responseUrl, sessionUrl } = await uploadArtifacts(
+    const { responseUrl, sessionUrl, traceUrl } = await uploadArtifacts(
       threadKey,
       sessionFilename,
       reply,
@@ -179,6 +179,7 @@ async function handleIncomingMessage({
       reply,
       responseUrl,
       sessionUrl,
+      traceUrl,
     );
     await safeSay(
       say,
