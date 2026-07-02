@@ -1628,6 +1628,27 @@ rLQ+epZplw==
   );
   console.log("Slack app manifest validated");
 
+  // Kubernetes secret example must use env var names that match src/config.ts
+  const secretExampleRaw = readFileSync("k8s/secret.example.yaml", "utf-8");
+  const disallowedKeys = ["OKTA_ORG_URL", "OKTA_GROUP_MAP"];
+  for (const key of disallowedKeys) {
+    assert(
+      !secretExampleRaw.includes(`${key}:`),
+      `k8s/secret.example.yaml contains obsolete env var ${key}; use OKTA_DOMAIN, OKTA_PRIVILEGED_GROUPS, and OKTA_ELASTIC_GROUPS from .env.example`,
+    );
+  }
+  assert(
+    secretExampleRaw.includes("OKTA_DOMAIN:") &&
+      secretExampleRaw.includes("OKTA_PRIVILEGED_GROUPS:") &&
+      secretExampleRaw.includes("OKTA_ELASTIC_GROUPS:"),
+    "k8s/secret.example.yaml must document OKTA_DOMAIN, OKTA_PRIVILEGED_GROUPS, and OKTA_ELASTIC_GROUPS",
+  );
+  assert(
+    !secretExampleRaw.includes('"U0000000001": "privileged"'),
+    "k8s/secret.example.yaml USER_TIERS example must use comma-separated id:tier format, not JSON",
+  );
+  console.log("K8s secret example validated");
+
   // Bot mention stripping from app_mention / DM text
   assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
   assert.strictEqual(stripBotMention("<@U123|moon bot>hello", "U123"), "hello");
