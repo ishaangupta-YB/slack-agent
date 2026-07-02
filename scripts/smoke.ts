@@ -509,7 +509,69 @@ async function main() {
   cfg.integrations.esUrl = originalEsUrl;
   cfg.integrations.esApiKey = originalEsApiKey;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch5;
-  console.log("Scheduler ES-backed reports passed");
+
+  // Report tools expose the same weekly/deploy reports through the ReAct loop.
+  const originalFetchForReports = globalThis.fetch;
+  const reportFetchMock = async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const total = url.includes("rate") || url.includes("gitaly") ? 1 : 5;
+    return new Response(
+      JSON.stringify({
+        took: 3,
+        hits: {
+          total: { value: total, relation: "eq" },
+          hits: [
+            {
+              _id: "report1",
+              _index: "logs-2026.07.01",
+              _source: { "@timestamp": "2026-07-01T10:00:00Z", message: "connection timeout", status: 500 },
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = reportFetchMock;
+  cfg.integrations.esUrl = "http://localhost:9200";
+  cfg.integrations.esApiKey = "es-test-api-key";
+
+  const weeklyToolResult = await runToolCall(
+    { tool: "weekly_report", params: {} },
+    8_000,
+    "basic",
+  );
+  assert(weeklyToolResult.result.includes("Weekly Ops Report"));
+  assert(weeklyToolResult.result.includes("Total logs (7d):"));
+
+  const deployToolResult = await runToolCall(
+    { tool: "deploy_report", params: { deployTs: "1776379256.075999" } },
+    8_000,
+    "basic",
+  );
+  assert(deployToolResult.result.includes("Deploy Impact Check"));
+  assert(deployToolResult.result.includes("Before deploy"));
+  assert(deployToolResult.result.includes("After deploy"));
+
+  cfg.integrations.esUrl = undefined;
+  cfg.integrations.esApiKey = undefined;
+  const weeklyToolFallback = await runToolCall(
+    { tool: "weekly_report", params: {} },
+    8_000,
+    "basic",
+  );
+  assert(weeklyToolFallback.result.includes("Elasticsearch is not connected"));
+  const deployToolFallback = await runToolCall(
+    { tool: "deploy_report", params: { deployTs: "1776379256.075999" } },
+    8_000,
+    "basic",
+  );
+  assert(deployToolFallback.result.includes("Elasticsearch is not connected"));
+  console.log("Report tools passed");
+
+  cfg.integrations.esUrl = originalEsUrl;
+  cfg.integrations.esApiKey = originalEsApiKey;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForReports;
 
   // Elasticsearch local credential proxy
   const originalEsProxyPort = cfg.integrations.esProxyPort;
@@ -1833,6 +1895,7 @@ rLQ+epZplw==
     "memory",
     "status",
     "help",
+    "reports",
   ]) {
     assert(
       skillNames.includes(expected),

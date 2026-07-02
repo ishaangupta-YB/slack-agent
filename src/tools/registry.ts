@@ -15,6 +15,7 @@ import { sizzleQueryTool } from "./sizzle.js";
 import { statusTool } from "./status.js";
 import { helpTool } from "./help.js";
 import { reportInjectionTool } from "./security.js";
+import { weeklyReportTool, deployReportTool } from "./reports.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
@@ -39,6 +40,8 @@ const staticTools: Tool[] = [
   statusTool,
   helpTool,
   reportInjectionTool,
+  weeklyReportTool,
+  deployReportTool,
 ];
 
 let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));

@@ -75,14 +75,15 @@ export const helpTool: Tool = {
         `**Slack tools**\n` +
         `• \`search_slack\` — Real-Time Search API for workspace history\n` +
         `• \`memory\` — recall recent interactions or search past threads\n` +
+        `• \`weekly_report\` / \`deploy_report\` — generate ops reports on demand\n` +
         `• \`system_status\` — show my current configuration and enabled integrations\n\n` +
         `**Automated reports**\n` +
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
-        `• Run on demand with \`/moonbot report weekly\` or \`/moonbot report deploy\`\n\n` +
+        `• Slash commands: \`/moonbot report weekly\` or \`/moonbot report deploy\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
-        `• “What did we figure out about rate limiting last week?”\n` +
+        `• “Run the weekly report.”\n` +
         `• “Show me your system status.”`,
     };
 
