@@ -3,6 +3,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { cfg } from "../config.js";
 import { renderSessionTrace, renderTraceError } from "./trace-viewer.js";
+import { getMetrics } from "./metrics.js";
 
 const baseDir = resolve(cfg.storage.bucketDir);
 const sessionsDir = resolve(cfg.agent.sessionsDir);
@@ -78,6 +79,11 @@ export function startBucketServer(): Promise<Server> {
 
         if (rawPath === "/health") {
           serveJson(res, 200, healthCheck());
+          return;
+        }
+
+        if (rawPath === "/metrics") {
+          serveJson(res, 200, getMetrics());
           return;
         }
 

@@ -17,6 +17,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bo
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
 - **Memory & continuity** — every thread is a resumable session backed by a bucket; conversations survive restarts.
 - **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
+- **Runtime metrics** — the bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts.
 - **Scheduled reports** — weekly ops report and post-deploy impact monitor backed by Elasticsearch; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.

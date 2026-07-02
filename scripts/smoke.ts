@@ -1663,6 +1663,41 @@ rLQ+epZplw==
 
     const notFoundRes = await fetch(`${baseUrl}/does-not-exist.txt`);
     assert.strictEqual(notFoundRes.status, 404);
+
+    // Metrics endpoint reports aggregate runtime stats from local state files.
+    const metricsInitialRes = await fetch(`${baseUrl}/metrics`);
+    assert.strictEqual(metricsInitialRes.status, 200);
+    assert.strictEqual(metricsInitialRes.headers.get("content-type"), "application/json");
+    const initialMetrics = (await metricsInitialRes.json()) as {
+      uptimeSeconds: number;
+      sessions: number;
+      threadMapEntries: number;
+      memoryEntries: number;
+      feedbackEntries: number;
+      auditEntries: number;
+      responseArtifacts: number;
+    };
+    assert(typeof initialMetrics.uptimeSeconds === "number" && initialMetrics.uptimeSeconds >= 0);
+    assert(typeof initialMetrics.sessions === "number");
+
+    const metricsSession = `metrics-session-${randomUUID().slice(0, 8)}.jsonl`;
+    const metricsSessionsDir = join(cfg.storage.bucketDir, "sessions");
+    mkdirSync(metricsSessionsDir, { recursive: true });
+    writeFileSync(join(metricsSessionsDir, metricsSession), '{"role":"user","content":"metrics test"}\n');
+    writeFileSync(cfg.feedback.logFile, '{"kind":"helpful","threadKey":"T1"}\n', { flag: "a" });
+    writeFileSync(cfg.security.auditLogFile, '{"event":"blocked","command":"rm -rf /"}\n', { flag: "a" });
+    const responseArtifactDir = join(cfg.storage.bucketDir, "responses");
+    mkdirSync(responseArtifactDir, { recursive: true });
+    writeFileSync(join(responseArtifactDir, `metrics-response-${randomUUID().slice(0, 8)}.md`), "# response");
+
+    const metricsUpdatedRes = await fetch(`${baseUrl}/metrics`);
+    assert.strictEqual(metricsUpdatedRes.status, 200);
+    const updatedMetrics = (await metricsUpdatedRes.json()) as typeof initialMetrics;
+    assert.strictEqual(updatedMetrics.sessions, initialMetrics.sessions + 1, "sessions metric should increment");
+    assert.strictEqual(updatedMetrics.feedbackEntries, initialMetrics.feedbackEntries + 1, "feedbackEntries metric should increment");
+    assert.strictEqual(updatedMetrics.auditEntries, initialMetrics.auditEntries + 1, "auditEntries metric should increment");
+    assert.strictEqual(updatedMetrics.responseArtifacts, initialMetrics.responseArtifacts + 1, "responseArtifacts metric should increment");
+    console.log("Bucket server metrics endpoint passed");
   } finally {
     bucketServer.close();
   }
