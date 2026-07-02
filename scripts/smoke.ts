@@ -2038,6 +2038,28 @@ rLQ+epZplw==
     "deploy report should show fallback text when ES is unconfigured",
   );
 
+  // /moonbot ping — live LLM connectivity check.
+  clearChatOverride();
+  setChatOverride(async () => "PONG");
+  await dispatchSlashCommand("ping");
+  assert(slashResponses[0].text?.includes("Pong from"), "ping command should report successful LLM pong");
+  assert(slashResponses[0].text?.includes(cfg.cloudflare.model), "ping command should name the active model");
+  assert(slashResponses[0].response_type === "ephemeral", "ping command should be ephemeral");
+
+  clearChatOverride();
+  setChatOverride(async () => {
+    throw new Error("mock LLM failure");
+  });
+  await dispatchSlashCommand("ping");
+  assert(
+    slashResponses[0].text?.includes("LLM connectivity check failed"),
+    "ping command should report a failed connectivity check",
+  );
+  assert(
+    slashResponses[0].text?.includes("mock LLM failure"),
+    "ping command should surface the LLM error message",
+  );
+
   await dispatchSlashCommand("invalid_subcommand");
   assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
   console.log("Slash command /moonbot passed");

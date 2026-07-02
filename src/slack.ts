@@ -17,6 +17,7 @@ import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
 import { publishHomeView } from "./app-home.js";
+import { pingLLM } from "./llm/cloudflare.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
 import { safeSay } from "./slack-delivery.js";
@@ -364,10 +365,10 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | status | report].
+ * Slash command entry point: /moonbot [help | status | ping | report].
  *
- * Gives users a quick, discoverable way to check capabilities and health
- * without starting a threaded conversation.
+ * Gives users a quick, discoverable way to check capabilities, health, and
+ * live LLM connectivity without starting a threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -396,6 +397,22 @@ export async function handleMoonbotCommand({
       text,
       response_type: "ephemeral",
     });
+    return;
+  }
+
+  if (subcommand === "ping") {
+    const result = await pingLLM();
+    if (result.ok) {
+      await respond({
+        text: `Pong from \`${result.model}\` in ${result.latencyMs}ms: "${result.snippet}"`,
+        response_type: "ephemeral",
+      });
+    } else {
+      await respond({
+        text: `*LLM connectivity check failed* for \`${result.model}\`: ${result.error}`,
+        response_type: "ephemeral",
+      });
+    }
     return;
   }
 
@@ -440,6 +457,7 @@ export async function handleMoonbotCommand({
       "Try:\n" +
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot status` — my current configuration\n" +
+      "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",
     response_type: "ephemeral",

@@ -104,3 +104,42 @@ export async function chat(messages: Message[]): Promise<string> {
 
   throw lastError ?? new Error("Cloudflare chat failed after retries");
 }
+
+export interface PingResultOk {
+  ok: true;
+  model: string;
+  latencyMs: number;
+  snippet: string;
+}
+
+export interface PingResultError {
+  ok: false;
+  model: string;
+  error: string;
+}
+
+export type PingResult = PingResultOk | PingResultError;
+
+/**
+ * Send a tiny prompt to the Cloudflare Workers AI endpoint and report whether
+ * the LLM is reachable and how long it took. This is used by the `/moonbot ping`
+ * slash command so sandbox testers can confirm model connectivity from Slack.
+ */
+export async function pingLLM(): Promise<PingResult> {
+  const start = Date.now();
+  try {
+    const response = await chat([{ role: "user", content: "ping" }]);
+    return {
+      ok: true,
+      model: cfg.cloudflare.model,
+      latencyMs: Date.now() - start,
+      snippet: response.trim().slice(0, 140).replace(/\s+/g, " "),
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      model: cfg.cloudflare.model,
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}

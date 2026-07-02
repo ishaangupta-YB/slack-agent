@@ -42,6 +42,7 @@ export const helpTool: Tool = {
         `**Slash commands**\n` +
         `• \`/moonbot help\` — this message\n` +
         `• \`/moonbot status\` — current configuration\n` +
+        `• \`/moonbot ping\` — live LLM connectivity check\n` +
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
         `• \`/moonbot report deploy\` — deploy impact check on demand\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.`,
