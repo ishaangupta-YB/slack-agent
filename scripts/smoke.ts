@@ -237,6 +237,8 @@ async function main() {
   assert(statusResult.result.includes("Slack message retries:"));
   assert(statusResult.result.includes("Bash execution: disabled"));
   assert(statusResult.result.includes("Guest accounts: refused"));
+  assert(statusResult.result.includes("Default access tier:"));
+  assert(statusResult.result.includes("Tier resolution:"));
   console.log("System status tool passed");
 
   // Help tool gives a friendly capabilities overview without exposing secrets.

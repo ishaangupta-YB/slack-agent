@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { cfg } from "../config.js";
 import { loadSkills } from "../skills/loader.js";
+import { getToolContext } from "../context.js";
 import { z } from "zod";
 
 const statusParams = z.object({});
@@ -32,6 +33,13 @@ export const statusTool = {
       ? `${Object.keys(JSON.parse(cfg.mcp.serversRaw) as Record<string, unknown>).length} MCP server(s)`
       : "none";
 
+    const userTier = getToolContext().tier;
+    const tierSource = cfg.okta.userTiers
+      ? "USER_TIERS mapping"
+      : cfg.okta.domain && cfg.okta.apiToken
+        ? "Okta group lookup"
+        : "default tier only";
+
     const lines = [
       `*Moon Bot status* 🌙`,
       ``,
@@ -43,6 +51,8 @@ export const statusTool = {
       `*Slack message retries:* ${cfg.slack.sayRetries} (base delay ${cfg.slack.sayRetryBaseMs}ms)`,
       `*Loaded skills:* ${skills.map((s) => s.name).join(", ")}`,
       `*MCP servers:* ${mcpServers}`,
+      `*Default access tier:* ${cfg.okta.defaultTier}`,
+      `*Tier resolution:* ${tierSource}${userTier ? ` (your tier: ${userTier})` : ""}`,
       ``,
       `*Integrations:*`,
       `• GitHub static token: ${isConfigured(cfg.integrations.githubToken)}`,
