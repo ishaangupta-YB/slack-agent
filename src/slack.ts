@@ -158,10 +158,11 @@ async function handleIncomingMessage({
   const cleanText = stripBotMention(text, botUserId);
 
   try {
-    const { text: reply, sessionFilename } = await runWithToolContext(
+    const { text: reply, sessionFilename, skipped } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
       () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail),
     );
+    if (skipped) return;
     const { responseUrl, sessionUrl } = await uploadArtifacts(
       threadKey,
       sessionFilename,

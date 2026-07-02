@@ -1134,6 +1134,52 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("Session restore from bucket passed");
 
+  // Concurrent per-thread message handling should serialize safely and skip duplicates.
+  const concurrentThreadKey = "C1:concurrent-thread";
+  const baselineTs = "1776382000.000000";
+
+  setChatOverride(async () => "Baseline reply.");
+  const baseline = await handleMessage(concurrentThreadKey, "baseline", baselineTs, "U1");
+  assert.strictEqual(baseline.skipped, undefined, "Baseline message should not be skipped");
+  clearChatOverride();
+
+  setChatOverride(async (messages) => {
+    const lastUser = [...messages].reverse().find((m) => m.role === "user");
+    const content = String(lastUser?.content ?? "");
+    if (content.includes("first message")) return "Reply to first message.";
+    if (content.includes("second message")) return "Reply to second message.";
+    return "Reply.";
+  });
+
+  const [first, second, duplicate] = await Promise.all([
+    handleMessage(concurrentThreadKey, "first message", "1776382001.000001", "U1"),
+    handleMessage(concurrentThreadKey, "second message", "1776382001.000002", "U1"),
+    handleMessage(concurrentThreadKey, "old duplicate", baselineTs, "U1"),
+  ]);
+
+  assert.strictEqual(first.skipped, undefined, "First message should not be skipped");
+  assert.strictEqual(second.skipped, undefined, "Second message should not be skipped");
+  assert.strictEqual(duplicate.skipped, true, "Older duplicate message should be skipped");
+  assert.strictEqual(first.sessionFilename, baseline.sessionFilename, "Concurrent messages should share baseline session");
+  assert.strictEqual(second.sessionFilename, baseline.sessionFilename, "Concurrent messages should share baseline session");
+  assert.strictEqual(duplicate.sessionFilename, baseline.sessionFilename, "Skipped message should report baseline session");
+
+  const concurrentSessionPath = join(process.env.SESSIONS_DIR!, baseline.sessionFilename);
+  const concurrentLines = readFileSync(concurrentSessionPath, "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const concurrentSession = concurrentLines.map((line) => JSON.parse(line) as Record<string, unknown>);
+  const userContents = concurrentSession
+    .filter((m) => m.role === "user")
+    .map((m) => String(m.content));
+  assert(userContents.includes("baseline"), "Session should contain baseline message");
+  assert(userContents.includes("first message"), "Session should contain first message");
+  assert(userContents.includes("second message"), "Session should contain second message");
+  assert(!userContents.includes("old duplicate"), "Session should not contain skipped duplicate");
+
+  clearChatOverride();
+  console.log("Concurrent per-thread message handling passed");
+
   // Cloudflare Workers AI retry with timeout
   assert.strictEqual(cfg.cloudflare.retries >= 1, true, "Expected at least one Cloudflare retry configured");
   const originalFetch7 = globalThis.fetch;

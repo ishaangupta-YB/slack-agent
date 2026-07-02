@@ -162,6 +162,22 @@ async function runToolLoop(
 export interface HandleMessageResult {
   text: string;
   sessionFilename: string;
+  /** True when the message was a duplicate/out-of-order Slack event and was ignored. */
+  skipped?: boolean;
+}
+
+const threadLocks = new Map<string, Promise<unknown>>();
+
+async function runLocked<T>(threadKey: string, fn: () => Promise<T>): Promise<T> {
+  const current = threadLocks.get(threadKey) ?? Promise.resolve();
+  const next = current.then(() => fn()).finally(() => {
+    // Only delete if no newer lock was queued while we ran.
+    if (threadLocks.get(threadKey) === next) {
+      threadLocks.delete(threadKey);
+    }
+  });
+  threadLocks.set(threadKey, next);
+  return next;
 }
 
 export async function handleMessage(
@@ -171,62 +187,70 @@ export async function handleMessage(
   userId: string,
   userEmail?: string,
 ): Promise<HandleMessageResult> {
-  const tier = await resolveAccessTier(userId, userEmail);
+  return runLocked(threadKey, async () => {
+    const tier = await resolveAccessTier(userId, userEmail);
 
-  const toolCtx = getToolContext();
-  toolCtx.userEmail = userEmail;
+    const toolCtx = getToolContext();
+    toolCtx.userEmail = userEmail;
 
-  const map = await ensureThreadMap();
-  let entry = map[threadKey];
-  if (!entry) {
-    entry = {
-      sessionFilename: `${randomUUID()}.jsonl`,
-      lastProcessedMessageTs: messageTs,
-    };
-    map[threadKey] = entry;
+    const map = await ensureThreadMap();
+    let entry = map[threadKey];
+
+    // Duplicate or out-of-order Slack event: silently ignore.
+    if (entry && messageTs <= entry.lastProcessedMessageTs) {
+      return { text: "", sessionFilename: entry.sessionFilename, skipped: true };
+    }
+
+    if (!entry) {
+      entry = {
+        sessionFilename: `${randomUUID()}.jsonl`,
+        lastProcessedMessageTs: messageTs,
+      };
+      map[threadKey] = entry;
+      await ensureSessionFile(entry.sessionFilename);
+      appendSessionMessage(entry.sessionFilename, {
+        role: "system",
+        content: systemPrompt(tier),
+        ts: new Date().toISOString(),
+      });
+    }
+
+    entry.lastProcessedMessageTs = messageTs;
+    toolCtx.sessionFilename = entry.sessionFilename;
+    await writeThreadMap(map);
+
+    // On restarts the session file may only exist in the bucket. Download it
+    // before appending so the full conversation history is available.
     await ensureSessionFile(entry.sessionFilename);
     appendSessionMessage(entry.sessionFilename, {
-      role: "system",
-      content: systemPrompt(tier),
+      role: "user",
+      content: text,
       ts: new Date().toISOString(),
+      userId,
     });
-  }
 
-  entry.lastProcessedMessageTs = messageTs;
-  toolCtx.sessionFilename = entry.sessionFilename;
-  await writeThreadMap(map);
+    const history = await readSessionMessages(entry.sessionFilename);
+    const messages: LlmMessage[] = history.map((m) => ({
+      role: m.role,
+      content: m.content,
+    }));
 
-  // On restarts the session file may only exist in the bucket. Download it
-  // before appending so the full conversation history is available.
-  await ensureSessionFile(entry.sessionFilename);
-  appendSessionMessage(entry.sessionFilename, {
-    role: "user",
-    content: text,
-    ts: new Date().toISOString(),
-    userId,
+    // Ensure the first system message always reflects the user's current tier.
+    if (messages.length > 0 && messages[0].role === "system") {
+      messages[0].content = systemPrompt(tier);
+    }
+
+    const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
+
+    await appendMemory({
+      id: randomUUID(),
+      timestamp: new Date().toISOString(),
+      threadKey,
+      userId,
+      prompt: text,
+      outcome: reply,
+    });
+
+    return { text: reply, sessionFilename: entry.sessionFilename };
   });
-
-  const history = await readSessionMessages(entry.sessionFilename);
-  const messages: LlmMessage[] = history.map((m) => ({
-    role: m.role,
-    content: m.content,
-  }));
-
-  // Ensure the first system message always reflects the user's current tier.
-  if (messages.length > 0 && messages[0].role === "system") {
-    messages[0].content = systemPrompt(tier);
-  }
-
-  const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
-
-  await appendMemory({
-    id: randomUUID(),
-    timestamp: new Date().toISOString(),
-    threadKey,
-    userId,
-    prompt: text,
-    outcome: reply,
-  });
-
-  return { text: reply, sessionFilename: entry.sessionFilename };
 }
