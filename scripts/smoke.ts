@@ -1975,10 +1975,16 @@ rLQ+epZplw==
   assert(urls.responseUrl.includes("responses/"));
   assert(urls.sessionUrl.includes("sessions/test-session.jsonl"));
   assert(urls.traceUrl.includes("/trace/test-session.jsonl"), `Expected traceUrl to include /trace/test-session.jsonl, got ${urls.traceUrl}`);
-  assert(existsSync(urls.responseUrl));
-  assert(existsSync(urls.sessionUrl));
-  const responseContent = readFileSync(urls.responseUrl, "utf-8");
-  assert(responseContent.includes("Hello from smoke test"));
+  // LocalBucket now returns http://localhost:<port> URLs by default so Slack
+  // Block Kit buttons stay valid even without an explicit BUCKET_PUBLIC_URL.
+  assert(urls.responseUrl.startsWith("http://localhost:"), `Expected localhost URL, got ${urls.responseUrl}`);
+  assert(urls.sessionUrl.startsWith("http://localhost:"), `Expected localhost URL, got ${urls.sessionUrl}`);
+  const responsePath = new URL(urls.responseUrl).pathname.slice(1);
+  const sessionPath = new URL(urls.sessionUrl).pathname.slice(1);
+  assert(existsSync(join(process.env.BUCKET_DIR || "./bucket", responsePath)));
+  assert(existsSync(join(process.env.BUCKET_DIR || "./bucket", sessionPath)));
+  const responseContent = await bucket.read(responsePath);
+  assert(responseContent.toString("utf-8").includes("Hello from smoke test"));
 
   // HuggingFace Bucket trace upload: when HF_BUCKET_REPO + HF_TOKEN are set,
   // uploadArtifacts renders the session as a static HTML trace and stores it.
@@ -3002,6 +3008,27 @@ rLQ+epZplw==
   assert(longMsg.text.endsWith("_(truncated — see full response in thread)_"));
   const blockText = (longMsg.blocks[0] as { text?: { text?: string } }).text?.text ?? "";
   assert(blockText.length <= 3000, `block text length ${blockText.length} exceeds Block Kit section limit`);
+
+  // Invalid artifact URLs (e.g. raw filesystem paths) must be dropped from
+  // Block Kit buttons so Slack does not reject messages at post time.
+  const invalidUrlMsg = prepareSlackMessage(
+    "x",
+    "/tmp/not-a-url/response.md",
+    "/tmp/not-a-url/session.jsonl",
+    "/tmp/not-a-url/trace.html",
+    "C1:123.456",
+  );
+  assert.strictEqual(invalidUrlMsg.blocks.length, 3);
+  const invalidActions = invalidUrlMsg.blocks[1] as {
+    elements?: Array<{ action_id?: string; url?: string }>;
+  };
+  const invalidActionIds = invalidActions.elements?.map((e) => e.action_id) ?? [];
+  assert(!invalidActionIds.includes("open_response_markdown"), "raw path response URL should be omitted");
+  assert(!invalidActionIds.includes("open_session_trace"), "raw path session URL should be omitted");
+  assert(!invalidActionIds.includes("open_trace_viewer"), "raw path trace URL should be omitted");
+  assert(invalidActionIds.includes("feedback_helpful"), "feedback buttons should remain");
+  assert(invalidActionIds.includes("feedback_not_helpful"), "feedback buttons should remain");
+
   console.log("Slack message delivery safety passed");
 
   // Slack message delivery retries: safeSay should retry transient rate-limit and network errors.

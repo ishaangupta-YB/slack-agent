@@ -37,6 +37,12 @@ class LocalBucket implements Bucket {
     if (this.publicUrl) {
       return `${this.publicUrl}/${path.replace(/^\//, "")}`;
     }
+    // When no explicit public URL is configured, default to the local bucket
+    // server so Slack Block Kit button URLs remain valid http:// links. If the
+    // bucket server is disabled, fall back to the absolute filesystem path.
+    if (cfg.storage.enableBucketServer && cfg.storage.bucketHttpPort > 0) {
+      return `http://localhost:${cfg.storage.bucketHttpPort}/${path.replace(/^\//, "")}`;
+    }
     return join(this.baseDir, path);
   }
 }

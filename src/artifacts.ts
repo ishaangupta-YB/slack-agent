@@ -39,13 +39,10 @@ export async function uploadArtifacts(
   const sessionPath = `sessions/${sanitizeFilename(sessionFilename)}`;
   await bucket.write(sessionPath, sessionContent, "application/jsonl; charset=utf-8");
 
-  const publicBase =
-    cfg.storage.bucketPublicUrl || `http://localhost:${cfg.storage.bucketHttpPort}`;
-
   // For HuggingFace Buckets, render the session as a static HTML file and store
   // it in the bucket so the trace viewer works without the local bucket server.
   // For local filesystem buckets, keep using the local /trace endpoint.
-  let traceUrl = `${publicBase}/trace/${sanitizeFilename(sessionFilename)}`;
+  let traceUrl = bucket.readUrl(`trace/${sanitizeFilename(sessionFilename)}`);
   if (cfg.hf.bucketRepo && cfg.hf.token) {
     const tracePath = `trace/${sanitizeFilename(sessionFilename)}.html`;
     const traceHtml = renderSessionTrace(sessionFilename, sessionContent);
