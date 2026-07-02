@@ -1,11 +1,12 @@
 import { createServer, type Server, type IncomingMessage, type ServerResponse } from "node:http";
 
 let activeServer: Server | undefined;
-import { readFileSync, existsSync } from "node:fs";
+import { readFileSync, existsSync, readdirSync } from "node:fs";
 import { join, normalize, resolve } from "node:path";
 import { cfg } from "../config.js";
 import { renderSessionTrace, renderTraceError } from "./trace-viewer.js";
 import { getMetrics } from "./metrics.js";
+import { renderIndexPage } from "./index-page.js";
 
 const baseDir = resolve(cfg.storage.bucketDir);
 const sessionsDir = resolve(cfg.agent.sessionsDir);
@@ -66,6 +67,25 @@ function healthCheck(): { status: string; bucketDir: string; bucketReady: boolea
   };
 }
 
+function listArtifacts(dir: string, ext: string): string[] {
+  if (!existsSync(dir)) return [];
+  try {
+    return readdirSync(dir)
+      .filter((f) => f.toLowerCase().endsWith(ext))
+      .sort((a, b) => b.localeCompare(a));
+  } catch {
+    return [];
+  }
+}
+
+function serveIndexPage(res: ServerResponse): void {
+  const metrics = getMetrics();
+  const sessions = listArtifacts(join(sessionsDir), ".jsonl");
+  const responses = listArtifacts(join(baseDir, "responses"), ".md");
+  res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+  res.end(renderIndexPage({ metrics, sessions, responses }));
+}
+
 export function startBucketServer(): Promise<Server> {
   return new Promise((resolveStart) => {
     const server = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -76,6 +96,11 @@ export function startBucketServer(): Promise<Server> {
         if (req.method === "OPTIONS") {
           res.writeHead(204);
           res.end();
+          return;
+        }
+
+        if (rawPath === "/") {
+          serveIndexPage(res);
           return;
         }
 

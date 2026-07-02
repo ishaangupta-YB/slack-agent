@@ -2288,6 +2288,17 @@ rLQ+epZplw==
     assert.strictEqual(updatedMetrics.auditEntries, initialMetrics.auditEntries + 1, "auditEntries metric should increment");
     assert.strictEqual(updatedMetrics.responseArtifacts, initialMetrics.responseArtifacts + 1, "responseArtifacts metric should increment");
     console.log("Bucket server metrics endpoint passed");
+
+    // Index page lists session traces, response artifacts, and metrics.
+    const indexRes = await fetch(`${baseUrl}/`);
+    assert.strictEqual(indexRes.status, 200);
+    assert.strictEqual(indexRes.headers.get("content-type"), "text/html; charset=utf-8");
+    const indexBody = await indexRes.text();
+    assert(indexBody.includes("Moon Bot Artifacts"), "index page should render title");
+    assert(indexBody.includes(`/trace/${encodeURIComponent(sessionFilename)}`), "index page should link to trace viewer");
+    assert(indexBody.includes("/responses/"), "index page should link to response artifacts");
+    assert(indexBody.includes("/metrics"), "index page should link to metrics endpoint");
+    console.log("Bucket server index page passed");
   } finally {
     stopBucketServer();
     assert.strictEqual(getActiveBucketServer(), undefined, "stopBucketServer should clear the active server reference");
