@@ -36,7 +36,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
 | **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | report | statuspage` for quick discovery. |
+| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | search | report | statuspage` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
 | **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |

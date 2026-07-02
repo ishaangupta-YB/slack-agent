@@ -22,6 +22,7 @@ import { pingLLM } from "./llm/cloudflare.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
 import { publicStatusTool } from "./tools/public-status.js";
+import { searchSlackTool } from "./tools/slack-search.js";
 import { safeSay } from "./slack-delivery.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
@@ -382,11 +383,11 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | status | diagnose | ping | whoami | report].
+ * Slash command entry point: /moonbot [help | status | diagnose | ping | whoami | search | report | statuspage].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
- * configuration diagnostics, and live LLM connectivity without starting a
- * threaded conversation.
+ * configuration diagnostics, real-time search, and live LLM connectivity without
+ * starting a threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -521,6 +522,27 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "search") {
+    const query = args.slice(1).join(" ");
+    if (!query) {
+      await respond({
+        text:
+          "*Moon Bot Slack search* 🔍\n" +
+          "Search workspace history with the Real-Time Search API: `/moonbot search <query>`\n" +
+          "Example: `/moonbot search deployment discussions`",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const summary = await runWithToolContext(
+      { channelId: command.channel_id, userId: command.user_id },
+      async () => await searchSlackTool.run({ query }),
+    );
+    await respond({ text: summary, response_type: "ephemeral" });
+    return;
+  }
+
   await respond({
     text:
       "*Moon Bot* 🌙\n" +
@@ -531,6 +553,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +
+      "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",
     response_type: "ephemeral",

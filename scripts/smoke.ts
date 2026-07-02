@@ -2728,6 +2728,52 @@ rLQ+epZplw==
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatuspage;
 
+  // /moonbot search — on-demand Real-Time Search API query.
+  const originalUserToken = cfg.slack.userToken;
+  cfg.slack.userToken = "xoxp-smoke-test";
+  const originalFetchForSearch = globalThis.fetch;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("slack.com/api/assistant.search.context")) {
+      const body = init?.body ? JSON.parse(String(init.body)) : {};
+      assert.strictEqual(body.context_channel_id, "C1", "search should include the slash command channel as context");
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          results: {
+            messages: [
+              {
+                content: "Deploy went live at noon",
+                text: "Deploy went live at noon",
+                permalink: "https://example.com/permalinks/m1",
+                author_name: "alice",
+                channel_name: "deployments",
+              },
+            ],
+          },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return originalFetchForSearch(input, init);
+  }) as typeof fetch;
+
+  await dispatchSlashCommand("search");
+  assert(
+    slashResponses[0].text?.includes("/moonbot search <query>"),
+    "bare search command should show usage",
+  );
+
+  await dispatchSlashCommand("search deployment");
+  const searchText = slashResponses[0].text ?? "";
+  assert(searchText.includes("Results for \"deployment\""), "search command should include result header");
+  assert(searchText.includes("Deploy went live at noon"), "search command should include result content");
+  assert(searchText.includes("deployments"), "search command should include channel name");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "search command should be ephemeral");
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForSearch;
+  cfg.slack.userToken = originalUserToken;
+
   // /moonbot ping — live LLM connectivity check.
   clearChatOverride();
   setChatOverride(async () => "PONG");
