@@ -8,7 +8,8 @@ import { loadSkills, buildSkillPrompt } from "./skills/loader.js";
 import {
   formatToolInstructions,
   formatToolResult,
-  parseToolCalls,
+  formatParseErrors,
+  parseToolCallsWithErrors,
 } from "./tools/parser.js";
 import { listTools, runToolCall } from "./tools/registry.js";
 import { appendMemory, getMemoryByThreadKey, searchMemory, type MemoryEntry } from "./tools/memory.js";
@@ -247,9 +248,9 @@ async function runToolLoop(
 
   for (let i = 0; i < maxIterations; i++) {
     const reply = await chat(messages);
-    const calls = parseToolCalls(reply);
+    const { calls, errors } = parseToolCallsWithErrors(reply);
 
-    if (calls.length === 0) {
+    if (calls.length === 0 && errors.length === 0) {
       appendLlmMessages(filename, [
         { role: "assistant", content: reply },
       ]);
@@ -263,13 +264,22 @@ async function runToolLoop(
 
     messages.push({ role: "assistant", content: reply });
 
-    const results = await Promise.all(
-      calls.map((call) =>
-        runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier),
-      ),
-    );
+    const parts: string[] = [];
 
-    const observation = results.map(formatToolResult).join("\n\n");
+    if (errors.length > 0) {
+      parts.push(formatParseErrors(errors));
+    }
+
+    if (calls.length > 0) {
+      const results = await Promise.all(
+        calls.map((call) =>
+          runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier),
+        ),
+      );
+      parts.push(results.map(formatToolResult).join("\n\n"));
+    }
+
+    const observation = parts.join("\n\n");
     messages.push({ role: "user", content: observation });
     appendLlmMessages(filename, [{ role: "user", content: observation }], userId);
   }

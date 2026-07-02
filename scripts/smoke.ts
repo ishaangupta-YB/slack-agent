@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
-import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
+import { parseToolCalls, parseToolCallsWithErrors, formatToolResult, formatParseErrors } from "../src/tools/parser.js";
 import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { safeSay } from "../src/slack-delivery.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
@@ -77,6 +77,21 @@ async function main() {
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].tool, "read_file");
   assert.strictEqual((calls[0].params as { path: string }).path, "package.json");
+
+  const malformedText =
+    'Some reasoning<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}\n</tool_call>';
+  const malformed = parseToolCallsWithErrors(malformedText);
+  assert.strictEqual(malformed.calls.length, 0);
+  assert.strictEqual(malformed.errors.length, 1);
+  assert(malformed.errors[0].includes("Malformed JSON"));
+
+  const unclosedText = 'I want to call <tool_call>{"tool": "read_file"}';
+  const unclosed = parseToolCallsWithErrors(unclosedText);
+  assert.strictEqual(unclosed.calls.length, 0);
+  assert(unclosed.errors.length, 1);
+  assert(unclosed.errors[0].includes("Unclosed"));
+
+  assert(formatParseErrors(["bad json"]).includes("[tool parse error] bad json"));
 
   // Memory
   await appendMemory({
@@ -1328,6 +1343,45 @@ rLQ+epZplw==
 
   clearChatOverride();
   console.log("End-to-end ReAct agent loop passed");
+
+  // ReAct self-correction: malformed tool calls are reported back to the model
+  // so it can retry with valid JSON instead of silently failing.
+  let selfCorrectionAttempts = 0;
+  setChatOverride(async () => {
+    selfCorrectionAttempts++;
+    if (selfCorrectionAttempts === 1) {
+      return '<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}\n</tool_call>';
+    }
+    return "The self-correction flow observed the parse error.";
+  });
+
+  const scThreadKey = "C-self-correction:1776379256.090000";
+  const scResult = await handleMessage(
+    scThreadKey,
+    "Demonstrate self-correction",
+    "1776379256.090000",
+    "U1",
+  );
+  assert(
+    scResult.text.includes("self-correction flow observed"),
+    `Expected self-correction reply, got: ${scResult.text}`,
+  );
+
+  const scSessionPath = join(process.env.SESSIONS_DIR!, scResult.sessionFilename);
+  const scSession = readFileSync(scSessionPath, "utf-8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => JSON.parse(line) as Record<string, unknown>);
+  assert(
+    scSession.some(
+      (m) => m.role === "user" && String(m.content).includes("[tool parse error]"),
+    ),
+    "Session should contain a parse error observation",
+  );
+  assert(selfCorrectionAttempts >= 2, "Expected at least two LLM calls for self-correction");
+
+  clearChatOverride();
+  console.log("ReAct self-correction passed");
 
   // Automatic memory context injection: prior interactions are recalled into
   // the system prompt when the user asks a related question.

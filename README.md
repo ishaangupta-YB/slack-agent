@@ -80,7 +80,7 @@ Runtime flow:
 1. A Slack message arrives via Socket Mode (`app_mention`, DM, channel/group/MPIM mention, or `assistant_thread_started`).
 2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, and routes thread follow-ups back to the active session.
 3. `src/agent.ts` lazily restores the thread session from the bucket, builds the system prompt + skills, and runs a ReAct loop with the LLM.
-4. Tool calls are parsed from `<tool_call>` blocks, validated, and executed.
+4. Tool calls are parsed from `<tool_call>` blocks; malformed JSON is reported back to the model so it can self-correct.
 5. The final response is uploaded to the bucket as markdown + JSONL, and a Slack message with Block Kit links is posted.
 6. The **trace viewer** (`/trace/<session>.jsonl` on the bucket server) renders the JSONL session as a readable HTML timeline for auditing and demos.
 

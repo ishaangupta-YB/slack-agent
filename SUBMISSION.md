@@ -39,6 +39,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | search | report | statuspage` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
+| **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
 
 ---
@@ -96,7 +97,7 @@ Runtime flow:
 1. A Slack message arrives via Socket Mode (`app_mention`, DM, channel/group/MPIM mention, or `assistant_thread_started`).
 2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, suppresses duplicate/out-of-order events, and routes thread follow-ups back to the active session.
 3. `src/agent.ts` lazily restores the thread session from the bucket, builds the system prompt + skills, and runs a ReAct loop with the LLM.
-4. Tool calls are parsed from `<tool_call>` blocks, validated, and executed.
+4. Tool calls are parsed from `<tool_call>` blocks; malformed JSON is reported back to the model so it can self-correct.
 5. The final response is uploaded to the bucket as markdown + JSONL, and a Slack message with Block Kit links is posted.
 
 ---
