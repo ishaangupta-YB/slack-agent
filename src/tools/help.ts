@@ -52,7 +52,8 @@ export const helpTool: Tool = {
         `• \`/moonbot search <query>\` — search Slack history with the Real-Time Search API\n` +
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
         `• \`/moonbot report deploy\` — deploy impact check on demand\n` +
-        `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n\n` +
+        `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n` +
+        `• \`/moonbot impact\` — public service status monitoring for the Agent for Good track\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.\n` +
         `You can also react to any Moon Bot message with :+1:/:-1: (feedback), :arrows_counterclockwise: (reset thread), or :question: (show help).`,
 
@@ -95,7 +96,7 @@ export const helpTool: Tool = {
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
         `• Public status monitor — watches civic/nonprofit service status pages and posts incident alerts\n` +
-        `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
+        `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot impact\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +

@@ -33,7 +33,7 @@ import { safeSay } from "./slack-delivery.js";
 import { getDemoMessage } from "./demo.js";
 import { getMetrics } from "./storage/metrics.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
-import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
+import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
 
 export const app = new App({
@@ -436,7 +436,7 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | status | diagnose | ping | whoami | thread | search | report | statuspage].
+ * Slash command entry point: /moonbot [help | demo | status | diagnose | ping | whoami | thread | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, real-time search, session info, and live LLM
@@ -604,6 +604,12 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "impact") {
+    const summary = await getPublicStatusImpactSummary();
+    await respond({ text: summary, response_type: "ephemeral" });
+    return;
+  }
+
   if (subcommand === "statuspage") {
     const url = args[1];
     if (!url) {
@@ -670,6 +676,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot thread` — your current DM session info\n" +
       "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
+      "• `/moonbot impact` — public service status monitoring for the Agent for Good track\n" +
       "• `@Moon Bot search Slack for deploy discussions`",
     response_type: "ephemeral",
   });

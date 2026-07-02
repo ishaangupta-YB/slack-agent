@@ -33,6 +33,7 @@ export function getDemoMessage(): string {
     `• \`/moonbot statuspage https://status.cloudflare.com/api/v2/status.json\`\n\n` +
 
     `*Agent for Good — public service resilience*\n` +
+    `• \`/moonbot impact\` — see which public services Moon Bot is monitoring and their current status\n` +
     `• \`Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.\`\n` +
     `• \`File a GitHub issue in huggingface/moon-bot-slack-agent summarizing the degraded service.\`\n\n` +
 

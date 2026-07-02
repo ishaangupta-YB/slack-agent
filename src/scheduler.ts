@@ -430,6 +430,38 @@ export async function saveStatusMonitorState(state: Map<string, PublicStatusPage
   }
 }
 
+export async function getPublicStatusImpactSummary(): Promise<string> {
+  const channel = cfg.scheduler.statusMonitorChannel;
+  const pages = cfg.scheduler.statusMonitorPages;
+
+  if (!channel || pages.length === 0) {
+    return (
+      "*Moon Bot public service impact* 🌍\n" +
+      "Public status monitoring is not configured.\n\n" +
+      "Enable it by setting `STATUS_MONITOR_CHANNEL` and `STATUS_MONITOR_PAGES` " +
+      "so Moon Bot can watch nonprofit, civic-tech, and open-source services " +
+      "and alert the channel when they go down."
+    );
+  }
+
+  const state = await loadStatusMonitorState();
+  let summary =
+    `*Moon Bot public service impact* 🌍\n` +
+    `_Monitoring ${pages.length} public status page(s) and posting alerts to <#${channel}>. _\n\n`;
+
+  for (const url of pages) {
+    const pageState = state.get(url);
+    const indicator = pageState?.lastIndicator ?? "unknown";
+    const emoji = isIncidentStatus(indicator) ? "🚨" : "✅";
+    summary += `${emoji} ${url} — \`${indicator}\`\n`;
+  }
+
+  summary +=
+    "\n_Check a page on demand with `/moonbot statuspage <url>` or ask Moon Bot " +
+    "to summarize a public service status. _";
+  return summary;
+}
+
 async function postStatusAlert(
   app: App,
   channel: string,

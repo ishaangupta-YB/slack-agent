@@ -306,6 +306,7 @@ async function main() {
   assert(helpResult.result.includes("data"));
   assert(helpResult.result.includes("slack"));
   assert(helpResult.result.includes("/moonbot thread"), "general help should mention the thread slash command");
+  assert(helpResult.result.includes("/moonbot impact"), "general help should mention the impact slash command");
   assert(!helpResult.result.includes(cfg.cloudflare.apiToken), "help must not expose secrets");
   const codeHelp = await runToolCall({ tool: "moon_help", params: { topic: "code" } });
   assert(codeHelp.result.includes("open_pr"));
@@ -3182,6 +3183,7 @@ rLQ+epZplw==
   assert.strictEqual(slashResponses[0].response_type, "ephemeral");
   assert(slashResponses[0].text?.includes("Moon Bot"));
   assert(slashResponses[0].text?.includes("/moonbot help"));
+  assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
 
   await dispatchSlashCommand("help code");
   assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
@@ -3207,6 +3209,10 @@ rLQ+epZplw==
   assert(
     slashResponses[0].text?.includes("Agent for Good"),
     "demo command should mention Agent for Good",
+  );
+  assert(
+    slashResponses[0].text?.includes("/moonbot impact"),
+    "demo command should mention /moonbot impact",
   );
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "demo command should be ephemeral");
 
@@ -3352,6 +3358,54 @@ rLQ+epZplw==
   );
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatuspage;
+
+  // /moonbot impact — public service status monitoring for the Agent for Good track.
+  const originalStatusMonitorChannel = cfg.scheduler.statusMonitorChannel;
+  const originalStatusMonitorPages = cfg.scheduler.statusMonitorPages;
+  cfg.scheduler.statusMonitorChannel = "";
+  cfg.scheduler.statusMonitorPages = [];
+
+  await dispatchSlashCommand("impact");
+  const impactUnconfiguredText = slashResponses[0].text ?? "";
+  assert(impactUnconfiguredText.includes("Public status monitoring is not configured"), "impact command should show not-configured message");
+  assert(impactUnconfiguredText.includes("STATUS_MONITOR_CHANNEL"), "impact command should mention STATUS_MONITOR_CHANNEL setup");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "impact command should be ephemeral");
+
+  cfg.scheduler.statusMonitorChannel = "CSTATUS";
+  cfg.scheduler.statusMonitorPages = ["https://status.example.com/api/v2/status.json"];
+  const impactPageUrl = "https://status.example.com/api/v2/status.json";
+
+  // Clear any state left over from earlier public-status monitor tests.
+  await saveStatusMonitorState(new Map());
+
+  await dispatchSlashCommand("impact");
+  const impactConfiguredText = slashResponses[0].text ?? "";
+  assert(impactConfiguredText.includes("Moon Bot public service impact"), "impact command should show configured header");
+  assert(impactConfiguredText.includes(impactPageUrl), "impact command should list monitored page URL");
+  assert(impactConfiguredText.includes("unknown"), "impact command should show unknown indicator when no state exists");
+  assert(impactConfiguredText.includes("/moonbot statuspage"), "impact command should reference on-demand statuspage command");
+
+  // Operational status renders with a checkmark emoji.
+  await saveStatusMonitorState(
+    new Map<string, PublicStatusPageState>([[impactPageUrl, { url: impactPageUrl, lastIndicator: "operational" }]]),
+  );
+  await dispatchSlashCommand("impact");
+  const impactOperationalText = slashResponses[0].text ?? "";
+  assert(impactOperationalText.includes("✅"), "impact command should show checkmark emoji for operational status");
+  assert(impactOperationalText.includes("`operational`"), "impact command should show operational indicator");
+
+  // Incident status renders with an alert emoji.
+  await saveStatusMonitorState(
+    new Map<string, PublicStatusPageState>([[impactPageUrl, { url: impactPageUrl, lastIndicator: "major" }]]),
+  );
+  await dispatchSlashCommand("impact");
+  const impactIncidentText = slashResponses[0].text ?? "";
+  assert(impactIncidentText.includes("🚨"), "impact command should show alert emoji for incident status");
+  assert(impactIncidentText.includes("`major`"), "impact command should show major indicator");
+
+  cfg.scheduler.statusMonitorChannel = originalStatusMonitorChannel;
+  cfg.scheduler.statusMonitorPages = originalStatusMonitorPages;
+  await saveStatusMonitorState(new Map());
 
   // /moonbot search — on-demand Real-Time Search API query.
   const originalUserToken = cfg.slack.userToken;
