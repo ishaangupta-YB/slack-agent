@@ -5,6 +5,7 @@ import {
   type SlackEventMiddlewareArgs,
   type SlackCommandMiddlewareArgs,
   type SlackShortcutMiddlewareArgs,
+  type SlackActionMiddlewareArgs,
   type MessageShortcut,
   type KnownEventFromType,
   type SayFn,
@@ -19,6 +20,7 @@ import { publishHomeView } from "./app-home.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
 import { safeSay } from "./slack-delivery.js";
+import { recordFeedback, type FeedbackKind } from "./feedback.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -431,6 +433,56 @@ export async function handleAskMoonBotShortcut({
 }
 
 app.shortcut("ask_moon_bot", handleAskMoonBotShortcut as never);
+
+/**
+ * Feedback block actions: users can tap 👍 / 👎 on any Moon Bot response.
+ *
+ * Feedback is recorded to a JSONL log (default: under SESSIONS_DIR) and a
+ * brief ephemeral confirmation is sent. This gives hackathon judges and
+ * sandbox users a quick, interactive way to flag helpful or unhelpful replies.
+ */
+async function handleFeedbackAction({
+  ack,
+  body,
+  client,
+  action,
+}: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
+  await ack();
+
+  const kind = (action as { value?: string }).value as FeedbackKind | undefined;
+  if (!kind || (kind !== "helpful" && kind !== "not_helpful")) return;
+
+  const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
+  const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
+  const messageTs = message?.ts ?? "unknown";
+  const threadTs = message?.thread_ts;
+  const threadKey = threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`;
+
+  const sessionFilename = await import("./agent.js").then((m) =>
+    m.getSessionFilenameByThreadKey(threadKey),
+  );
+
+  recordFeedback({
+    ts: new Date().toISOString(),
+    kind,
+    userId,
+    channel,
+    messageTs,
+    threadKey,
+    sessionFilename,
+  });
+
+  await client.chat.postEphemeral({
+    channel,
+    user: userId,
+    thread_ts: threadTs,
+    text: kind === "helpful" ? "Thanks for the feedback! 🌙" : "Thanks — we’ll use this to improve Moon Bot.",
+  });
+}
+
+app.action("feedback_helpful", handleFeedbackAction as never);
+app.action("feedback_not_helpful", handleFeedbackAction as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);

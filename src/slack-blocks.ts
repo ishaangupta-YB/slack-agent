@@ -33,6 +33,19 @@ export function buildResponseBlocks(
           url: sessionUrl,
           action_id: "open_session_trace",
         },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "👍 Helpful", emoji: true },
+          action_id: "feedback_helpful",
+          value: "helpful",
+          style: "primary",
+        },
+        {
+          type: "button",
+          text: { type: "plain_text", text: "👎 Not helpful", emoji: true },
+          action_id: "feedback_not_helpful",
+          value: "not_helpful",
+        },
       ],
     },
   ] as unknown as KnownBlock[];

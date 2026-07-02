@@ -166,6 +166,18 @@ export interface HandleMessageResult {
   skipped?: boolean;
 }
 
+/**
+ * Look up the persisted session filename for a Slack thread key, if any.
+ * This lets non-message handlers (e.g. feedback block actions) correlate
+ * a Slack message with its agent session trace.
+ */
+export async function getSessionFilenameByThreadKey(
+  threadKey: string,
+): Promise<string | undefined> {
+  const map = await ensureThreadMap();
+  return map[threadKey]?.sessionFilename;
+}
+
 const threadLocks = new Map<string, Promise<unknown>>();
 
 async function runLocked<T>(threadKey: string, fn: () => Promise<T>): Promise<T> {

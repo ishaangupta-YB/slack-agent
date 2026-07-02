@@ -26,10 +26,11 @@ import {
   handleAskMoonBotShortcut,
 } from "../src/slack.js";
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs } from "@slack/bolt";
+import { recordFeedback, feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
-import { handleMessage } from "../src/agent.js";
+import { getSessionFilenameByThreadKey, handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -1883,6 +1884,46 @@ rLQ+epZplw==
   assert(Array.isArray(shortcutPost.blocks) && shortcutPost.blocks.length > 0, "shortcut reply should include Block Kit blocks");
   clearChatOverride();
   console.log("Ask Moon Bot message shortcut passed");
+
+  // Feedback buttons: every response should expose helpful / not-helpful actions,
+  // and feedback should be persisted to a JSONL log.
+  const feedbackMsg = prepareSlackMessage("Here is my helpful answer.", "https://example.com/r", "https://example.com/s");
+  const actionsBlock = feedbackMsg.blocks[1] as { elements?: Array<{ action_id?: string; style?: string }> };
+  assert(Array.isArray(actionsBlock?.elements), "response actions block should contain elements");
+  const actionIds = actionsBlock.elements!.map((e) => e.action_id);
+  assert(actionIds.includes("feedback_helpful"), "response should include feedback_helpful button");
+  assert(actionIds.includes("feedback_not_helpful"), "response should include feedback_not_helpful button");
+  const helpfulButton = actionsBlock.elements!.find((e) => e.action_id === "feedback_helpful");
+  assert.strictEqual(helpfulButton?.style, "primary", "helpful button should be styled primary");
+
+  const feedbackPath = feedbackLogPath();
+  if (existsSync(feedbackPath)) rmSync(feedbackPath, { force: true });
+  recordFeedback({
+    ts: new Date().toISOString(),
+    kind: "helpful",
+    userId: "U1",
+    channel: "C1",
+    messageTs: "123.456",
+    threadKey: "C1:123.456",
+    sessionFilename: "test-session.jsonl",
+  });
+  assert(existsSync(feedbackPath), "feedback log file should be created after recording feedback");
+  const feedbackLines = readFileSync(feedbackPath, "utf-8").split("\n").filter(Boolean);
+  assert.strictEqual(feedbackLines.length, 1);
+  const feedbackEvent = JSON.parse(feedbackLines[0]) as Record<string, unknown>;
+  assert.strictEqual(feedbackEvent.kind, "helpful");
+  assert.strictEqual(feedbackEvent.userId, "U1");
+  assert.strictEqual(feedbackEvent.sessionFilename, "test-session.jsonl");
+
+  // Thread-key to session filename lookup should match the thread map.
+  const lookupThreadKey = `feedback-lookup-${randomUUID()}`;
+  setChatOverride(async () => "Hello, I am Moon Bot.");
+  await handleMessage(lookupThreadKey, "hello", "1234567890.000000", "U_LOOKUP");
+  clearChatOverride();
+  const lookupFilename = await getSessionFilenameByThreadKey(lookupThreadKey);
+  assert(lookupFilename, "getSessionFilenameByThreadKey should return the session filename");
+  assert(lookupFilename.endsWith(".jsonl"), `Expected JSONL filename, got ${lookupFilename}`);
+  console.log("Response feedback buttons passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.
   const goodMockClient = {

@@ -35,6 +35,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | status` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
+| **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
 
 ---
 
@@ -157,7 +158,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
-6. **Status / help:**  
+6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
+7. **Status / help:**  
    `/moonbot status`
 
 ---

@@ -92,6 +92,11 @@ export const cfg = {
       10,
     ),
   },
+  feedback: {
+    logFile:
+      process.env.FEEDBACK_LOG_FILE ||
+      join(process.env.SESSIONS_DIR || "./sessions", "feedback.jsonl"),
+  },
   okta: {
     domain: process.env.OKTA_DOMAIN || "",
     apiToken: process.env.OKTA_API_TOKEN || "",
