@@ -29,7 +29,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts and status updates. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
-| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, and comment on existing issues/PRs. |
+| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, and look up HuggingFace Hub model/dataset/Space metadata. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
@@ -74,7 +74,8 @@ flowchart TD
     J --> J3[memory]
     J --> J4[open_pr / create_issue / commit_to_pr]
     J --> J5[es_query / mongo_query / athena_query / sizzle_query / plausible_query]
-    J --> J6[search_code / clone_repo]
+    J --> J6[search_code / clone_repo / list_files]
+    J --> J8[hf_hub_info]
     J --> J7[search_slack]
 
     F --> L[Bucket storage]
@@ -159,9 +160,11 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `Search Slack for recent deployment discussions and summarize what changed.`
 2. **MCP integration:** with an MCP filesystem server configured, ask  
    `List the files in /tmp and tell me which ones were modified today.`
-3. **Code + GitHub:** in a channel, mention the bot:  
+3. **Code + GitHub + HuggingFace Hub:** in a channel, mention the bot:  
+   `@Moon Bot what is the task for sentence-transformers/all-MiniLM-L6-v2?`  
+   Then ask it to open a draft PR:  
    `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
-   Then reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
+   Reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
@@ -190,7 +193,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 0:00–0:20 | Intro | Show the bot in the Slack workspace, App Home tab, and assistant panel. |
 | 0:20–0:50 | Slack AI Assistant | Open Moon Bot from the assistant panel, run the search prompt, and show the response + artifact buttons. |
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
-| 1:20–1:50 | Code Q&A + GitHub | Mention `@Moon Bot` and ask it to search code and open a draft PR; show the PR with the standard footer + trace link. |
+| 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@Moon Bot` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
 | 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer checks a public status page and files a GitHub issue from a single thread. |

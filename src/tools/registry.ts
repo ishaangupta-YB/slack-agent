@@ -17,6 +17,7 @@ import { helpTool } from "./help.js";
 import { reportInjectionTool } from "./security.js";
 import { weeklyReportTool, deployReportTool } from "./reports.js";
 import { publicStatusTool } from "./public-status.js";
+import { hfHubInfoTool } from "./hf-hub.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
@@ -46,6 +47,7 @@ const staticTools: Tool[] = [
   weeklyReportTool,
   deployReportTool,
   publicStatusTool,
+  hfHubInfoTool,
 ];
 
 let registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));

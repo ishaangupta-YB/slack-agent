@@ -44,6 +44,7 @@ import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
 import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { clearCloneExecutor, setCloneExecutor } from "../src/tools/git.js";
+import { clearHfHubInfoExecutor, setHfHubInfoExecutor } from "../src/tools/hf-hub.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
 import { runWithToolContext } from "../src/context.js";
 import { buildSandboxCommand, clearBashExecutor, setBashExecutor } from "../src/tools/bash.js";
@@ -691,6 +692,87 @@ async function main() {
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatus;
   console.log("Public status tool passed");
+
+  // HuggingFace Hub metadata lookup tool
+  setHfHubInfoExecutor(async (repoId, repoType) => {
+    if (repoId === "not-found/repo") {
+      throw new Error("Repo not found (404)");
+    }
+    if (repoType === "model") {
+      return {
+        id: repoId,
+        likes: 1234,
+        private: false,
+        updatedAt: new Date("2026-07-01T10:00:00Z"),
+        downloads: 56789,
+        gated: false,
+        tags: ["transformers", "pytorch", "text-classification"],
+        task: "text-classification",
+        library_name: "transformers",
+      };
+    }
+    if (repoType === "dataset") {
+      return {
+        id: repoId,
+        likes: 456,
+        private: false,
+        updatedAt: new Date("2026-06-15T08:00:00Z"),
+        downloads: 7890,
+        gated: "auto",
+        tags: ["dataset", "english"],
+      };
+    }
+    return {
+      id: repoId,
+      likes: 789,
+      private: false,
+      updatedAt: new Date("2026-07-02T12:00:00Z"),
+      sdk: "gradio",
+      tags: ["gradio", "demo"],
+    };
+  });
+
+  const hfModelResult = await runToolCall(
+    { tool: "hf_hub_info", params: { repo_id: "hf-internal-testing/tiny-bert", repo_type: "model" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(hfModelResult.error, undefined);
+  assert(hfModelResult.result.includes("hf-internal-testing/tiny-bert"));
+  assert(hfModelResult.result.includes("text-classification"));
+  assert(hfModelResult.result.includes("56,789"));
+  assert(hfModelResult.result.includes("1,234"));
+  assert(hfModelResult.result.includes("transformers"));
+  assert(hfModelResult.result.includes("gated: no"));
+
+  const hfDatasetResult = await runToolCall(
+    { tool: "hf_hub_info", params: { repo_id: "glue", repo_type: "dataset" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(hfDatasetResult.error, undefined);
+  assert(hfDatasetResult.result.includes("glue"));
+  assert(hfDatasetResult.result.includes("7,890"));
+  assert(hfDatasetResult.result.includes("gated: auto"));
+
+  const hfSpaceResult = await runToolCall(
+    { tool: "hf_hub_info", params: { repo_id: "philschmid/document-ai", repo_type: "space" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(hfSpaceResult.error, undefined);
+  assert(hfSpaceResult.result.includes("philschmid/document-ai"));
+  assert(hfSpaceResult.result.includes("sdk: gradio"));
+
+  const hfNotFoundResult = await runToolCall(
+    { tool: "hf_hub_info", params: { repo_id: "not-found/repo", repo_type: "model" } },
+    8_000,
+    "basic",
+  );
+  assert(hfNotFoundResult.result.includes("was not found"));
+
+  clearHfHubInfoExecutor();
+  console.log("HuggingFace Hub info tool passed");
 
   // Elasticsearch local credential proxy
   const originalEsProxyPort = cfg.integrations.esProxyPort;
@@ -1410,6 +1492,7 @@ rLQ+epZplw==
       "comment_on_issue",
       "commit_to_pr",
       "create_issue",
+      "hf_hub_info",
       "list_files",
       "memory",
       "moon_help",
@@ -2745,6 +2828,7 @@ rLQ+epZplw==
     "reports",
     "social-impact",
     "github-bot",
+    "hf-hub",
   ]) {
     assert(
       skillNames.includes(expected),
@@ -2759,6 +2843,10 @@ rLQ+epZplw==
   assert(gradioSkill.content.includes("gr.Blocks"));
   assert(gradioSkill.content.includes("gr.Chatbot"));
   assert(gradioSkill.content.includes("gradio-app/gradio"));
+  const hfHubSkill = skills.find((s) => s.name === "hf-hub")!;
+  assert(hfHubSkill.content.includes("hf_hub_info"));
+  assert(hfHubSkill.content.includes("repo_type"));
+  assert(hfHubSkill.content.includes("HuggingFace Hub"));
   console.log("Skill discovery passed");
 
   // Slack app manifest validation

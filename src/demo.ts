@@ -20,8 +20,9 @@ export function getDemoMessage(): string {
     `• With an MCP filesystem server configured, ask:\n` +
     `  “List the files in /tmp and tell me which ones were modified today.”\n\n` +
 
-    `*Code Q&A + GitHub*\n` +
+    `*Code Q&A + GitHub + HuggingFace Hub*\n` +
     `• \`@Moon Bot clone huggingface/hub and find the function that validates repo IDs.\`\n` +
+    `• \`@Moon Bot what is the task for sentence-transformers/all-MiniLM-L6-v2?\`\n` +
     `• \`@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.\`\n` +
     `• Then reply in the same thread: “Add a README note about the new script.”\n\n` +
 
