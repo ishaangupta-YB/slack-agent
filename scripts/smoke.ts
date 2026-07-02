@@ -1538,6 +1538,15 @@ rLQ+epZplw==
   assert(address && typeof address !== "string");
   const ghPort = address.port;
 
+  const health = await fetch(`http://localhost:${ghPort}/health`);
+  assert.strictEqual(health.status, 200);
+  const healthJson = (await health.json()) as { status: string; mode: string };
+  assert.strictEqual(healthJson.status, "ok");
+  assert.strictEqual(healthJson.mode, "github-only");
+
+  const notFound = await fetch(`http://localhost:${ghPort}/unknown`);
+  assert.strictEqual(notFound.status, 405);
+
   const webhookSecret = "test-secret";
   const makeSignature = (body: string) => {
     const hmac = createHmac("sha256", webhookSecret).update(body).digest("hex");

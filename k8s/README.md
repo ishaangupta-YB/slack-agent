@@ -51,3 +51,4 @@ These manifests deploy Moon Bot to a Kubernetes cluster. They match the producti
 - If you configure `BUCKET_PUBLIC_URL` to point at the Ingress host, Slack Block Kit artifact buttons will resolve to the cluster.
 - To use a PersistentVolumeClaim instead of `emptyDir`, replace the `emptyDir` block in `deployment.yaml` with a `persistentVolumeClaim` volume claim.
 - The included `secret.example.yaml` is safe to commit (it contains placeholders). The generated `secret.yaml` is gitignored and should never be committed.
+- When running in GitHub-only mode (`GITHUB_ONLY=true`), the webhook server exposes a `/health` endpoint on `GITHUB_WEBHOOK_PORT` (default 3000) for load-balancer or liveness probes.

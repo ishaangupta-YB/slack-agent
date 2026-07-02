@@ -184,6 +184,11 @@ async function handlePullRequestReviewComment(
 }
 
 async function handleWebhook(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  if (req.method === "GET" && req.url === "/health") {
+    sendJson(res, 200, { status: "ok", mode: "github-only" });
+    return;
+  }
+
   if (req.method !== "POST") {
     sendJson(res, 405, { error: "method not allowed" });
     return;
@@ -254,4 +259,8 @@ export function stopGitHubBotServer(): void {
     activeServer.close();
     activeServer = undefined;
   }
+}
+
+export function getActiveGitHubBotServer(): Server | undefined {
+  return activeServer;
 }
