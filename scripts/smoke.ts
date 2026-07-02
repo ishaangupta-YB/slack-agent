@@ -1922,7 +1922,7 @@ rLQ+epZplw==
   });
   assert.strictEqual(scheduler.deployTimeouts.length, 1, "Deploy follow-up should be scheduled");
 
-  stopScheduler();
+  await stopScheduler();
 
   // Public status monitor
   {
@@ -2000,7 +2000,7 @@ rLQ+epZplw==
 
       console.log("Public status monitor passed");
     } finally {
-      stopScheduler();
+      await stopScheduler();
       cfg.scheduler.statusMonitorChannel = savedChannel;
       cfg.scheduler.statusMonitorPages = savedPages;
       cfg.scheduler.statusMonitorCron = savedCron;

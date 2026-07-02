@@ -534,7 +534,7 @@ function registerWeeklyReport(app: App, state: SchedulerState): void {
 }
 
 export async function startScheduler(app: App): Promise<SchedulerState> {
-  stopScheduler();
+  await stopScheduler();
   const state: SchedulerState = {
     cronTasks: [],
     deployTimeouts: [],
@@ -549,11 +549,9 @@ export async function startScheduler(app: App): Promise<SchedulerState> {
   return state;
 }
 
-export function stopScheduler(): void {
+export async function stopScheduler(): Promise<void> {
   if (!activeScheduler) return;
-  for (const task of activeScheduler.cronTasks) {
-    task.stop();
-  }
+  await Promise.all(activeScheduler.cronTasks.map((task) => task.stop()));
   for (const timeout of activeScheduler.deployTimeouts) {
     clearTimeout(timeout);
   }

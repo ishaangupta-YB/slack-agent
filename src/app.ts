@@ -35,7 +35,7 @@ const isCheckMode = process.argv.includes("--check");
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, shutting down...`);
-  stopScheduler();
+  await stopScheduler();
   stopEsProxy();
   stopPlausibleProxy();
   stopHfProxy();
