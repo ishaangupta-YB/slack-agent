@@ -144,6 +144,15 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "MEMORY_CONTEXT_ENTRIES", status: "ok", message: `${memoryContextEntries} entries injected into the system prompt` });
   }
 
+  const maxContextMessages = parseInt(env("AGENT_MAX_CONTEXT_MESSAGES") || "0", 10);
+  if (Number.isNaN(maxContextMessages) || maxContextMessages < 0) {
+    checks.push({ name: "AGENT_MAX_CONTEXT_MESSAGES", status: "warn", message: "Invalid value; must be a non-negative integer (0 disables context truncation)" });
+  } else if (maxContextMessages === 0) {
+    checks.push({ name: "AGENT_MAX_CONTEXT_MESSAGES", status: "ok", message: "Context truncation disabled (unlimited)" });
+  } else {
+    checks.push({ name: "AGENT_MAX_CONTEXT_MESSAGES", status: "ok", message: `${maxContextMessages} messages sent to the LLM` });
+  }
+
   // Writable state directories
   const sessionsDir = env("SESSIONS_DIR") || "./sessions";
   if (await ensureDirWritable(sessionsDir)) {

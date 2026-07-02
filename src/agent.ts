@@ -140,6 +140,88 @@ async function readSessionMessages(filename: string): Promise<StoredMessage[]> {
     .map((line) => JSON.parse(line) as StoredMessage);
 }
 
+/**
+ * Group a list of LLM messages into atomic segments for context truncation.
+ *
+ * An assistant message that contains a <tool_call> must always be followed by
+ * the user observation that contains the tool results; the pair is kept or
+ * dropped together so the model never sees a dangling tool call without its
+ * outcome.
+ */
+function groupAtomicSegments(messages: LlmMessage[]): LlmMessage[][] {
+  const groups: LlmMessage[][] = [];
+  let i = 0;
+  while (i < messages.length) {
+    const msg = messages[i];
+    if (
+      msg.role === "assistant" &&
+      msg.content.includes("<tool_call>") &&
+      i + 1 < messages.length &&
+      messages[i + 1].role === "user"
+    ) {
+      groups.push([msg, messages[i + 1]]);
+      i += 2;
+    } else {
+      groups.push([msg]);
+      i++;
+    }
+  }
+  return groups;
+}
+
+function flattenMessages(groups: LlmMessage[][]): LlmMessage[] {
+  return groups.flat();
+}
+
+function truncateLlmMessages(messages: LlmMessage[], max: number): LlmMessage[] {
+  if (max <= 0 || messages.length <= max) return messages;
+
+  const hasSystem = messages[0]?.role === "system";
+  const systemMsg = hasSystem ? messages[0] : undefined;
+  const body = hasSystem ? messages.slice(1) : messages;
+  const maxBody = max - (hasSystem ? 1 : 0);
+
+  if (maxBody <= 0) {
+    return systemMsg ? [systemMsg] : messages;
+  }
+
+  const groups = groupAtomicSegments(body);
+  const pruned = groups;
+  while (flattenMessages(pruned).length > maxBody && pruned.length > 0) {
+    pruned.shift();
+  }
+
+  const result = flattenMessages(pruned);
+  if (systemMsg) {
+    result.unshift(systemMsg);
+  }
+  return result;
+}
+
+/**
+ * Build the list of LLM messages for a Slack thread from persisted session
+ * history. The first system message is always refreshed with the current
+ * access tier and cross-thread memory context, and the result is optionally
+ * truncated to keep long Slack conversations within a sensible context window.
+ */
+export function prepareLlmMessages(
+  storedMessages: StoredMessage[],
+  tier: AccessTier,
+  memoryContext: string,
+  maxContextMessages: number,
+): LlmMessage[] {
+  const messages: LlmMessage[] = storedMessages.map((m) => ({
+    role: m.role,
+    content: m.content,
+  }));
+
+  if (messages.length > 0 && messages[0].role === "system") {
+    messages[0].content = systemPrompt(tier, memoryContext);
+  }
+
+  return truncateLlmMessages(messages, maxContextMessages);
+}
+
 function appendSessionMessage(filename: string, msg: StoredMessage) {
   appendFileSync(sessionFilePath(filename), JSON.stringify(msg) + "\n");
 }
@@ -317,16 +399,12 @@ export async function handleMessage(
     });
 
     const history = await readSessionMessages(entry.sessionFilename);
-    const messages: LlmMessage[] = history.map((m) => ({
-      role: m.role,
-      content: m.content,
-    }));
-
-    // Ensure the first system message always reflects the user's current tier
-    // and includes any relevant cross-thread memory.
-    if (messages.length > 0 && messages[0].role === "system") {
-      messages[0].content = systemPrompt(tier, memoryContext);
-    }
+    const messages = prepareLlmMessages(
+      history,
+      tier,
+      memoryContext,
+      cfg.agent.maxContextMessages,
+    );
 
     const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
 

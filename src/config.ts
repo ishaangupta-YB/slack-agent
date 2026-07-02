@@ -28,6 +28,7 @@ export const cfg = {
       join(process.env.SESSIONS_DIR || "./sessions", "thread-map.json"),
     maxMemoryEntries: parseInt(process.env.MAX_MEMORY_ENTRIES || "200", 10),
     memoryContextEntries: parseInt(process.env.MEMORY_CONTEXT_ENTRIES || "3", 10),
+    maxContextMessages: parseInt(process.env.AGENT_MAX_CONTEXT_MESSAGES || "0", 10),
     systemPromptOverride: process.env.AGENT_SYSTEM_PROMPT_OVERRIDE,
   },
   code: {

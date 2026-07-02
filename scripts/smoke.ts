@@ -36,7 +36,7 @@ import { feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer, stopBucketServer, getActiveBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
-import { getSessionFilenameByThreadKey, handleMessage } from "../src/agent.js";
+import { getSessionFilenameByThreadKey, handleMessage, prepareLlmMessages } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -1371,6 +1371,42 @@ rLQ+epZplw==
 
   clearChatOverride();
   console.log("Automatic memory context injection passed");
+
+  // Context window truncation: long Slack threads are pruned before being sent
+  // to the LLM, while keeping the system message and tool-call/observation pairs
+  // intact.
+  const contextMessages: Parameters<typeof prepareLlmMessages>[0] = [
+    { role: "system", content: "original system prompt" },
+    { role: "assistant", content: '<tool_call>\n{"tool": "x"}\n</tool_call>' },
+    { role: "user", content: "[tool result] x" },
+    { role: "assistant", content: "intermediate answer" },
+    { role: "user", content: "follow-up" },
+    { role: "assistant", content: '<tool_call>\n{"tool": "y"}\n</tool_call>' },
+    { role: "user", content: "[tool result] y" },
+  ];
+
+  const fullContext = prepareLlmMessages(contextMessages, "basic", "", 0);
+  assert.strictEqual(fullContext.length, contextMessages.length, "max=0 should disable truncation");
+
+  const truncated = prepareLlmMessages(contextMessages, "basic", "", 4);
+  assert.ok(truncated.length <= 4, `truncated context should not exceed max (got ${truncated.length})`);
+  assert.strictEqual(truncated[0].role, "system", "system message should always be preserved");
+  assert(
+    truncated.some((m) => m.content.includes('"tool": "y"')),
+    "truncation should keep the most recent tool call",
+  );
+  assert(
+    truncated.some((m) => m.content.includes("[tool result] y")),
+    "truncation should keep the matching observation",
+  );
+  const hasToolX = truncated.some((m) => m.content.includes('"tool": "x"'));
+  const hasObsX = truncated.some((m) => m.content.includes("[tool result] x"));
+  assert.strictEqual(
+    hasToolX,
+    hasObsX,
+    "tool-call/observation pairs should be kept or dropped together",
+  );
+  console.log("Context window truncation passed");
 
   // Session restore from bucket after simulated pod restart
   await bucket.write(`sessions/${e2eResult.sessionFilename}`, readFileSync(e2eSessionPath));
