@@ -24,7 +24,7 @@ const isCheckMode = process.argv.includes("--check");
     process.exit(0);
   }
 
-  startScheduler(app);
+  await startScheduler(app);
   await app.start();
   console.log("Moon Bot is running in Socket Mode");
 })();

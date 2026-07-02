@@ -18,6 +18,8 @@ import {
   generateWeeklyReport,
   generateDeployReport,
   checkPublicStatusPages,
+  loadStatusMonitorState,
+  saveStatusMonitorState,
   type PublicStatusPageState,
 } from "../src/scheduler.js";
 import {
@@ -1823,7 +1825,7 @@ rLQ+epZplw==
     },
   } as unknown as Parameters<typeof startScheduler>[0];
 
-  const scheduler = startScheduler(mockApp);
+  const scheduler = await startScheduler(mockApp);
   assert.strictEqual(scheduler.cronTasks.length, 1, "Weekly report cron should be scheduled");
   assert.strictEqual(deployHandlers.length, 1, "Deploy monitor handler should be registered");
 
@@ -1882,7 +1884,7 @@ rLQ+epZplw==
     };
 
     try {
-      const scheduler = startScheduler(mockApp);
+      const scheduler = await startScheduler(mockApp);
       assert.strictEqual(
         scheduler.cronTasks.length,
         2,
@@ -1923,6 +1925,80 @@ rLQ+epZplw==
       cfg.scheduler.statusMonitorPages = savedPages;
       cfg.scheduler.statusMonitorCron = savedCron;
       globalThis.fetch = originalFetch;
+    }
+  }
+
+  // Public status monitor state persistence across restarts.
+  {
+    const savedStateFile = cfg.scheduler.statusMonitorStateFile;
+    const stateFile = join(process.env.SESSIONS_DIR!, `status-monitor-state-${randomUUID()}.json`);
+    cfg.scheduler.statusMonitorStateFile = stateFile;
+
+    const state = new Map<string, PublicStatusPageState>();
+    state.set("https://status.example.com/api/v2/status.json", {
+      url: "https://status.example.com/api/v2/status.json",
+      lastIndicator: "major",
+    });
+
+    try {
+      await saveStatusMonitorState(state);
+      assert(existsSync(stateFile), "Status monitor state should be written locally");
+      rmSync(stateFile, { force: true });
+
+      const restored = await loadStatusMonitorState();
+      assert.strictEqual(
+        restored.get("https://status.example.com/api/v2/status.json")?.lastIndicator,
+        "major",
+        "Status monitor state should be restored from bucket after local loss",
+      );
+
+      const postedMessages: Array<Record<string, unknown>> = [];
+      const mockApp = {
+        client: {
+          chat: {
+            postMessage: async (args: Record<string, unknown>) => {
+              postedMessages.push(args);
+              return {};
+            },
+          },
+        },
+      } as unknown as Parameters<typeof checkPublicStatusPages>[0];
+
+      const originalFetch = globalThis.fetch;
+      globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
+        const urlString = String(url);
+        if (urlString.includes("status.example.com")) {
+          return new Response(
+            JSON.stringify({
+              page: { name: "Example Service", updated_at: new Date().toISOString() },
+              status: { indicator: "major", description: "Still major" },
+            }),
+            { status: 200, headers: { "Content-Type": "application/json" } },
+          );
+        }
+        return originalFetch(url, init);
+      };
+
+      try {
+        await checkPublicStatusPages(
+          mockApp,
+          "CSTATUS",
+          ["https://status.example.com/api/v2/status.json"],
+          restored,
+        );
+        assert.strictEqual(
+          postedMessages.length,
+          0,
+          "Restored incident state should prevent duplicate alert after restart",
+        );
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+
+      console.log("Public status monitor state persistence passed");
+    } finally {
+      cfg.scheduler.statusMonitorStateFile = savedStateFile;
+      rmSync(stateFile, { force: true });
     }
   }
 

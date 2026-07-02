@@ -69,7 +69,7 @@ export const statusTool = {
       `*Scheduled tasks:*`,
       `• Weekly report channel: ${cfg.scheduler.weeklyReportChannel || "disabled"}`,
       `• Deploy monitor channel: ${cfg.scheduler.deployChannel || "disabled"}`,
-      `• Public status monitor channel: ${cfg.scheduler.statusMonitorChannel || "disabled"} (${cfg.scheduler.statusMonitorPages.length} page(s))`,
+      `• Public status monitor channel: ${cfg.scheduler.statusMonitorChannel || "disabled"} (${cfg.scheduler.statusMonitorPages.length} page(s)${cfg.scheduler.statusMonitorChannel ? ", restart-safe state" : ""})`,
       ``,
       `*Security:*`,
       `• Guest accounts: ${cfg.security.allowGuests ? "allowed" : "refused"}`,

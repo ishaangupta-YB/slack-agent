@@ -1,7 +1,10 @@
 import type { App, SlackEventMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
 import { schedule, validate, type ScheduledTask } from "node-cron";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname } from "node:path";
 import { cfg } from "./config.js";
 import { esSearch, totalHits, type EsSearchResponse } from "./integrations/es.js";
+import { bucket } from "./storage/bucket.js";
 
 export interface PublicStatusPageState {
   url: string;
@@ -19,6 +22,7 @@ let activeScheduler: SchedulerState | undefined;
 
 const WEEKLY_CRON = "0 9 * * 1";
 const STATUS_MONITOR_CRON_DEFAULT = "*/15 * * * *";
+const STATUS_MONITOR_STATE_BUCKET_KEY = "status-monitor-state.json";
 const DEPLOY_KEYWORDS = ["deploy", "deploying", "release", "releasing", "shipping", "rolled out"];
 const OPERATIONAL_STATUS_VALUES = new Set([
   "none",
@@ -367,6 +371,65 @@ function isIncidentStatus(indicator: string): boolean {
   return !OPERATIONAL_STATUS_VALUES.has(indicator.toLowerCase().trim());
 }
 
+function ensureStatusMonitorStateDir() {
+  const dir = dirname(cfg.scheduler.statusMonitorStateFile);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+}
+
+function serializePageState(state: Map<string, PublicStatusPageState>): string {
+  return JSON.stringify(Object.fromEntries(state.entries()), null, 2);
+}
+
+function deserializePageState(payload: string): Map<string, PublicStatusPageState> {
+  try {
+    const parsed = JSON.parse(payload) as Record<string, PublicStatusPageState>;
+    const map = new Map<string, PublicStatusPageState>();
+    for (const [url, entry] of Object.entries(parsed)) {
+      if (entry && typeof entry.url === "string") {
+        map.set(url, entry);
+      }
+    }
+    return map;
+  } catch {
+    return new Map<string, PublicStatusPageState>();
+  }
+}
+
+export async function loadStatusMonitorState(): Promise<Map<string, PublicStatusPageState>> {
+  ensureStatusMonitorStateDir();
+  const localPath = cfg.scheduler.statusMonitorStateFile;
+
+  if (!existsSync(localPath)) {
+    try {
+      const remote = await bucket.read(STATUS_MONITOR_STATE_BUCKET_KEY);
+      writeFileSync(localPath, remote);
+    } catch {
+      // No remote state yet; start fresh.
+    }
+  }
+
+  if (!existsSync(localPath)) {
+    return new Map<string, PublicStatusPageState>();
+  }
+
+  try {
+    return deserializePageState(readFileSync(localPath, "utf-8"));
+  } catch {
+    return new Map<string, PublicStatusPageState>();
+  }
+}
+
+export async function saveStatusMonitorState(state: Map<string, PublicStatusPageState>): Promise<void> {
+  ensureStatusMonitorStateDir();
+  const payload = serializePageState(state);
+  writeFileSync(cfg.scheduler.statusMonitorStateFile, payload);
+  try {
+    await bucket.write(STATUS_MONITOR_STATE_BUCKET_KEY, payload, "application/json; charset=utf-8");
+  } catch (err) {
+    console.warn("Failed to sync status-monitor-state.json to bucket:", err instanceof Error ? err.message : String(err));
+  }
+}
+
 async function postStatusAlert(
   app: App,
   channel: string,
@@ -420,9 +483,11 @@ export async function checkPublicStatusPages(
       console.error(`Status monitor: failed to check ${url}:`, err);
     }
   }
+
+  await saveStatusMonitorState(state);
 }
 
-function registerPublicStatusMonitor(app: App, state: SchedulerState): void {
+async function registerPublicStatusMonitor(app: App, state: SchedulerState): Promise<void> {
   const channel = cfg.scheduler.statusMonitorChannel;
   const pages = cfg.scheduler.statusMonitorPages;
   const cron = cfg.scheduler.statusMonitorCron || STATUS_MONITOR_CRON_DEFAULT;
@@ -433,7 +498,7 @@ function registerPublicStatusMonitor(app: App, state: SchedulerState): void {
   }
 
   if (!state.statusMonitorPageState) {
-    state.statusMonitorPageState = new Map<string, PublicStatusPageState>();
+    state.statusMonitorPageState = await loadStatusMonitorState();
   }
 
   const task = schedule(
@@ -468,7 +533,7 @@ function registerWeeklyReport(app: App, state: SchedulerState): void {
   console.log(`Weekly report scheduled for ${channel} (${WEEKLY_CRON} UTC)`);
 }
 
-export function startScheduler(app: App): SchedulerState {
+export async function startScheduler(app: App): Promise<SchedulerState> {
   stopScheduler();
   const state: SchedulerState = {
     cronTasks: [],
@@ -479,7 +544,7 @@ export function startScheduler(app: App): SchedulerState {
 
   registerWeeklyReport(app, state);
   registerDeployMonitor(app, state);
-  registerPublicStatusMonitor(app, state);
+  await registerPublicStatusMonitor(app, state);
 
   return state;
 }

@@ -99,6 +99,9 @@ export const cfg = {
     statusMonitorChannel: process.env.STATUS_MONITOR_CHANNEL || "",
     statusMonitorPages: csv(process.env.STATUS_MONITOR_PAGES || ""),
     statusMonitorCron: process.env.STATUS_MONITOR_CRON || "*/15 * * * *",
+    statusMonitorStateFile:
+      process.env.STATUS_MONITOR_STATE_FILE ||
+      join(process.env.SESSIONS_DIR || "./sessions", "status-monitor-state.json"),
   },
   feedback: {
     logFile:
