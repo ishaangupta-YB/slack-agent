@@ -38,6 +38,11 @@ async function callSlack<T>(
   }
 }
 
+export interface VerifyClients {
+  bot?: WebClient;
+  app?: WebClient;
+}
+
 /**
  * Verify Slack connectivity and scopes using the Slack Web API.
  *
@@ -46,11 +51,13 @@ async function callSlack<T>(
  * messages successfully. Each check is independent: a user-token failure does
  * not mask a bot-token success.
  */
-export async function verifySlack(client?: WebClient): Promise<VerifyResult> {
+export async function verifySlack(clients?: VerifyClients): Promise<VerifyResult> {
   const botToken = cfg.slack.botToken;
+  const appToken = cfg.slack.appToken;
   const userToken = cfg.slack.userToken;
 
-  const botClient = client ?? new WebClient(botToken);
+  const botClient = clients?.bot ?? new WebClient(botToken);
+  const appClient = clients?.app ?? new WebClient(appToken);
   const checks: VerifyCheck[] = [];
 
   // Bot auth.test validates the token and surfaces the installed workspace.
@@ -60,6 +67,18 @@ export async function verifySlack(client?: WebClient): Promise<VerifyResult> {
       "bot_auth",
       (r) =>
         `Authenticated as ${r.user ?? "unknown"} (${r.user_id ?? "unknown"})` +
+        ` in workspace ${r.team ?? "unknown"}`,
+    ),
+  );
+
+  // App-level auth.test validates the xapp token used for Socket Mode. A
+  // correct bot token is not enough — Socket Mode also needs a valid app token.
+  checks.push(
+    await callSlack(
+      () => appClient.auth.test(),
+      "app_auth",
+      (r) =>
+        `Socket Mode app token OK${r.app_id ? ` (app ${r.app_id})` : ""}` +
         ` in workspace ${r.team ?? "unknown"}`,
     ),
   );

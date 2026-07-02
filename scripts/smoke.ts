@@ -3420,12 +3420,19 @@ rLQ+epZplw==
       postMessage: async () => ({ ok: true }),
     },
   } as unknown as WebClient;
-  const goodResult = await verifySlack(goodMockClient);
+  const goodAppClient = {
+    auth: {
+      test: async () => ({ ok: true, app_id: "A123", team: "demo" }),
+    },
+  } as unknown as WebClient;
+  const goodResult = await verifySlack({ bot: goodMockClient, app: goodAppClient });
   assert.strictEqual(goodResult.ok, true);
   assert(goodResult.checks.some((c) => c.name === "bot_auth" && c.ok));
+  assert(goodResult.checks.some((c) => c.name === "app_auth" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "channels_read" && c.ok));
 
-  // With a failed auth check, the verification reports the failure but still runs channels_read.
+  // With a failed bot auth check, the verification reports the failure but the independent
+  // Socket Mode app-token check still runs and can pass.
   const badMockClient = {
     auth: {
       test: async () => ({ ok: false, error: "invalid_auth" }),
@@ -3434,9 +3441,15 @@ rLQ+epZplw==
       list: async () => ({ ok: true, channels: [] }),
     },
   } as unknown as WebClient;
-  const badResult = await verifySlack(badMockClient);
+  const badAppClient = {
+    auth: {
+      test: async () => ({ ok: true, app_id: "A123", team: "demo" }),
+    },
+  } as unknown as WebClient;
+  const badResult = await verifySlack({ bot: badMockClient, app: badAppClient });
   assert.strictEqual(badResult.ok, false);
   assert(badResult.checks.some((c) => c.name === "bot_auth" && !c.ok));
+  assert(badResult.checks.some((c) => c.name === "app_auth" && c.ok));
   console.log("Slack connectivity verification passed");
 
   // One-shot local ask CLI: lets developers run a single agent turn without Slack credentials.

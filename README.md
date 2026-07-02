@@ -139,7 +139,7 @@ npm run diagnose               # validate env vars and local directories
 npm run verify-slack           # validate Slack token scopes and connectivity
 ```
 
-`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-slack` calls the Slack Web API to confirm the bot token, required scopes, and optional user token are ready before starting Socket Mode.
+`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode.
 
 ### 5. Talk to Moon Bot
 
