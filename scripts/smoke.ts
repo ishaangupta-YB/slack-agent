@@ -1,7 +1,7 @@
 import assert from "node:assert";
 import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
-import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { parseToolCalls, parseToolCallsWithErrors, formatToolResult, formatParseErrors } from "../src/tools/parser.js";
@@ -2633,6 +2633,52 @@ rLQ+epZplw==
   }
 
   console.log("K8s secret example validated");
+
+  // .env.example must stay in sync with source code so operators know every available option.
+  function collectEnvNamesFromDir(dir: string): Set<string> {
+    const names = new Set<string>();
+    function walk(current: string) {
+      for (const entry of readdirSync(current)) {
+        const full = join(current, entry);
+        if (statSync(full).isDirectory()) {
+          walk(full);
+        } else if (full.endsWith(".ts")) {
+          const srcCode = readFileSync(full, "utf-8");
+          for (const match of srcCode.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
+            names.add(match[1]);
+          }
+          for (const match of srcCode.matchAll(/requireEnv\(\s*"([A-Z0-9_]+)"\s*\)/g)) {
+            names.add(match[1]);
+          }
+          for (const match of srcCode.matchAll(/env\(\s*"([A-Z0-9_]+)"\s*\)/g)) {
+            names.add(match[1]);
+          }
+        }
+      }
+    }
+    walk(dir);
+    return names;
+  }
+
+  const sourceNames = new Set<string>();
+  for (const name of collectEnvNamesFromDir("src")) sourceNames.add(name);
+  for (const name of collectEnvNamesFromDir("scripts")) sourceNames.add(name);
+  const ignoredSourceNames = ["NODE_ENV"];
+  const envExampleRaw = readFileSync(".env.example", "utf-8");
+  for (const name of sourceNames) {
+    if (ignoredSourceNames.includes(name)) continue;
+    assert(
+      envExampleRaw.includes(`${name}=`) || envExampleRaw.includes(`# ${name}=`),
+      `.env.example must document env var ${name}`,
+    );
+  }
+  for (const match of envExampleRaw.matchAll(/^[#\s]*([A-Z0-9_]+)=/gm)) {
+    const name = match[1];
+    if (!sourceNames.has(name)) {
+      assert.fail(`.env.example documents obsolete env var ${name} not used in source code`);
+    }
+  }
+  console.log(".env.example validated");
 
   // Bot mention stripping from app_mention / DM text
   assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
