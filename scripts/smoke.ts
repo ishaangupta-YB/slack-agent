@@ -2401,6 +2401,25 @@ rLQ+epZplw==
   });
   assert.strictEqual(routingCalls.length, 0, "message_changed and message_deleted events should be ignored");
 
+  // 7) A bare @-mention with no question text should not start an agent reply.
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "channel",
+        channel: "C1",
+        ts: "1777000012.000000",
+        user: "U1",
+        text: "<@UBOT>",
+      },
+      event_ts: "1234567890.000006",
+    },
+    ack: async () => {},
+  });
+  assert.strictEqual(routingCalls.length, 0, "bare @-mention without text should not trigger a reply");
+
   clearChatOverride();
   console.log("Channel / MPIM / DM message routing passed");
 

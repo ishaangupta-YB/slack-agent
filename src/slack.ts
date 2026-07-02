@@ -177,6 +177,10 @@ async function handleIncomingMessage({
   const botUserId = await ensureBotUserId(client);
   const cleanText = stripBotMention(text, botUserId);
 
+  // Ignore messages that contain no usable text after stripping the bot mention
+  // (e.g. a bare @-mention, an emoji-only message, or a file share).
+  if (!cleanText.trim()) return;
+
   try {
     const { text: reply, sessionFilename, skipped } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
