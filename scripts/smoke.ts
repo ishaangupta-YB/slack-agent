@@ -35,6 +35,7 @@ import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
 import { clearGitHubTokenCache } from "../src/integrations/github.js";
 import { loadSkills } from "../src/skills/loader.js";
+import { verifySlack } from "./verify-slack.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -199,6 +200,7 @@ async function main() {
 
   // Slack Real-Time Search API
   const originalFetch = globalThis.fetch;
+  const originalSlackUserToken = cfg.slack.userToken;
   cfg.slack.userToken = "xoxp-test";
   let capturedSearchRequest: { url?: string; body?: Record<string, unknown> } | undefined;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = async (
@@ -244,6 +246,7 @@ async function main() {
   assert.strictEqual(capturedSearchRequest?.body?.limit, 3);
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
+  cfg.slack.userToken = originalSlackUserToken;
 
   // Plausible analytics query
   const plausibleApiKey = cfg.integrations.plausibleApiKey;
@@ -1782,6 +1785,37 @@ rLQ+epZplw==
   await dispatchSlashCommand("invalid_subcommand");
   assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
   console.log("Slash command /moonbot passed");
+
+  // Slack connectivity verification: with a healthy mocked WebClient every check passes.
+  const goodMockClient = {
+    auth: {
+      test: async () => ({ ok: true, user: "moonbot", user_id: "U123", team: "demo" }),
+    },
+    conversations: {
+      list: async () => ({ ok: true, channels: [{ id: "C1", name: "general" }] }),
+    },
+    chat: {
+      postMessage: async () => ({ ok: true }),
+    },
+  } as unknown as WebClient;
+  const goodResult = await verifySlack(goodMockClient);
+  assert.strictEqual(goodResult.ok, true);
+  assert(goodResult.checks.some((c) => c.name === "bot_auth" && c.ok));
+  assert(goodResult.checks.some((c) => c.name === "channels_read" && c.ok));
+
+  // With a failed auth check, the verification reports the failure but still runs channels_read.
+  const badMockClient = {
+    auth: {
+      test: async () => ({ ok: false, error: "invalid_auth" }),
+    },
+    conversations: {
+      list: async () => ({ ok: true, channels: [] }),
+    },
+  } as unknown as WebClient;
+  const badResult = await verifySlack(badMockClient);
+  assert.strictEqual(badResult.ok, false);
+  assert(badResult.checks.some((c) => c.name === "bot_auth" && !c.ok));
+  console.log("Slack connectivity verification passed");
 
   // One-shot local ask CLI: lets developers run a single agent turn without Slack credentials.
   clearChatOverride();

@@ -124,13 +124,14 @@ Or use Docker:
 docker compose up --build
 ```
 
-### 4. Pre-flight check
+### 4. Pre-flight checks
 
 ```bash
-npm run diagnose
+npm run diagnose   # validate env vars and local directories
+npm run verify-slack   # validate Slack token scopes and connectivity
 ```
 
-`diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags.
+`diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-slack` calls the Slack Web API to confirm the bot token, required scopes, and optional user token are ready before starting Socket Mode.
 
 ### 5. Talk to Moon Bot
 
@@ -169,12 +170,13 @@ See `.env.example` for the full list.
 ## Development & testing
 
 ```bash
-npm run typecheck   # TypeScript type checking
-npm run lint        # ESLint
-npm run build       # Compile TypeScript to dist/
-npm run smoke       # Full integration smoke suite
-npm run diagnose    # Pre-flight config validation
-npm run dev         # Run with tsx (no build step)
+npm run typecheck    # TypeScript type checking
+npm run lint         # ESLint
+npm run build        # Compile TypeScript to dist/
+npm run smoke        # Full integration smoke suite
+npm run diagnose     # Pre-flight config validation
+npm run verify-slack # Pre-flight Slack connectivity validation
+npm run dev          # Run with tsx (no build step)
 ```
 
 The smoke suite covers the ReAct loop, tool execution, tier gating, credential proxies, session restore from bucket, Slack event routing, assistant integration, and more.
