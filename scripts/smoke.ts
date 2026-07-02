@@ -27,7 +27,7 @@ import {
   handleFeedbackAction,
   handleResetThread,
 } from "../src/slack.js";
-import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs } from "@slack/bolt";
+import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
 import { feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
@@ -2166,14 +2166,18 @@ rLQ+epZplw==
   // Slash command /moonbot
   const slashResponses: Array<{ text?: string; response_type?: string }> = [];
   let ackCount = 0;
-  async function dispatchSlashCommand(text: string): Promise<void> {
+  async function dispatchSlashCommand(
+    text: string,
+    client?: WebClient,
+    userId = "U1",
+  ): Promise<void> {
     slashResponses.length = 0;
     ackCount = 0;
     await handleMoonbotCommand({
       command: {
         command: "/moonbot",
         text,
-        user_id: "U1",
+        user_id: userId,
         channel_id: "C1",
         team_id: "T1",
         token: "test-token",
@@ -2190,7 +2194,8 @@ rLQ+epZplw==
       respond: async (args) => {
         slashResponses.push(args as { text?: string; response_type?: string });
       },
-    } as unknown as SlackCommandMiddlewareArgs);
+      client: client ?? ({} as WebClient),
+    } as unknown as SlackCommandMiddlewareArgs & AllMiddlewareArgs);
   }
 
   await dispatchSlashCommand("");
@@ -2224,6 +2229,30 @@ rLQ+epZplw==
     "diagnose command must not expose Slack bot token",
   );
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "diagnose command should be ephemeral");
+
+  await dispatchSlashCommand(
+    "whoami",
+    {
+      users: {
+        info: async () => ({
+          ok: true,
+          user: {
+            id: "U_WHOAMI",
+            profile: { email: "alice@example.com" },
+            is_restricted: false,
+            is_ultra_restricted: false,
+          },
+        }),
+      },
+    } as unknown as WebClient,
+    "U_WHOAMI",
+  );
+  const whoamiText = slashResponses[0].text ?? "";
+  assert(whoamiText.includes("U_WHOAMI"), "whoami should include the Slack user ID");
+  assert(whoamiText.includes("alice@example.com"), "whoami should include the user's email");
+  assert(whoamiText.includes("basic"), "whoami should show the resolved access tier");
+  assert(whoamiText.includes("Guest account: no"), "whoami should show guest status");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "whoami command should be ephemeral");
 
   await dispatchSlashCommand("report");
   assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");

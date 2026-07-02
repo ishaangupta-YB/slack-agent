@@ -44,6 +44,7 @@ export const helpTool: Tool = {
         `• \`/moonbot status\` — current configuration\n` +
         `• \`/moonbot diagnose\` — pre-flight configuration check\n` +
         `• \`/moonbot ping\` — live LLM connectivity check\n` +
+        `• \`/moonbot whoami\` — your access tier and guest status\n` +
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
         `• \`/moonbot report deploy\` — deploy impact check on demand\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.`,
@@ -81,7 +82,7 @@ export const helpTool: Tool = {
         `**Automated reports**\n` +
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
-        `• Slash commands: \`/moonbot report weekly\`, \`/moonbot report deploy\`, or \`/moonbot diagnose\`\n\n` +
+        `• Slash commands: \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +

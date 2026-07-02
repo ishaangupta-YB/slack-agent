@@ -33,7 +33,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Scheduled tasks** | Weekly ops report and post-deploy impact monitor backed by Elasticsearch; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | report` for quick discovery. |
+| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | report` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
 | **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
@@ -163,8 +163,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
 7. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
-8. **Live diagnostics and LLM ping:**  
-   `/moonbot diagnose` and `/moonbot ping`
+8. **Live diagnostics, LLM ping, and identity:**  
+   `/moonbot diagnose`, `/moonbot ping`, and `/moonbot whoami`
 9. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
 10. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
 11. **Status / help:**  
@@ -182,7 +182,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 1:20–1:50 | Code Q&A + GitHub | Mention `@Moon Bot` and ask it to search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
-| 2:30–2:50 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot ping`, `/moonbot status`, tiered access explanation, and the HTML trace viewer stepping through a session. |
+| 2:30–2:50 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot ping`, `/moonbot status`, `/moonbot whoami`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:50–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---

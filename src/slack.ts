@@ -13,6 +13,7 @@ import {
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
 import { handleMessage, hasThreadKey, resetThread } from "./agent.js";
+import { resolveAccessTier } from "./auth/tiers.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
@@ -69,7 +70,7 @@ const emailCache = new Map<string, string | undefined>();
 const guestCache = new Map<string, boolean | undefined>();
 let botUserIdCache: string | undefined | null = null;
 
-async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
+export async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
   const cached = emailCache.get(userId);
   if (cached !== undefined || emailCache.has(userId)) return cached;
 
@@ -372,7 +373,7 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | status | diagnose | ping | report].
+ * Slash command entry point: /moonbot [help | status | diagnose | ping | whoami | report].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, and live LLM connectivity without starting a
@@ -382,7 +383,8 @@ export async function handleMoonbotCommand({
   command,
   ack,
   respond,
-}: SlackCommandMiddlewareArgs): Promise<void> {
+  client,
+}: SlackCommandMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
   await ack();
 
   const args = command.text.trim().split(/\s+/).filter(Boolean);
@@ -394,6 +396,24 @@ export async function handleMoonbotCommand({
       topic && ["general", "code", "data", "slack"].includes(topic) ? topic : "general";
     await respond({
       text: await helpTool.run({ topic: safeTopic }),
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "whoami") {
+    const userId = command.user_id;
+    const userEmail = await getUserEmail(client, userId);
+    const tier = await resolveAccessTier(userId, userEmail);
+    const guest = await isGuestUser(client, userId);
+
+    await respond({
+      text:
+        `*Your Moon Bot identity* 🌙\n` +
+        `• Slack user ID: \`${userId}\`\n` +
+        `• Email: ${userEmail || "_not available_"}\n` +
+        `• Resolved access tier: \`${tier}\`\n` +
+        `• Guest account: ${guest ? "yes (access blocked)" : "no"}`,
       response_type: "ephemeral",
     });
     return;
@@ -476,6 +496,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot status` — my current configuration\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
+      "• `/moonbot whoami` — your resolved access tier and guest status\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",
     response_type: "ephemeral",
