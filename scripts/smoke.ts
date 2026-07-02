@@ -256,6 +256,47 @@ async function main() {
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
   cfg.slack.userToken = originalSlackUserToken;
 
+  // Slack Real-Time Search API should scope searches to the current channel via
+  // context_channel_id when a tool context channelId is available.
+  cfg.slack.userToken = "xoxp-test";
+  const originalSearchFetch = globalThis.fetch;
+  let contextSearchRequest: { url?: string; body?: Record<string, unknown> } | undefined;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const body = init?.body ? (JSON.parse(init.body as string) as Record<string, unknown>) : undefined;
+    contextSearchRequest = { url, body };
+    return new Response(
+      JSON.stringify({
+        ok: true,
+        results: {
+          messages: [
+            {
+              content: "Channel-scoped result",
+              permalink: "https://example.slack.com/archives/C123456/p123",
+              channel_name: "discuss",
+              author_name: "bob",
+            },
+          ],
+        },
+        response_metadata: { next_cursor: "" },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+
+  await runWithToolContext({ channelId: "C123456" }, () =>
+    runToolCall({ tool: "search_slack", params: { query: "context scoped", limit: 2 } }),
+  );
+  assert.strictEqual(contextSearchRequest?.body?.query, "context scoped");
+  assert.strictEqual(contextSearchRequest?.body?.context_channel_id, "C123456");
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalSearchFetch;
+  cfg.slack.userToken = originalSlackUserToken;
+  console.log("Slack Real-Time Search API passed");
+
   // Plausible analytics query
   const plausibleApiKey = cfg.integrations.plausibleApiKey;
   cfg.integrations.plausibleApiKey = "plausible-test-key";

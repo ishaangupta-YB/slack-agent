@@ -145,6 +145,11 @@ async function searchSlack(input: z.infer<typeof searchSlackParams>): Promise<st
     body.before = input.before;
   }
 
+  const { channelId } = getToolContext();
+  if (channelId) {
+    body.context_channel_id = channelId;
+  }
+
   try {
     const resp = await fetch(`${SLACK_API_BASE}/assistant.search.context`, {
       method: "POST",

@@ -20,6 +20,8 @@ Call it with a natural-language or keyword `query`. Optional parameters:
 - `sort`: `"score"` or `"timestamp"`
 - `sort_dir`: `"asc"` or `"desc"`
 
+When Moon Bot is invoked in a Slack thread, the current channel is automatically sent as `context_channel_id` so Slack can surface results from the conversation you are in.
+
 ## Authentication
 
 If the bot was invoked through a Slack AI entry point, the `action_token` from the event is used automatically with the bot token. Otherwise the `SLACK_USER_TOKEN` environment variable is used.
