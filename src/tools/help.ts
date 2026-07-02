@@ -29,7 +29,7 @@ export const helpTool: Tool = {
         `• Code Q&A across cloned repos\n` +
         `• GitHub PRs, issue filing, and follow-up commits\n` +
         `• Elasticsearch, MongoDB, AWS Athena, and DuckDB/Sizzle queries\n` +
-        `• Plausible traffic analytics and Slack real-time search\n` +
+        `• Plausible traffic analytics, public status pages, and Slack real-time search\n` +
         `• Weekly ops reports and deploy-impact monitoring\n\n` +
         `**How to talk to me**\n` +
         `• Mention me in a channel: \`@Moon Bot <your question>\`\n` +
@@ -67,11 +67,13 @@ export const helpTool: Tool = {
         `• \`mongo_query\` — MongoDB queries\n` +
         `• \`athena_query\` — AWS ALB/WAF/CloudFront logs via Athena\n` +
         `• \`sizzle_query\` — DuckDB queries over Xet/Sizzle DuckLake files\n` +
-        `• \`plausible_query\` — privacy-preserving traffic analytics\n\n` +
+        `• \`plausible_query\` — privacy-preserving traffic analytics\n` +
+        `• \`public_status\` — check public status pages for civic/nonprofit services\n\n` +
         `**Example prompts**\n` +
         `• “How many 5xx errors did we see in the last hour?”\n` +
         `• “Show me the top 10 Plausible pages for docs this week.”\n` +
-        `• “Query Athena for ALB 5xx rate in the last 30 minutes.”`,
+        `• “Query Athena for ALB 5xx rate in the last 30 minutes.”\n` +
+        `• “Check the status page for status.cloudflare.com.”`,
 
       slack:
         `**Slack tools**\n` +

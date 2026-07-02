@@ -577,6 +577,66 @@ async function main() {
   cfg.integrations.esApiKey = originalEsApiKey;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForReports;
 
+  // public_status tool checks public status pages for civic/nonprofit services.
+  const originalFetchForStatus = globalThis.fetch;
+  let statusRequestUrl: string | undefined;
+  const statusFetchMock = async (input: RequestInfo | URL) => {
+    statusRequestUrl = typeof input === "string" ? input : input.toString();
+    return new Response(
+      JSON.stringify({
+        page: {
+          id: "page-1",
+          name: "Civic Cloud",
+          updated_at: "2026-07-02T10:00:00Z",
+        },
+        status: {
+          indicator: "minor",
+          description: "Elevated latency in the donation API",
+        },
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+  const badStatusFetchMock = async () =>
+    new Response("Not found", { status: 404, statusText: "Not Found" });
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = statusFetchMock as typeof fetch;
+  const publicStatusResult = await runToolCall(
+    { tool: "public_status", params: { status_page_url: "https://status.example.com/api/v2/status.json" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(publicStatusResult.error, undefined);
+  assert(publicStatusResult.result.includes("Civic Cloud"));
+  assert(publicStatusResult.result.includes("minor"));
+  assert(publicStatusResult.result.includes("Elevated latency"));
+  assert(statusRequestUrl?.includes("status.example.com"));
+
+  // Unrecognized JSON shape returns a graceful message.
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = async () =>
+    new Response(JSON.stringify({ foo: "bar" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    }) as unknown as Response;
+  const genericStatusResult = await runToolCall(
+    { tool: "public_status", params: { status_page_url: "https://status.generic.test/index.json" } },
+    8_000,
+    "basic",
+  );
+  assert(genericStatusResult.result.includes("unknown"));
+
+  // HTTP errors are surfaced clearly.
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = badStatusFetchMock as typeof fetch;
+  const badStatusResult = await runToolCall(
+    { tool: "public_status", params: { status_page_url: "https://status.down.test/api/v2/status.json" } },
+    8_000,
+    "basic",
+  );
+  assert(badStatusResult.result.includes("404"));
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatus;
+  console.log("Public status tool passed");
+
   // Elasticsearch local credential proxy
   const originalEsProxyPort = cfg.integrations.esProxyPort;
   const originalEsProxyToken = cfg.integrations.esProxyToken;
@@ -2057,6 +2117,7 @@ rLQ+epZplw==
     "status",
     "help",
     "reports",
+    "social-impact",
   ]) {
     assert(
       skillNames.includes(expected),

@@ -1,6 +1,6 @@
 # Moon Bot — Slack Agent Builder Challenge Submission
 
-**Track:** New Slack Agent  
+**Track:** New Slack Agent / Slack Agent for Good  
 **Team:** Moon Bot  
 **Repo:** `moon-bot-slack-agent`
 
@@ -16,6 +16,8 @@ Moon Bot is an always-on engineering assistant that lives in Slack, remembers ev
 
 Moon Bot collapses the daily context-switching between Elasticsearch, MongoDB, GitHub, the IDE, and analytics dashboards into one Slack conversation. Support can ask about user-facing behavior without touching a terminal. Engineers can ask whether a feature exists, how it works, or whether something is a bug — even in codebases they don't know well. It also queries logs and metrics, opens GitHub PRs and issues, searches Slack history in real time, and posts scheduled ops reports.
 
+For the **Slack Agent for Good** track, Moon Bot is aimed at under-resourced nonprofit, civic-tech, and open-source teams that do not have dedicated SREs or 24/7 on-call. A single volunteer can check public status pages, query logs, search Slack history for prior incidents, file GitHub issues, open fixes as PRs, and post plain-language impact updates — all from the same Slack thread. This democratizes platform-engineering skills and helps small teams keep critical public services online.
+
 The bot is built for the Slack Agent Builder Challenge and satisfies all three mandatory technology requirements: Slack AI capabilities, MCP server integration, and the Real-Time Search API. It runs in Socket Mode (no public ingress required), uses Cloudflare Workers AI with Kimi K2.7 or Kimi 2.6, persists state to a HuggingFace Bucket or local filesystem, and ships with Docker, docker-compose, and Kubernetes manifests.
 
 ---
@@ -28,7 +30,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
 | **Code Q&A** | Clone repos, search files by name or content, read/edit code, and open PRs. |
-| **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, and DuckDB/Sizzle storage stats. |
+| **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions** | Every Slack thread is an independent, persistent session backed by a bucket; conversations survive restarts. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
@@ -166,9 +168,11 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `/moonbot report weekly` and `/moonbot report deploy`
 8. **Live diagnostics, LLM ping, and identity:**  
    `/moonbot diagnose`, `/moonbot ping`, and `/moonbot whoami`
-9. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
-10. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-11. **Status / help:**  
+9. **Agent for Good — public service monitoring:**  
+   `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
+10. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
+11. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
+12. **Status / help:**  
    `/moonbot status`
 
 ---
@@ -183,8 +187,9 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 1:20–1:50 | Code Q&A + GitHub | Mention `@Moon Bot` and ask it to search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
-| 2:30–2:50 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot ping`, `/moonbot status`, `/moonbot whoami`, tiered access explanation, and the HTML trace viewer stepping through a session. |
-| 2:50–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
+| 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer checks a public status page and files a GitHub issue from a single thread. |
+| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot ping`, `/moonbot status`, `/moonbot whoami`, tiered access explanation, and the HTML trace viewer stepping through a session. |
+| 2:55–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---
 

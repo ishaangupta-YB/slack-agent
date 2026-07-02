@@ -2,7 +2,7 @@
 
 **Moon Bot** is an always-on engineering assistant that lives in Slack. It can answer questions about code, query logs and metrics, search Slack history in real time, open GitHub PRs, and run scheduled ops reports — all from a single thread.
 
-Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bot combines three hackathon-mandatory technologies:
+Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent for Good track), Moon Bot combines three hackathon-mandatory technologies:
 
 - **Slack AI capabilities** — native assistant panel integration with suggested prompts and contextual status.
 - **MCP server integration** — dynamically discovers and invokes tools from external Model Context Protocol servers.
@@ -13,8 +13,9 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bo
 ## What it does
 
 - **Code Q&A** — clone repos, search files by name or content, read and edit code, open PRs.
-- **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, and DuckDB/Sizzle storage stats.
+- **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats.
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
+- **Agent for Good** — designed for under-resourced nonprofit, civic-tech, and open-source teams that need to monitor public services, respond to incidents, and communicate impact without dedicated SREs.
 - **Memory & continuity** — every thread is a resumable session backed by a bucket; conversations survive restarts.
 - **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
 - **Runtime metrics** — the bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts.
