@@ -41,6 +41,7 @@ export const helpTool: Tool = {
         `• \`help slack\` — Slack search and workspace tools\n\n` +
         `**Slash commands**\n` +
         `• \`/moonbot help\` — this message\n` +
+        `• \`/moonbot demo\` — curated hackathon demo prompts\n` +
         `• \`/moonbot status\` — current configuration\n` +
         `• \`/moonbot diagnose\` — pre-flight configuration check\n` +
         `• \`/moonbot ping\` — live LLM connectivity check\n` +

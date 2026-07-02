@@ -2791,6 +2791,25 @@ rLQ+epZplw==
     "code help should mention comment_on_issue",
   );
 
+  await dispatchSlashCommand("demo");
+  assert(
+    slashResponses[0].text?.includes("Moon Bot demo prompts"),
+    "demo command should show demo header",
+  );
+  assert(
+    slashResponses[0].text?.includes("Real-Time Search API"),
+    "demo command should mention Real-Time Search API",
+  );
+  assert(
+    slashResponses[0].text?.includes("MCP server integration"),
+    "demo command should mention MCP integration",
+  );
+  assert(
+    slashResponses[0].text?.includes("Agent for Good"),
+    "demo command should mention Agent for Good",
+  );
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "demo command should be ephemeral");
+
   await dispatchSlashCommand("status");
   const statusText = slashResponses[0].text ?? "";
   assert(statusText.includes("Moon Bot status"), "status command should include status header");
