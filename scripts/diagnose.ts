@@ -108,6 +108,19 @@ async function main(): Promise<number> {
     add("ok", "CLOUDFLARE_RETRIES", `${cfRetries} retries`);
   }
 
+  const slackSayRetries = parseInt(env("SLACK_SAY_RETRIES") || "2", 10);
+  const slackSayRetryBaseMs = parseInt(env("SLACK_SAY_RETRY_BASE_MS") || "1000", 10);
+  if (Number.isNaN(slackSayRetries) || slackSayRetries < 0) {
+    add("warn", "SLACK_SAY_RETRIES", "Invalid retry count; must be a non-negative integer");
+  } else {
+    add("ok", "SLACK_SAY_RETRIES", `${slackSayRetries} retries`);
+  }
+  if (Number.isNaN(slackSayRetryBaseMs) || slackSayRetryBaseMs <= 0) {
+    add("warn", "SLACK_SAY_RETRY_BASE_MS", "Invalid base delay; must be a positive number of milliseconds");
+  } else {
+    add("ok", "SLACK_SAY_RETRY_BASE_MS", `${slackSayRetryBaseMs}ms`);
+  }
+
   // Writable state directories
   const sessionsDir = env("SESSIONS_DIR") || "./sessions";
   if (await ensureDirWritable(sessionsDir)) {

@@ -5,6 +5,7 @@ import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node
 import { dirname, join } from "node:path";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
 import { prepareSlackMessage } from "../src/slack-blocks.js";
+import { safeSay } from "../src/slack-delivery.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
 import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
@@ -179,6 +180,7 @@ async function main() {
   assert(statusResult.result.includes("LLM timeout:"));
   assert(statusResult.result.includes("LLM retries:"));
   assert(statusResult.result.includes("Socket Mode"));
+  assert(statusResult.result.includes("Slack message retries:"));
   assert(statusResult.result.includes("Bash execution: disabled"));
   assert(statusResult.result.includes("Guest accounts: refused"));
   console.log("System status tool passed");
@@ -1647,6 +1649,88 @@ rLQ+epZplw==
   const blockText = (longMsg.blocks[0] as { text?: { text?: string } }).text?.text ?? "";
   assert(blockText.length <= 3000, `block text length ${blockText.length} exceeds Block Kit section limit`);
   console.log("Slack message delivery safety passed");
+
+  // Slack message delivery retries: safeSay should retry transient rate-limit and network errors.
+  async function testSafeSayImmediateSuccess() {
+    let calls = 0;
+    const mockSay = async () => {
+      calls++;
+    };
+    await safeSay(mockSay, { text: "hello" }, { retries: 2, baseDelayMs: 10 });
+    assert.strictEqual(calls, 1, "safeSay should call say once on success");
+  }
+
+  async function testSafeSayRateLimitedRetry() {
+    let calls = 0;
+    const mockSay = async () => {
+      calls++;
+      if (calls < 2) {
+        const err = Object.assign(new Error("Slack rate limit"), {
+          code: "slack_sdk_rate_limited_error",
+          data: { ok: false, error: "rate_limited", retry_after: 0 },
+        });
+        throw err;
+      }
+    };
+    await safeSay(mockSay, { text: "hello" }, { retries: 2, baseDelayMs: 10 });
+    assert.strictEqual(calls, 2, "safeSay should retry rate_limited errors");
+  }
+
+  async function testSafeSayNetworkRetry() {
+    let calls = 0;
+    const mockSay = async () => {
+      calls++;
+      if (calls < 3) {
+        const err = Object.assign(new Error("network error"), {
+          code: "slack_sdk_network_error",
+        });
+        throw err;
+      }
+    };
+    await safeSay(mockSay, { text: "hello" }, { retries: 2, baseDelayMs: 10 });
+    assert.strictEqual(calls, 3, "safeSay should retry network errors up to max retries");
+  }
+
+  async function testSafeSayNonRetryableError() {
+    let calls = 0;
+    const mockSay = async () => {
+      calls++;
+      const err = Object.assign(new Error("channel_not_found"), {
+        code: "slack_sdk_platform_error",
+        data: { ok: false, error: "channel_not_found" },
+      });
+      throw err;
+    };
+    await assert.rejects(
+      () => safeSay(mockSay, { text: "hello" }, { retries: 2, baseDelayMs: 10 }),
+      /channel_not_found/,
+    );
+    assert.strictEqual(calls, 1, "safeSay should not retry non-retryable errors");
+  }
+
+  async function testSafeSayRetriesExhausted() {
+    let calls = 0;
+    const mockSay = async () => {
+      calls++;
+      const err = Object.assign(new Error("timeout"), {
+        code: "slack_sdk_network_error",
+        data: { ok: false, error: "timeout" },
+      });
+      throw err;
+    };
+    await assert.rejects(
+      () => safeSay(mockSay, { text: "hello" }, { retries: 1, baseDelayMs: 10 }),
+      /timeout/,
+    );
+    assert.strictEqual(calls, 2, "safeSay should make initial + retry call before giving up");
+  }
+
+  await testSafeSayImmediateSuccess();
+  await testSafeSayRateLimitedRetry();
+  await testSafeSayNetworkRetry();
+  await testSafeSayNonRetryableError();
+  await testSafeSayRetriesExhausted();
+  console.log("Slack message delivery retries passed");
 
   // Slash command /moonbot
   const slashResponses: Array<{ text?: string; response_type?: string }> = [];

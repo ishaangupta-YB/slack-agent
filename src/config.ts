@@ -7,6 +7,8 @@ export const cfg = {
     botToken: requireEnv("SLACK_BOT_TOKEN"),
     appToken: requireEnv("SLACK_APP_TOKEN"),
     userToken: process.env.SLACK_USER_TOKEN || "",
+    sayRetries: parseInt(process.env.SLACK_SAY_RETRIES || "2", 10),
+    sayRetryBaseMs: parseInt(process.env.SLACK_SAY_RETRY_BASE_MS || "1000", 10),
   },
   cloudflare: {
     accountId: requireEnv("CLOUDFLARE_ACCOUNT_ID"),

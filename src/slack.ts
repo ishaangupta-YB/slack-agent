@@ -16,6 +16,7 @@ import { runWithToolContext } from "./context.js";
 import { publishHomeView } from "./app-home.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
+import { safeSay } from "./slack-delivery.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -174,18 +175,26 @@ async function handleIncomingMessage({
       responseUrl,
       sessionUrl,
     );
-    await say({
-      text: fallbackText,
-      blocks,
-      thread_ts: threadTs,
-      unfurl_links: false,
-    });
+    await safeSay(
+      say,
+      {
+        text: fallbackText,
+        blocks,
+        thread_ts: threadTs,
+        unfurl_links: false,
+      },
+      { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
+    );
   } catch (err) {
     console.error("Agent error:", err);
-    await say({
-      text: "Oops, something went wrong while processing your request. Check the logs for details.",
-      thread_ts: event.thread_ts ?? ts,
-    });
+    await safeSay(
+      say,
+      {
+        text: "Oops, something went wrong while processing your request. Check the logs for details.",
+        thread_ts: event.thread_ts ?? ts,
+      },
+      { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
+    );
   }
 }
 

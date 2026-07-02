@@ -150,6 +150,8 @@ npm run diagnose
 | `CLOUDFLARE_ACCOUNT_ID` | yes | Cloudflare account for Workers AI |
 | `CLOUDFLARE_API_TOKEN` | yes | Cloudflare API token with Workers AI permission |
 | `SLACK_USER_TOKEN` | no | User token (`xoxp-...`) for Real-Time Search without an action_token |
+| `SLACK_SAY_RETRIES` | no | Retries for transient Slack API errors when posting messages (default: 2) |
+| `SLACK_SAY_RETRY_BASE_MS` | no | Base backoff for Slack message retries in ms (default: 1000) |
 | `GITHUB_TOKEN` / `GITHUB_APP_*` | no | GitHub read/write; App auth recommended for PRs |
 | `PLAUSIBLE_API_KEY` | no | Plausible analytics |
 | `ES_URL` / `ES_API_KEY` / `ES_USERNAME` / `ES_PASSWORD` | no | Elasticsearch logs |
