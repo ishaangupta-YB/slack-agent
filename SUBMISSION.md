@@ -32,7 +32,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Resumable sessions** | Every Slack thread is an independent, persistent session backed by a bucket; conversations survive restarts. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Scheduled tasks** | Weekly ops report and post-deploy impact monitor backed by Elasticsearch. |
-| **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, sandboxed bash, and local credential proxies. |
+| **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | status | ping | report` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |

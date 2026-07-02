@@ -157,6 +157,19 @@ async function main(): Promise<number> {
   } else {
     add("ok", "ALLOW_BASH", "bash execution is disabled (safe default)");
   }
+  if (isSet("BASH_TIER_USERS")) {
+    const pairs = env("BASH_TIER_USERS")!.split(",").map((p) => p.trim().split(":"));
+    const validTiers = new Set(["basic", "elastic", "privileged"]);
+    const invalid = pairs.filter(([t]) => !validTiers.has(t?.trim().toLowerCase()));
+    if (invalid.length > 0) {
+      add("warn", "BASH_TIER_USERS", `Contains unrecognized tiers: ${invalid.map(([t]) => t).join(", ")}`);
+    } else {
+      add("ok", "BASH_TIER_USERS", env("BASH_TIER_USERS")!);
+    }
+    if (process.getuid?.() !== 0) {
+      add("warn", "BASH_TIER_USERS", "Bash sandboxing requires the bot process to run as root unless BASH_REQUIRE_ROOT_FOR_SU=false");
+    }
+  }
 
   if (env("ALLOW_GUESTS") === "true") {
     add("warn", "ALLOW_GUESTS", "guest accounts are allowed — verify this matches your security policy");

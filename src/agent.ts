@@ -240,6 +240,7 @@ export async function handleMessage(
 
     const toolCtx = getToolContext();
     toolCtx.userEmail = userEmail;
+    toolCtx.tier = tier;
 
     const map = await ensureThreadMap();
     let entry = map[threadKey];

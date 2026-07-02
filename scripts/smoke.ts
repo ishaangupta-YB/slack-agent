@@ -38,6 +38,7 @@ import { clearSizzleExecutor, setSizzleExecutor } from "../src/tools/sizzle.js";
 import { clearCloneExecutor, setCloneExecutor } from "../src/tools/git.js";
 import { resolveAccessTier } from "../src/auth/tiers.js";
 import { runWithToolContext } from "../src/context.js";
+import { buildSandboxCommand, clearBashExecutor, setBashExecutor } from "../src/tools/bash.js";
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
@@ -155,7 +156,51 @@ async function main() {
   const compoundCommand = await runToolCall({ tool: "bash", params: { command: "echo a && echo b" } });
   assert(compoundCommand.result.includes("compound commands are not allowed"));
 
+  // Tiered bash sandboxing: without any tier users configured the command runs as /bin/sh -c.
+  let lastCommand = "";
+  let lastArgs: string[] = [];
+  setBashExecutor((cmd, args) => {
+    lastCommand = cmd;
+    lastArgs = args;
+    return "sandboxed output";
+  });
+  const unsandboxedResult = await runToolCall({ tool: "bash", params: { command: "echo hello" } });
+  assert.strictEqual(unsandboxedResult.result, "sandboxed output");
+  assert.strictEqual(lastCommand, "/bin/sh");
+  assert.deepStrictEqual(lastArgs, ["-c", "echo hello"]);
+
+  // With tier users configured and root required but not running as root, the call fails cleanly.
+  cfg.bash.tierUsers.basic = "mb-runner";
+  cfg.bash.requireRootForSu = true;
+  if (process.getuid?.() !== 0) {
+    const rootCheckResult = await runToolCall({ tool: "bash", params: { command: "echo hello" } });
+    assert(
+      rootCheckResult.result.includes("not running as root"),
+      `Expected root check error, got: ${rootCheckResult.result}`,
+    );
+  }
+
+  // Disable the root-check override so we can verify the generated su command.
+  cfg.bash.requireRootForSu = false;
+  const sandboxedResult = await runToolCall({ tool: "bash", params: { command: "echo hello" } });
+  assert.strictEqual(sandboxedResult.result, "sandboxed output");
+  assert.strictEqual(lastCommand, "su");
+  assert.strictEqual(lastArgs[0], "-");
+  assert.strictEqual(lastArgs[1], "mb-runner");
+  assert.strictEqual(lastArgs[2], "-c");
+  assert(lastArgs[3].includes("echo hello"));
+  assert(lastArgs[3].includes(process.cwd()));
+
+  // Sandbox command builder for elastic tier.
+  const elasticSpec = buildSandboxCommand("ls -la", "/tmp", "elastic");
+  assert.strictEqual(elasticSpec.command, "/bin/sh");
+  assert.deepStrictEqual(elasticSpec.args, ["-c", "ls -la"]);
+
+  clearBashExecutor();
   cfg.security.allowBash = false;
+  cfg.bash.tierUsers.basic = "";
+  cfg.bash.requireRootForSu = true;
+  console.log("Bash tier sandboxing passed");
 
   // Security audit log
   const auditPath = cfg.security.auditLogFile;

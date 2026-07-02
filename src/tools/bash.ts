@@ -1,6 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { z } from "zod";
 import { cfg } from "../config.js";
+import { getToolContext } from "../context.js";
+import type { AccessTier } from "../auth/tiers.js";
 import { logSecurityEvent } from "./security.js";
 import type { Tool } from "./types.js";
 
@@ -10,7 +12,7 @@ const params = z.object({
 });
 
 const BLOCKED_COMMANDS = [
-  /rm\s+-rf\s*\/+/,
+  /rm\s+-rf\s*\/*/,
   />\s*\/etc\/passwd/,
   /mkfs/,
   /dd\s+if=/,
@@ -34,10 +36,66 @@ function isSuspicious(command: string): boolean {
   return SUSPICIOUS_COMMANDS.some((re) => re.test(command));
 }
 
+export type BashExecutor = (
+  command: string,
+  args: string[],
+  options: { cwd: string; timeoutMs: number },
+) => string;
+
+let executorOverride: BashExecutor | undefined;
+
+/** Replace the default process-spawning executor (for tests). */
+export function setBashExecutor(fn: BashExecutor): void {
+  executorOverride = fn;
+}
+
+/** Restore the default process-spawning executor. */
+export function clearBashExecutor(): void {
+  executorOverride = undefined;
+}
+
+function shellEscape(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
+export function buildSandboxCommand(
+  command: string,
+  cwd: string,
+  tier: AccessTier,
+): { command: string; args: string[] } {
+  const user = cfg.bash.tierUsers[tier];
+  if (!user) {
+    return { command: "/bin/sh", args: ["-c", command] };
+  }
+
+  if (cfg.bash.requireRootForSu && process.getuid?.() !== 0) {
+    throw new Error(`Bash sandboxing configured for tier ${tier} (user ${user}) but the process is not running as root.`);
+  }
+
+  const wrapped = `cd ${shellEscape(cwd)} && ${command}`;
+  return { command: "su", args: ["-", user, "-c", wrapped] };
+}
+
+function getCurrentTier(): AccessTier {
+  return getToolContext().tier ?? "basic";
+}
+
+function runCommand(command: string, args: string[], options: { cwd: string; timeoutMs: number }): string {
+  if (executorOverride) {
+    return executorOverride(command, args, options);
+  }
+  return execFileSync(command, args, {
+    cwd: options.cwd,
+    encoding: "utf-8",
+    timeout: options.timeoutMs,
+    maxBuffer: 1024 * 1024,
+  });
+}
+
 export const bashTool: Tool = {
   name: "bash",
   description:
-    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected. Suspicious commands are blocked and logged.",
+    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected. Suspicious commands are blocked and logged. When BASH_TIER_USERS is configured, commands run under the Linux user assigned to the caller's access tier via su -l.",
   params,
   tier: "basic",
   run(input) {
@@ -64,13 +122,12 @@ export const bashTool: Tool = {
       return "Error: this command looks potentially unsafe (exfiltration, remote execution, or decoding) and was blocked.";
     }
 
-    const [shell, flag] = ["/bin/sh", "-c"];
     try {
-      const output = execFileSync(shell, [flag, command], {
+      const tier = getCurrentTier();
+      const spawnSpec = buildSandboxCommand(command, process.cwd(), tier);
+      const output = runCommand(spawnSpec.command, spawnSpec.args, {
         cwd: process.cwd(),
-        encoding: "utf-8",
-        timeout: input.timeout * 1000,
-        maxBuffer: 1024 * 1024,
+        timeoutMs: input.timeout * 1000,
       });
       return output || "(no output)";
     } catch (err) {

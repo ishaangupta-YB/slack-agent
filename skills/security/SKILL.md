@@ -19,6 +19,7 @@ The `bash` tool is disabled by default. When enabled:
 - Compound commands (`&&`, `||`, `;`) are rejected.
 - Destructive patterns (`rm -rf /`, `mkfs`, `dd if=...`, fork bombs) are blocked.
 - Suspicious patterns (piping curl/wget into a shell, base64 decoding, reverse shells, ad-hoc HTTP servers) are blocked and logged.
+- When `BASH_TIER_USERS` is configured, commands execute as a separate Linux user per access tier via `su -l`, so lower-tier processes never inherit the environment of a higher tier.
 
 Prefer read-only commands. If a command seems useful but unsafe, ask the user to rephrase rather than bypassing the guard.
 

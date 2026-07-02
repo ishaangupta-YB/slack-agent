@@ -61,6 +61,7 @@ export const statusTool = {
       `*Security:*`,
       `• Guest accounts: ${cfg.security.allowGuests ? "allowed" : "refused"}`,
       `• Bash execution: ${cfg.security.allowBash ? "enabled" : "disabled"}`,
+      `• Bash tier sandboxing: ${Object.values(cfg.bash.tierUsers).some(Boolean) ? Object.entries(cfg.bash.tierUsers).filter(([, u]) => u).map(([t, u]) => `${t}=${u}`).join(", ") : "not configured"}`,
       `• Local credential proxies: ES ${cfg.integrations.esProxyToken ? "on" : "off"}, Plausible ${cfg.integrations.plausibleProxyToken ? "on" : "off"}, HF ${cfg.integrations.hfProxyToken ? "on" : "off"}`,
     ];
 

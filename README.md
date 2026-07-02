@@ -194,7 +194,7 @@ The smoke suite covers the ReAct loop, tool execution, tier gating, credential p
 
 - **Access tiers** resolve from Okta group membership or `USER_TIERS` mapping. Guests are refused by default.
 - **Tier-gated tools** are filtered from the system prompt and rejected at execution time.
-- **Bash is opt-in** (`ALLOW_BASH=true`) and blocks suspicious patterns.
+- **Bash is opt-in** (`ALLOW_BASH=true`), blocks suspicious patterns, and can be sandboxed per access tier via `BASH_TIER_USERS` so lower-tier Linux users do not inherit higher-tier environment credentials.
 - **Credential proxies** keep upstream secrets out of tool calls.
 - **GitHub writes** use short-lived GitHub App installation tokens in the bot process, not in the sandbox.
 - **Prompt-injection self-reporting** lets the agent log suspected injection attempts.

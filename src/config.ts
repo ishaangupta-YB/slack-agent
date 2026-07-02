@@ -31,6 +31,10 @@ export const cfg = {
   code: {
     reposDir: process.env.CODE_REPOS_DIR || "./repos",
   },
+  bash: {
+    tierUsers: parseTierUserMap(process.env.BASH_TIER_USERS),
+    requireRootForSu: process.env.BASH_REQUIRE_ROOT_FOR_SU !== "false",
+  },
   security: {
     allowBash: process.env.ALLOW_BASH === "true",
     allowGuests: process.env.ALLOW_GUESTS === "true",
@@ -133,4 +137,22 @@ function requireEnv(name: string): string {
 function csv(value?: string): string[] {
   if (!value) return [];
   return value.split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function parseTierUserMap(value?: string): Record<"basic" | "elastic" | "privileged", string> {
+  const map: Record<"basic" | "elastic" | "privileged", string> = {
+    basic: "",
+    elastic: "",
+    privileged: "",
+  };
+  if (!value) return map;
+  for (const pair of value.split(",")) {
+    const [tier, user] = pair.split(":");
+    const t = tier?.trim().toLowerCase();
+    const u = user?.trim();
+    if ((t === "basic" || t === "elastic" || t === "privileged") && u) {
+      map[t] = u;
+    }
+  }
+  return map;
 }
