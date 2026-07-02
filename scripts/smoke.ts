@@ -1,4 +1,5 @@
 import assert from "node:assert";
+import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -1697,6 +1698,20 @@ rLQ+epZplw==
   await dispatchSlashCommand("invalid_subcommand");
   assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
   console.log("Slash command /moonbot passed");
+
+  // One-shot local ask CLI: lets developers run a single agent turn without Slack credentials.
+  clearChatOverride();
+  setChatOverride(async () => "I am Moon Bot, ready to help from the CLI.");
+  const { ask } = await import("./ask.js");
+  const askThreadKey = `cli-ask-smoke-${randomUUID()}`;
+  const askResult = await ask("What is your name?", {
+    threadKey: askThreadKey,
+    userId: "U_ASK_SMOKE",
+  });
+  assert(askResult.includes("Moon Bot"), `Expected ask CLI to return greeting, got: ${askResult}`);
+  assert(existsSync(join(process.env.SESSIONS_DIR!, "thread-map.json")), "ask CLI should persist thread-map");
+  clearChatOverride();
+  console.log("Local ask CLI passed");
 
   console.log("smoke tests passed");
   clean();

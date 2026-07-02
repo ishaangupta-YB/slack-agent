@@ -9,6 +9,7 @@
     "start": "node dist/app.js",
     "lint": "eslint src scripts",
     "smoke": "SLACK_BOT_TOKEN=xoxb-test SLACK_APP_TOKEN=xapp-test CLOUDFLARE_ACCOUNT_ID=test CLOUDFLARE_API_TOKEN=test MEMORY_FILE=/tmp/moon-bot-smoke-memory.json BUCKET_DIR=/tmp/moon-bot-smoke-bucket SESSIONS_DIR=/tmp/moon-bot-smoke-sessions BUCKET_HTTP_PORT=13001 SCHEDULED_WEEKLY_REPORT_CHANNEL=C1111111111 SCHEDULED_DEPLOY_CHANNEL=C2222222222 tsx scripts/smoke.ts",
+    "ask": "tsx scripts/ask.ts",
     "diagnose": "tsx scripts/diagnose.ts",
     "typecheck": "tsc --noEmit"
   },
