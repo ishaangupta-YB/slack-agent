@@ -21,6 +21,7 @@ import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
 import { safeSay } from "./slack-delivery.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
+import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -335,7 +336,7 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | status].
+ * Slash command entry point: /moonbot [help | status | report].
  *
  * Gives users a quick, discoverable way to check capabilities and health
  * without starting a threaded conversation.
@@ -370,6 +371,40 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "report") {
+    const reportType = args[1];
+
+    if (reportType === "weekly") {
+      const report = await generateWeeklyReport();
+      await respond({
+        text: report,
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    if (reportType === "deploy") {
+      const timestamp = args[2];
+      const deployTs = timestamp ?? String((Date.now() / 1000 - 15 * 60).toFixed(6));
+      const report = await generateDeployReport(deployTs);
+      await respond({
+        text: report,
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    await respond({
+      text:
+        "*Moon Bot reports* 🌙\n" +
+        "Run scheduled reports on demand:\n" +
+        "• `/moonbot report weekly` — weekly ops report\n" +
+        "• `/moonbot report deploy [timestamp]` — deploy impact check (defaults to 15 minutes ago)",
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
   await respond({
     text:
       "*Moon Bot* 🌙\n" +
@@ -377,6 +412,7 @@ export async function handleMoonbotCommand({
       "Try:\n" +
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot status` — my current configuration\n" +
+      "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",
     response_type: "ephemeral",
   });

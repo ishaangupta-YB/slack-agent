@@ -142,7 +142,7 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 - In a channel: `@Moon Bot summarize the latest deploy discussion`
 - In DMs: just send a message.
 - Open the Slack AI Assistant panel and select **Moon Bot**.
-- Use `/moonbot help` or `/moonbot status`.
+- Use `/moonbot help`, `/moonbot status`, `/moonbot report weekly`, or `/moonbot report deploy`.
 
 ---
 

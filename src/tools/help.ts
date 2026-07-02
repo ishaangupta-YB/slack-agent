@@ -39,6 +39,11 @@ export const helpTool: Tool = {
         `• \`help code\` — code navigation and PRs\n` +
         `• \`help data\` — databases, logs, and analytics\n` +
         `• \`help slack\` — Slack search and workspace tools\n\n` +
+        `**Slash commands**\n` +
+        `• \`/moonbot help\` — this message\n` +
+        `• \`/moonbot status\` — current configuration\n` +
+        `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
+        `• \`/moonbot report deploy\` — deploy impact check on demand\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.`,
 
       code:
@@ -72,7 +77,8 @@ export const helpTool: Tool = {
         `• \`system_status\` — show my current configuration and enabled integrations\n\n` +
         `**Automated reports**\n` +
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
-        `• Deploy monitor — watches the deploy channel and compares before/after error rates\n\n` +
+        `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
+        `• Run on demand with \`/moonbot report weekly\` or \`/moonbot report deploy\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “What did we figure out about rate limiting last week?”\n` +

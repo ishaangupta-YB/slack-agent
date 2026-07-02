@@ -510,6 +510,8 @@ async function main() {
   cfg.integrations.esProxyToken = originalEsProxyToken;
   cfg.integrations.esUsername = originalEsUsername;
   cfg.integrations.esPassword = originalEsPassword;
+  cfg.integrations.esUrl = originalEsUrl;
+  cfg.integrations.esApiKey = originalEsApiKey;
   console.log("ES credential proxy passed");
 
   // Plausible local credential proxy
@@ -1822,6 +1824,27 @@ rLQ+epZplw==
   assert(statusText.includes("Moon Bot status"), "status command should include status header");
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
+
+  await dispatchSlashCommand("report");
+  assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");
+  assert(slashResponses[0].text?.includes("/moonbot report deploy"), "bare report command should show deploy usage");
+
+  await dispatchSlashCommand("report unknown");
+  assert(slashResponses[0].text?.includes("/moonbot report weekly"), "unknown report type should show usage");
+
+  await dispatchSlashCommand("report weekly");
+  assert(slashResponses[0].text?.includes("Weekly Ops Report"), "weekly report command should return the report header");
+  assert(
+    slashResponses[0].text?.includes("Elasticsearch is not connected"),
+    "weekly report should show fallback text when ES is unconfigured",
+  );
+
+  await dispatchSlashCommand("report deploy");
+  assert(slashResponses[0].text?.includes("Deploy Impact Check"), "deploy report command should return the report header");
+  assert(
+    slashResponses[0].text?.includes("Elasticsearch is not connected"),
+    "deploy report should show fallback text when ES is unconfigured",
+  );
 
   await dispatchSlashCommand("invalid_subcommand");
   assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");

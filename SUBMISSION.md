@@ -159,7 +159,9 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
 6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
-7. **Status / help:**  
+7. **Scheduled reports on demand:**  
+   `/moonbot report weekly` and `/moonbot report deploy`
+8. **Status / help:**  
    `/moonbot status`
 
 ---
@@ -172,8 +174,9 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 0:20–0:50 | Slack AI Assistant | Open Moon Bot from the assistant panel, run the search prompt, and show the response + artifact buttons. |
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
 | 1:20–1:50 | Code Q&A + GitHub | Mention `@Moon Bot` and ask it to search code and open a draft PR; show the PR with the standard footer + trace link. |
-| 1:50–2:20 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
-| 2:20–2:50 | Security + status | Show `/moonbot status`, tiered access explanation, and the JSONL session trace in the bucket. |
+| 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
+| 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
+| 2:30–2:50 | Security + status | Show `/moonbot status`, tiered access explanation, and the JSONL session trace in the bucket. |
 | 2:50–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---
