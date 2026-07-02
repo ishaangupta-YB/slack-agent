@@ -178,6 +178,16 @@ export async function getSessionFilenameByThreadKey(
   return map[threadKey]?.sessionFilename;
 }
 
+/**
+ * Returns true if the bot already has an active session for the given Slack
+ * thread key. Used by the Slack routing layer to decide whether to respond to
+ * thread follow-ups that do not explicitly @-mention the bot.
+ */
+export async function hasThreadKey(threadKey: string): Promise<boolean> {
+  const map = await ensureThreadMap();
+  return threadKey in map;
+}
+
 const threadLocks = new Map<string, Promise<unknown>>();
 
 async function runLocked<T>(threadKey: string, fn: () => Promise<T>): Promise<T> {

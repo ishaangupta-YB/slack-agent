@@ -75,8 +75,8 @@ flowchart TD
 
 Runtime flow:
 
-1. A Slack message arrives via Socket Mode (`app_mention`, DM, or `assistant_thread_started`).
-2. `src/slack.ts` validates the user, resolves their access tier, and strips bot mentions.
+1. A Slack message arrives via Socket Mode (`app_mention`, DM, channel/group/MPIM mention, or `assistant_thread_started`).
+2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, and routes thread follow-ups back to the active session.
 3. `src/agent.ts` lazily restores the thread session from the bucket, builds the system prompt + skills, and runs a ReAct loop with the LLM.
 4. Tool calls are parsed from `<tool_call>` blocks, validated, and executed.
 5. The final response is uploaded to the bucket as markdown + JSONL, and a Slack message with Block Kit links is posted.
@@ -139,7 +139,8 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 
 ### 5. Talk to Moon Bot
 
-- In a channel: `@Moon Bot summarize the latest deploy discussion`
+- In a channel, private group, or MPIM: `@Moon Bot summarize the latest deploy discussion`
+- Reply in any thread Moon Bot has joined without @-mentioning it again.
 - In DMs: just send a message.
 - Open the Slack AI Assistant panel and select **Moon Bot**.
 - Use `/moonbot help`, `/moonbot status`, `/moonbot report weekly`, or `/moonbot report deploy`.

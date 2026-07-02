@@ -12,7 +12,7 @@ import {
 } from "@slack/bolt";
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
-import { handleMessage } from "./agent.js";
+import { handleMessage, hasThreadKey } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
@@ -237,9 +237,36 @@ app.event("app_mention", routeEvent as never);
 
 app.event("message", async (args) => {
   const event = args.event as KnownEventFromType<"message">;
-  // Only respond to direct messages without an explicit mention.
-  if ((event as { channel_type?: string }).channel_type !== "im") return;
-  await routeEvent(args as SlackEventMiddlewareArgs<"message"> & AllMiddlewareArgs);
+  const channelType = (event as { channel_type?: string }).channel_type;
+
+  // Respond to all direct messages without requiring a mention.
+  if (channelType === "im") {
+    await routeEvent(args as SlackEventMiddlewareArgs<"message"> & AllMiddlewareArgs);
+    return;
+  }
+
+  // In public channels, private groups, and multi-person DMs, respond only
+  // when the bot is @-mentioned or when the message is a follow-up in a
+  // thread the bot already participates in.
+  if (channelType !== "channel" && channelType !== "group" && channelType !== "mpim") {
+    return;
+  }
+
+  const botId = (event as { bot_id?: string }).bot_id;
+  if (botId) return;
+
+  const channel = (event as { channel: string }).channel;
+  const ts = (event as { ts: string }).ts;
+  const threadTs = (event as { thread_ts?: string }).thread_ts;
+  const text = (event as { text?: string }).text;
+  const threadKey = threadTs ? `${channel}:${threadTs}` : `${channel}:${ts}`;
+  const botUserId = await ensureBotUserId(args.client);
+  const isMention = botUserId ? (text ?? "").includes(`<@${botUserId}`) : false;
+  const inActiveThread = await hasThreadKey(threadKey);
+
+  if (isMention || inActiveThread) {
+    await routeEvent(args as SlackEventMiddlewareArgs<"message"> & AllMiddlewareArgs);
+  }
 });
 
 /**

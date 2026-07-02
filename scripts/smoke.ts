@@ -1548,6 +1548,120 @@ rLQ+epZplw==
   assert(assistantCalls.some((c) => c.method === "setSuggestedPrompts"));
   console.log("Assistant threadStarted handler invoked");
 
+  // Channel / group / MPIM message routing: respond to @-mentions and to
+  // follow-ups in threads the bot already participates in.
+  app.client.auth.test = async () => ({ ok: true, user_id: "UBOT" });
+  app.client.users.info = async () =>
+    ({ user: { is_restricted: false, is_ultra_restricted: false } }) as never;
+  (app as unknown as { authorize: () => Promise<Record<string, string>> }).authorize = async () => ({
+    botId: "B123",
+    botUserId: "UBOT",
+    userId: "UBOT",
+    teamId: "T1",
+  });
+
+  let routingCalls: Array<{ channel?: string; thread_ts?: string; text?: string }> = [];
+  app.client.chat.postMessage = (async (args: unknown) => {
+    routingCalls.push(args as { channel?: string; thread_ts?: string; text?: string });
+    return { ok: true };
+  }) as never;
+
+  setChatOverride(async () => "Routing reply from Moon Bot.");
+
+  // 1) Start a public-channel thread with an explicit @-mention.
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "channel",
+        channel: "C1",
+        ts: "1777000000.000000",
+        user: "U1",
+        text: "<@UBOT> start a thread",
+      },
+      event_ts: "1234567890.000000",
+    },
+    ack: async () => {},
+  });
+  const initialCall = routingCalls.find((c) => c.channel === "C1");
+  assert(initialCall, "public-channel @-mention should trigger a reply");
+  assert(
+    String(initialCall.text ?? "").includes("Routing reply from Moon Bot"),
+    `Unexpected initial reply text: ${initialCall.text}`,
+  );
+
+  // 2) Thread follow-up without another mention should reuse the active session.
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "channel",
+        channel: "C1",
+        ts: "1777000001.000000",
+        thread_ts: "1777000000.000000",
+        user: "U1",
+        text: "follow up in thread",
+      },
+      event_ts: "1234567890.000001",
+    },
+    ack: async () => {},
+  });
+  const followUpCall = routingCalls.find((c) => c.thread_ts === "1777000000.000000");
+  assert(followUpCall, "thread follow-up should trigger a reply in the original thread");
+  assert(
+    String(followUpCall.text ?? "").includes("Routing reply from Moon Bot"),
+    `Unexpected follow-up reply text: ${followUpCall.text}`,
+  );
+
+  // 3) @-mention in a multi-person DM (app_mention does not fire there).
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "mpim",
+        channel: "G1234567890",
+        ts: "1777000002.000000",
+        user: "U1",
+        text: "<@UBOT> help in mpim",
+      },
+      event_ts: "1234567890.000002",
+    },
+    ack: async () => {},
+  });
+  const mpimCall = routingCalls.find((c) => c.channel === "G1234567890");
+  assert(mpimCall, "MPIM @-mention should trigger a reply");
+  assert(
+    String(mpimCall.text ?? "").includes("Routing reply from Moon Bot"),
+    `Unexpected MPIM reply text: ${mpimCall.text}`,
+  );
+
+  // 4) Unrelated channel message without mention or known thread is ignored.
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "channel",
+        channel: "C2",
+        ts: "1777000003.000000",
+        user: "U1",
+        text: "random channel message",
+      },
+      event_ts: "1234567890.000003",
+    },
+    ack: async () => {},
+  });
+  assert.strictEqual(routingCalls.length, 0, "unrelated channel message should be ignored");
+
+  clearChatOverride();
+  console.log("Channel / MPIM message routing passed");
+
   // App Home view: opening the Home tab should publish a helpful view.
   let homeViewPayload: unknown;
   app.client.views = {

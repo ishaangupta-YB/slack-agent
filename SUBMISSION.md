@@ -89,8 +89,8 @@ flowchart TD
 
 Runtime flow:
 
-1. A Slack message arrives via Socket Mode (`app_mention`, DM, or `assistant_thread_started`).
-2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, and suppresses duplicate/out-of-order events.
+1. A Slack message arrives via Socket Mode (`app_mention`, DM, channel/group/MPIM mention, or `assistant_thread_started`).
+2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, suppresses duplicate/out-of-order events, and routes thread follow-ups back to the active session.
 3. `src/agent.ts` lazily restores the thread session from the bucket, builds the system prompt + skills, and runs a ReAct loop with the LLM.
 4. Tool calls are parsed from `<tool_call>` blocks, validated, and executed.
 5. The final response is uploaded to the bucket as markdown + JSONL, and a Slack message with Block Kit links is posted.
@@ -155,6 +155,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `List the files in /tmp and tell me which ones were modified today.`
 3. **Code + GitHub:** in a channel, mention the bot:  
    `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
+   Then reply in the same thread without another @-mention to refine the PR.
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
