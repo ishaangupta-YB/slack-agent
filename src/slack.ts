@@ -193,7 +193,12 @@ async function handleIncomingMessage({
       sessionFilename,
       reply,
     );
-    const threadTs = event.thread_ts ?? ts;
+    // Keep channel/group/MPIM replies threaded (create a thread for top-level
+    // mentions, reply in the thread for follow-ups). For one-on-one DMs, post
+    // replies as top-level messages so the conversation stays in the main DM
+    // view; only keep an explicit DM thread reply threaded when the user
+    // already threaded their message.
+    const threadTs = event.channel_type === "im" ? event.thread_ts : (event.thread_ts ?? ts);
     const { text: fallbackText, blocks } = prepareSlackMessage(
       reply,
       responseUrl,

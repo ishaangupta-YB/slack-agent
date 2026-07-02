@@ -2575,6 +2575,10 @@ rLQ+epZplw==
   });
   const firstDmCall = routingCalls.find((c) => c.channel === "D1");
   assert(firstDmCall, "direct message should trigger a reply");
+  assert(
+    firstDmCall.thread_ts === undefined,
+    "top-level DM reply should be posted as a top-level message, not threaded",
+  );
   const firstDmSession = await getSessionFilenameByThreadKey("D1");
   assert(firstDmSession, "DM should create an active session keyed by channel");
 
@@ -2596,6 +2600,10 @@ rLQ+epZplw==
   });
   const secondDmCall = routingCalls.find((c) => c.channel === "D1");
   assert(secondDmCall, "second direct message should trigger a reply");
+  assert(
+    secondDmCall.thread_ts === undefined,
+    "second top-level DM reply should also stay in the main DM view",
+  );
   const secondDmSession = await getSessionFilenameByThreadKey("D1");
   assert.strictEqual(
     secondDmSession,
