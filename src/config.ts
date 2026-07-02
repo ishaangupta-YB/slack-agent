@@ -138,6 +138,13 @@ function normalizeTier(value?: string): "basic" | "elastic" | "privileged" | und
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
+    // In production-check mode we never connect to external services, so we
+    // allow placeholder values for required tokens. This lets users run
+    // `node dist/app.js --check` immediately after `npm run build` and before
+    // they fill in real tokens from their Slack app / Cloudflare dashboard.
+    if (process.argv.includes("--check")) {
+      return "check-placeholder";
+    }
     throw new Error(`Missing required environment variable: ${name}`);
   }
   return value;

@@ -3256,6 +3256,52 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("Local ask CLI passed");
 
+  // Production bundle startup check without tokens: --check mode should be
+  // runnable immediately after `npm run build`, before the user has filled in
+  // real Slack/Cloudflare credentials. We intentionally omit the required
+  // tokens and assert the check still exits cleanly.
+  const noTokenSessionsDir = "/tmp/moon-bot-smoke-check-no-token-sessions";
+  const noTokenBucketDir = "/tmp/moon-bot-smoke-check-no-token-bucket";
+  if (existsSync(noTokenSessionsDir)) rmSync(noTokenSessionsDir, { recursive: true, force: true });
+  if (existsSync(noTokenBucketDir)) rmSync(noTokenBucketDir, { recursive: true, force: true });
+
+  const noTokenEnv: Record<string, string | undefined> = {
+    ...process.env,
+    SLACK_BOT_TOKEN: undefined,
+    SLACK_APP_TOKEN: undefined,
+    CLOUDFLARE_ACCOUNT_ID: undefined,
+    CLOUDFLARE_API_TOKEN: undefined,
+    MEMORY_FILE: join(noTokenSessionsDir, "memory.json"),
+    BUCKET_DIR: noTokenBucketDir,
+    SESSIONS_DIR: noTokenSessionsDir,
+    THREAD_MAP_FILE: join(noTokenSessionsDir, "thread-map.json"),
+    SECURITY_AUDIT_LOG_FILE: join(noTokenSessionsDir, "audit.jsonl"),
+    BUCKET_HTTP_PORT: "13003",
+  };
+
+  const {
+    checkExitCode: noTokenExitCode,
+    checkStdout: noTokenStdout,
+  } = await new Promise<{ checkExitCode: number; checkStdout: string }>((resolve) => {
+    const child = spawn("node", ["dist/app.js", "--check"], {
+      env: noTokenEnv,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (data) => {
+      stdout += String(data);
+    });
+    child.on("close", (code) => {
+      resolve({ checkExitCode: code ?? 1, checkStdout: stdout });
+    });
+  });
+  assert.strictEqual(noTokenExitCode, 0, "Production bundle --check should exit cleanly without required tokens");
+  assert(
+    noTokenStdout.includes("startup check passed"),
+    "Production bundle --check should print startup check passed without required tokens",
+  );
+  console.log("Production bundle startup check without tokens passed");
+
   // Production bundle startup check: verify the compiled dist/app.js initializes cleanly.
   const checkSessionsDir = "/tmp/moon-bot-smoke-check-sessions";
   const checkBucketDir = "/tmp/moon-bot-smoke-check-bucket";
@@ -3273,7 +3319,7 @@ rLQ+epZplw==
     SESSIONS_DIR: checkSessionsDir,
     THREAD_MAP_FILE: join(checkSessionsDir, "thread-map.json"),
     SECURITY_AUDIT_LOG_FILE: join(checkSessionsDir, "audit.jsonl"),
-    BUCKET_HTTP_PORT: "13003",
+    BUCKET_HTTP_PORT: "13004",
   };
 
   const { checkExitCode, checkStdout } = await new Promise<{ checkExitCode: number; checkStdout: string }>(
