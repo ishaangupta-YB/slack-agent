@@ -2613,6 +2613,25 @@ rLQ+epZplw==
     !secretExampleRaw.includes('"U0000000001": "privileged"'),
     "k8s/secret.example.yaml USER_TIERS example must use comma-separated id:tier format, not JSON",
   );
+
+  // Every environment variable consumed by src/config.ts should be documented in the K8s secret example.
+  const configSource = readFileSync("src/config.ts", "utf-8");
+  const envVarNames = new Set<string>();
+  for (const match of configSource.matchAll(/process\.env\.([A-Z0-9_]+)/g)) {
+    envVarNames.add(match[1]);
+  }
+  for (const match of configSource.matchAll(/requireEnv\(\s*"([A-Z0-9_]+)"\s*\)/g)) {
+    envVarNames.add(match[1]);
+  }
+  const ignoredVars = ["NODE_ENV"];
+  for (const name of envVarNames) {
+    if (ignoredVars.includes(name)) continue;
+    assert(
+      secretExampleRaw.includes(`${name}:`) || secretExampleRaw.includes(`# ${name}:`),
+      `k8s/secret.example.yaml must document env var ${name} from src/config.ts`,
+    );
+  }
+
   console.log("K8s secret example validated");
 
   // Bot mention stripping from app_mention / DM text
