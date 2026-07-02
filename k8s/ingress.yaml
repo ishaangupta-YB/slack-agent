@@ -1,0 +1,32 @@
+# Exposes only the artifact bucket HTTP server (health checks + artifacts).
+# Slack events flow through Socket Mode, so no public event endpoint is needed.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: moon-bot
+  namespace: moon-bot
+  labels:
+    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Uncomment when cert-manager is available:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: moon-bot.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: moon-bot
+                port:
+                  name: http
+  # Uncomment once TLS is configured:
+  # tls:
+  #   - hosts:
+  #       - moon-bot.example.com
+  #     secretName: moon-bot-tls

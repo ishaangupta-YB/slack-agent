@@ -210,6 +210,18 @@ docker compose pull
 docker compose up -d
 ```
 
+### Kubernetes
+
+For production deployments that match the architecture described in the write-up, use the manifests under `k8s/`:
+
+```bash
+cp k8s/secret.example.yaml k8s/secret.yaml
+# edit k8s/secret.yaml with real tokens
+kubectl apply -k k8s/
+```
+
+The manifests deploy a single-replica Deployment (required by Socket Mode), a Service for the bucket/health endpoint, and an optional Ingress for artifact links. See `k8s/README.md` for details.
+
 ---
 
 ## Project track

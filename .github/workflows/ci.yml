@@ -52,3 +52,28 @@ jobs:
             echo "ERROR: .env is tracked by git and must not be committed."
             exit 1
           fi
+
+      - name: Ensure k8s/secret.yaml is not tracked
+        run: |
+          if git ls-files --error-unmatch k8s/secret.yaml >/dev/null 2>&1; then
+            echo "ERROR: k8s/secret.yaml contains secrets and must not be committed."
+            exit 1
+          fi
+
+      - name: Validate Kubernetes YAML
+        run: |
+          python3 - <<'PY'
+          import os, sys, yaml
+          for root, _, files in os.walk('k8s'):
+              for name in files:
+                  if not name.endswith('.yaml'):
+                      continue
+                  path = os.path.join(root, name)
+                  with open(path) as f:
+                      try:
+                          list(yaml.safe_load_all(f))
+                      except yaml.YAMLError as e:
+                          print(f'ERROR: invalid YAML in {path}: {e}', file=sys.stderr)
+                          sys.exit(1)
+          print('Kubernetes YAML is valid')
+          PY

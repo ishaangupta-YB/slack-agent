@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: moon-bot
+  labels:
+    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/component: namespace

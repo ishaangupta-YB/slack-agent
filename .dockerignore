@@ -11,6 +11,10 @@ logs
 .github
 .vscode
 .idea
-*.md
+# Top-level Markdown files only (skill .md files must be kept in the image)
+README.md
+HACKATHON.md
+WRITEUP.md
+
 *.tsbuildinfo
 .DS_Store
