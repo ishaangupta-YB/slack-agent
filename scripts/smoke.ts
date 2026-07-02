@@ -30,6 +30,8 @@ import {
   handleAskMoonBotShortcut,
   handleFeedbackAction,
   handleResetThread,
+  handleReactionAdded,
+  trackBotMessage,
 } from "../src/slack.js";
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
 import { feedbackLogPath } from "../src/feedback.js";
@@ -2772,6 +2774,7 @@ rLQ+epZplw==
   assert(botScopes.includes("app_mentions:read"), "manifest must include app_mentions:read scope");
   assert(botScopes.includes("chat:write"), "manifest must include chat:write scope");
   assert(botScopes.includes("commands"), "manifest must include commands scope for slash commands and shortcuts");
+  assert(botScopes.includes("reactions:read"), "manifest must include reactions:read scope for emoji reaction actions");
   assert(botScopes.includes("im:history"), "manifest must include im:history scope");
   assert(botScopes.includes("users:read"), "manifest must include users:read scope");
   assert(botScopes.includes("users:read.email"), "manifest must include users:read.email scope");
@@ -2790,6 +2793,7 @@ rLQ+epZplw==
   const botEvents = manifest.settings?.event_subscriptions?.bot_events ?? [];
   assert(botEvents.includes("app_mention"), "manifest must subscribe to app_mention events");
   assert(botEvents.includes("assistant_thread_started"), "manifest must subscribe to assistant_thread_started events");
+  assert(botEvents.includes("reaction_added"), "manifest must subscribe to reaction_added events");
   assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
   assert(manifest.features?.assistant_view?.name === "Moon Bot", "manifest must define assistant_view name");
 
@@ -3520,6 +3524,109 @@ rLQ+epZplw==
   );
 
   console.log("Response feedback buttons passed");
+
+  // Emoji reactions on tracked Moon Bot messages: +1/-1 feedback, reset, help.
+  const reactionThreadKey = "C_REACT:100.000";
+  setChatOverride(async () => "Here is a tracked Moon Bot response.");
+  await handleMessage(reactionThreadKey, "hello", "100.000", "U_REACT");
+  clearChatOverride();
+  const reactionSession = await getSessionFilenameByThreadKey(reactionThreadKey);
+  assert(reactionSession, "reaction thread should have a session");
+
+  // Simulate the bot message being tracked as posted in channel C_REACT with ts 200.000.
+  trackBotMessage("C_REACT", "200.000", reactionThreadKey);
+
+  function makeReactionClient() {
+    const ephemeralTexts: string[] = [];
+    const client = {
+      chat: {
+        postEphemeral: async (args: { text: string }) => {
+          ephemeralTexts.push(args.text);
+          return { ok: true };
+        },
+      },
+    } as unknown as WebClient;
+    return { client, getTexts: () => ephemeralTexts };
+  }
+
+  function makeReactionArgs(opts: { reaction: string; channel: string; ts: string; user?: string }) {
+    return {
+      ack: async () => {},
+      event: {
+        user: opts.user ?? "U_REACT",
+        reaction: opts.reaction,
+        item: { type: "message", channel: opts.channel, ts: opts.ts },
+      },
+    };
+  }
+
+  // Unknown reaction on tracked message should be ignored (no error, no ephemeral).
+  const unknownReaction = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "wave", channel: "C_REACT", ts: "200.000" }),
+    client: unknownReaction.client,
+  } as never);
+  assert.strictEqual(unknownReaction.getTexts().length, 0, "unknown reaction should not post ephemeral");
+
+  // +1 reaction records helpful feedback.
+  if (existsSync(feedbackLogPath())) rmSync(feedbackLogPath(), { force: true });
+  const thumbsUp = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "+1", channel: "C_REACT", ts: "200.000" }),
+    client: thumbsUp.client,
+  } as never);
+  assert(thumbsUp.getTexts().some((t) => t.includes("Thanks for the feedback")), "+1 reaction should confirm helpful feedback");
+  const upFeedbackLines = readFileSync(feedbackLogPath(), "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const upFeedbackEvent = JSON.parse(upFeedbackLines[upFeedbackLines.length - 1]!) as Record<string, unknown>;
+  assert.strictEqual(upFeedbackEvent.kind, "helpful", "+1 reaction should record helpful kind");
+  assert.strictEqual(upFeedbackEvent.threadKey, reactionThreadKey, "+1 reaction should record thread key");
+
+  // -1 reaction records not-helpful feedback.
+  const thumbsDown = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "-1", channel: "C_REACT", ts: "200.000" }),
+    client: thumbsDown.client,
+  } as never);
+  assert(thumbsDown.getTexts().some((t) => t.includes("use this to improve")), "-1 reaction should confirm not-helpful feedback");
+  const downFeedbackLines = readFileSync(feedbackLogPath(), "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const downFeedbackEvent = JSON.parse(downFeedbackLines[downFeedbackLines.length - 1]!) as Record<string, unknown>;
+  assert.strictEqual(downFeedbackEvent.kind, "not_helpful", "-1 reaction should record not_helpful kind");
+
+  // Recreate session for reset reaction.
+  setChatOverride(async () => "Tracked response again.");
+  await handleMessage(reactionThreadKey, "hello again", "100.001", "U_REACT");
+  clearChatOverride();
+  assert(await getSessionFilenameByThreadKey(reactionThreadKey), "reaction thread should have session before reset");
+
+  const resetReaction = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "arrows_counterclockwise", channel: "C_REACT", ts: "200.000" }),
+    client: resetReaction.client,
+  } as never);
+  assert(resetReaction.getTexts().some((t) => t.includes("has been reset")), "reset reaction should confirm reset");
+  assert.strictEqual(await getSessionFilenameByThreadKey(reactionThreadKey), undefined, "reset reaction should clear the thread session");
+
+  // ? reaction posts help.
+  const helpReaction = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "question", channel: "C_REACT", ts: "200.000" }),
+    client: helpReaction.client,
+  } as never);
+  assert(helpReaction.getTexts().some((t) => t.includes("Moon Bot help")), "? reaction should post help");
+
+  // Reaction on untracked message should be ignored.
+  const untrackedReaction = makeReactionClient();
+  await handleReactionAdded({
+    ...makeReactionArgs({ reaction: "+1", channel: "C_OTHER", ts: "999.999" }),
+    client: untrackedReaction.client,
+  } as never);
+  assert.strictEqual(untrackedReaction.getTexts().length, 0, "reaction on untracked message should be ignored");
+
+  console.log("Emoji reactions passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.
   const goodMockClient = {

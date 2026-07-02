@@ -39,6 +39,6 @@ export function getDemoMessage(): string {
     `• Select any message → “Ask Moon Bot” for a threaded reply.\n` +
     `• On any reply, click *View trace* to see the full agent reasoning timeline.\n` +
     `• Click *Start over* to clear the thread session and begin fresh.\n` +
-    `• Click 👍 / 👎 to record feedback on a response.`
+    `• Click 👍 / 👎 or react with 👍 / 👎 / 🔄 / ❓ to record feedback, reset, or get help.`
   );
 }

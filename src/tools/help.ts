@@ -53,7 +53,8 @@ export const helpTool: Tool = {
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
         `• \`/moonbot report deploy\` — deploy impact check on demand\n` +
         `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n\n` +
-        `Every reply includes buttons linking to the full response markdown and the session trace.`,
+        `Every reply includes buttons linking to the full response markdown and the session trace.\n` +
+        `You can also react to any Moon Bot message with :+1:/:-1: (feedback), :arrows_counterclockwise: (reset thread), or :question: (show help).`,
 
       code:
         `**Code & GitHub**\n` +
@@ -97,7 +98,9 @@ export const helpTool: Tool = {
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +
         `• “Show me your system status.”\n` +
-        `• “Check the status page for status.cloudflare.com.”`,
+        `• “Check the status page for status.cloudflare.com.”\n\n` +
+        `**Emoji reactions**\n` +
+        `React to any Moon Bot message with :+1: / :-1: for feedback, :arrows_counterclockwise: to reset the thread, or :question: for help.`,
     };
 
     const privacy =

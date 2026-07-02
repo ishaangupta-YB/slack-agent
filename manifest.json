@@ -51,6 +51,7 @@
         "mpim:history",
         "mpim:read",
         "mpim:write",
+        "reactions:read",
         "search:read.public",
         "search:read.private",
         "search:read.im",
@@ -72,6 +73,7 @@
         "message.mpim",
         "assistant_thread_started",
         "assistant_thread_context_changed",
+        "reaction_added",
         "app_home_opened"
       ]
     },

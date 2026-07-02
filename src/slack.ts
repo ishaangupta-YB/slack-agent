@@ -12,7 +12,13 @@ import {
 } from "@slack/bolt";
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
-import { getThreadInfo, handleMessage, hasThreadKey, resetThread } from "./agent.js";
+import {
+  getSessionFilenameByThreadKey,
+  getThreadInfo,
+  handleMessage,
+  hasThreadKey,
+  resetThread,
+} from "./agent.js";
 import { resolveAccessTier } from "./auth/tiers.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
@@ -75,6 +81,23 @@ function userIsAuthorized(userId: string): boolean {
 const emailCache = new Map<string, string | undefined>();
 const guestCache = new Map<string, boolean | undefined>();
 let botUserIdCache: string | undefined | null = null;
+
+/**
+ * Tracks Moon Bot message timestamps so emoji reactions on those messages can
+ * trigger actions (feedback, reset, help) without requiring users to tap
+ * Block Kit buttons.
+ */
+const botMessageTracker = new Map<string, string>(); // key: channel:ts -> threadKey
+
+export function trackBotMessage(channel: string, ts: string | undefined, threadKey: string) {
+  if (channel && ts) {
+    botMessageTracker.set(`${channel}:${ts}`, threadKey);
+  }
+}
+
+export function getTrackedThreadKey(channel: string, ts: string): string | undefined {
+  return botMessageTracker.get(`${channel}:${ts}`);
+}
 
 export async function getUserEmail(client: WebClient, userId: string): Promise<string | undefined> {
   const cached = emailCache.get(userId);
@@ -218,7 +241,7 @@ async function handleIncomingMessage({
       traceUrl,
       threadKey,
     );
-    await safeSay(
+    const botResponse = await safeSay(
       say,
       {
         text: fallbackText,
@@ -228,6 +251,14 @@ async function handleIncomingMessage({
       },
       { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
     );
+    if (
+      botResponse &&
+      typeof botResponse === "object" &&
+      "channel" in botResponse &&
+      "ts" in botResponse
+    ) {
+      trackBotMessage(String(botResponse.channel), String(botResponse.ts), threadKey);
+    }
   } catch (err) {
     console.error("Agent error:", err);
     await safeSay(
@@ -803,6 +834,94 @@ export async function handleResetThread({
 }
 
 app.action("reset_thread", handleResetThread as never);
+
+/**
+ * Emoji reaction handler: users can react to Moon Bot responses with 👍/👎,
+ * 🔄, or ❓ to provide feedback, reset the thread, or get help without tapping
+ * buttons. This makes Moon Bot feel native in Slack and supports quick mobile
+ * interactions.
+ */
+export async function handleReactionAdded({
+  event,
+  client,
+}: SlackEventMiddlewareArgs<"reaction_added"> & AllMiddlewareArgs): Promise<void> {
+  const reactionEvent = event as unknown as {
+    user?: string;
+    reaction?: string;
+    item?: { type: string; channel?: string; ts?: string };
+  };
+  const reaction = reactionEvent.reaction;
+  if (!reaction) return;
+
+  const userId = reactionEvent.user;
+  const item = reactionEvent.item;
+  if (!item || item.type !== "message" || !item.channel || !item.ts || !userId) return;
+
+  const threadKey = getTrackedThreadKey(item.channel, item.ts);
+  if (!threadKey) return; // reaction was not on a tracked Moon Bot message
+
+  if (reaction === "+1") {
+    const sessionFilename = await getSessionFilenameByThreadKey(threadKey);
+    recordFeedback({
+      ts: new Date().toISOString(),
+      kind: "helpful",
+      userId,
+      channel: item.channel,
+      messageTs: item.ts,
+      threadKey,
+      sessionFilename,
+    });
+    await client.chat.postEphemeral({
+      channel: item.channel,
+      user: userId,
+      text: "Thanks for the feedback! 🌙",
+    });
+    return;
+  }
+
+  if (reaction === "-1") {
+    const sessionFilename = await getSessionFilenameByThreadKey(threadKey);
+    recordFeedback({
+      ts: new Date().toISOString(),
+      kind: "not_helpful",
+      userId,
+      channel: item.channel,
+      messageTs: item.ts,
+      threadKey,
+      sessionFilename,
+    });
+    await client.chat.postEphemeral({
+      channel: item.channel,
+      user: userId,
+      text: "Thanks — we’ll use this to improve Moon Bot.",
+    });
+    return;
+  }
+
+  if (reaction === "arrows_counterclockwise") {
+    const existed = await resetThread(threadKey);
+    await client.chat.postEphemeral({
+      channel: item.channel,
+      user: userId,
+      text: existed
+        ? "Got it — this thread has been reset. Your next message will start a fresh session."
+        : "This thread was not active, so there was nothing to reset.",
+    });
+    return;
+  }
+
+  if (reaction === "question") {
+    const helpText = await helpTool.run({ topic: "general" });
+    await client.chat.postEphemeral({
+      channel: item.channel,
+      user: userId,
+      text: `*Moon Bot help* 🌙\n${helpText}`,
+    });
+    return;
+  }
+}
+
+app.event("reaction_added", handleReactionAdded as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);

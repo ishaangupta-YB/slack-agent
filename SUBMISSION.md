@@ -38,9 +38,9 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | demo | status | metrics | diagnose | ping | whoami | thread | search | report | statuspage` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
-| **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
+| **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; they can also use emoji reactions 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
-| **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
+| **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
 | **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, with no Slack tokens or production database access. |
 
 ---
@@ -165,7 +165,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
 5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
-6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
+6. **Inline feedback + emoji reactions:** after any response, click 👍 or 👎, or react to the message with 👍 / 👎 / 🔄 / ❓ and confirm the ephemeral action.
 7. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
 8. **Public status page on demand:**  
