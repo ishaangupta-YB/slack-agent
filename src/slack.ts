@@ -3,6 +3,7 @@ import {
   Assistant,
   type AllMiddlewareArgs,
   type SlackEventMiddlewareArgs,
+  type SlackCommandMiddlewareArgs,
   type KnownEventFromType,
   type SayFn,
 } from "@slack/bolt";
@@ -13,6 +14,8 @@ import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
 import { publishHomeView } from "./app-home.js";
+import { helpTool } from "./tools/help.js";
+import { statusTool } from "./tools/status.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -316,6 +319,56 @@ async function handleAppHomeOpened({
 }
 
 app.event("app_home_opened", handleAppHomeOpened as never);
+
+/**
+ * Slash command entry point: /moonbot [help | status].
+ *
+ * Gives users a quick, discoverable way to check capabilities and health
+ * without starting a threaded conversation.
+ */
+export async function handleMoonbotCommand({
+  command,
+  ack,
+  respond,
+}: SlackCommandMiddlewareArgs): Promise<void> {
+  await ack();
+
+  const args = command.text.trim().split(/\s+/).filter(Boolean);
+  const subcommand = args[0] || "welcome";
+
+  if (subcommand === "help" || subcommand === "h") {
+    const topic = args[1] as "general" | "code" | "data" | "slack" | undefined;
+    const safeTopic =
+      topic && ["general", "code", "data", "slack"].includes(topic) ? topic : "general";
+    await respond({
+      text: await helpTool.run({ topic: safeTopic }),
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "status") {
+    const text = await statusTool.run();
+    await respond({
+      text,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  await respond({
+    text:
+      "*Moon Bot* 🌙\n" +
+      "I’m your engineering assistant inside Slack. Mention me in a channel, DM me, or open the Slack AI Assistant panel.\n\n" +
+      "Try:\n" +
+      "• `/moonbot help` — what I can do\n" +
+      "• `/moonbot status` — my current configuration\n" +
+      "• `@Moon Bot search Slack for deploy discussions`",
+    response_type: "ephemeral",
+  });
+}
+
+app.command("/moonbot", handleMoonbotCommand);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);

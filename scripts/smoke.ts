@@ -15,7 +15,8 @@ import {
   generateWeeklyReport,
   generateDeployReport,
 } from "../src/scheduler.js";
-import { app, isGuestUser, stripBotMention } from "../src/slack.js";
+import { app, isGuestUser, stripBotMention, handleMoonbotCommand } from "../src/slack.js";
+import type { SlackCommandMiddlewareArgs } from "@slack/bolt";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
@@ -1506,6 +1507,13 @@ rLQ+epZplw==
   assert(botEvents.includes("assistant_thread_started"), "manifest must subscribe to assistant_thread_started events");
   assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
   assert(manifest.features?.assistant_view?.name === "Moon Bot", "manifest must define assistant_view name");
+
+  const slashCommands = (manifest as unknown as Record<string, unknown>).features &&
+    ((manifest as unknown as { features?: { slash_commands?: Array<{ command: string }> } }).features?.slash_commands || []);
+  assert(
+    slashCommands.some((c) => c.command === "/moonbot"),
+    "manifest must register /moonbot slash command",
+  );
   console.log("Slack app manifest validated");
 
   // Bot mention stripping from app_mention / DM text
@@ -1532,6 +1540,57 @@ rLQ+epZplw==
   const blockText = (longMsg.blocks[0] as { text?: { text?: string } }).text?.text ?? "";
   assert(blockText.length <= 3000, `block text length ${blockText.length} exceeds Block Kit section limit`);
   console.log("Slack message delivery safety passed");
+
+  // Slash command /moonbot
+  const slashResponses: Array<{ text?: string; response_type?: string }> = [];
+  let ackCount = 0;
+  async function dispatchSlashCommand(text: string): Promise<void> {
+    slashResponses.length = 0;
+    ackCount = 0;
+    await handleMoonbotCommand({
+      command: {
+        command: "/moonbot",
+        text,
+        user_id: "U1",
+        channel_id: "C1",
+        team_id: "T1",
+        token: "test-token",
+        response_url: "https://example.com/response",
+        trigger_id: "trigger",
+        user_name: "test",
+        team_domain: "test",
+        channel_name: "general",
+        api_app_id: "A1",
+      } as SlackCommandMiddlewareArgs["command"],
+      ack: async () => {
+        ackCount++;
+      },
+      respond: async (args) => {
+        slashResponses.push(args as { text?: string; response_type?: string });
+      },
+    } as unknown as SlackCommandMiddlewareArgs);
+  }
+
+  await dispatchSlashCommand("");
+  assert.strictEqual(ackCount, 1, "slash command should ack exactly once");
+  assert.strictEqual(slashResponses.length, 1);
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral");
+  assert(slashResponses[0].text?.includes("Moon Bot"));
+  assert(slashResponses[0].text?.includes("/moonbot help"));
+
+  await dispatchSlashCommand("help code");
+  assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
+  assert(slashResponses[0].text?.includes("open_pr"), "code help should mention open_pr");
+
+  await dispatchSlashCommand("status");
+  const statusText = slashResponses[0].text ?? "";
+  assert(statusText.includes("Moon Bot status"), "status command should include status header");
+  assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
+  assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
+
+  await dispatchSlashCommand("invalid_subcommand");
+  assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
+  console.log("Slash command /moonbot passed");
 
   console.log("smoke tests passed");
   clean();
