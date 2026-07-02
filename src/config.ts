@@ -3,9 +3,16 @@ import { join } from "node:path";
 config();
 
 export const cfg = {
+  githubBot: {
+    enabled: process.env.GITHUB_ONLY === "true",
+    webhookPort: parseInt(process.env.GITHUB_WEBHOOK_PORT || "3000", 10),
+    webhookSecret: process.env.GITHUB_WEBHOOK_SECRET || "",
+    allowedRepos: csv(process.env.GITHUB_ONLY_ALLOWED_REPOS),
+    allowedOrgs: csv(process.env.GITHUB_ONLY_ALLOWED_ORGS),
+  },
   slack: {
-    botToken: requireEnv("SLACK_BOT_TOKEN"),
-    appToken: requireEnv("SLACK_APP_TOKEN"),
+    botToken: cfgGithubOnlyOk() ? "" : requireEnv("SLACK_BOT_TOKEN"),
+    appToken: cfgGithubOnlyOk() ? "" : requireEnv("SLACK_APP_TOKEN"),
     userToken: process.env.SLACK_USER_TOKEN || "",
     sayRetries: parseInt(process.env.SLACK_SAY_RETRIES || "2", 10),
     sayRetryBaseMs: parseInt(process.env.SLACK_SAY_RETRY_BASE_MS || "1000", 10),
@@ -133,6 +140,10 @@ function normalizeTier(value?: string): "basic" | "elastic" | "privileged" | und
   const t = value?.toLowerCase().trim();
   if (t === "basic" || t === "elastic" || t === "privileged") return t;
   return undefined;
+}
+
+function cfgGithubOnlyOk(): boolean {
+  return process.env.GITHUB_ONLY === "true";
 }
 
 function requireEnv(name: string): string {

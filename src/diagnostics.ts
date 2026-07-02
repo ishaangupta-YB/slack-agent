@@ -89,9 +89,16 @@ function checkOptionalUrl(checks: DiagnosticCheck[], name: string): void {
 export async function runDiagnostics(): Promise<DiagnosticResult> {
   const checks: DiagnosticCheck[] = [];
 
-  // Required core credentials
-  checkRequiredEnv(checks, "SLACK_BOT_TOKEN", "xoxb-");
-  checkRequiredEnv(checks, "SLACK_APP_TOKEN", "xapp-");
+  const githubOnly = env("GITHUB_ONLY") === "true";
+
+  if (githubOnly) {
+    checks.push({ name: "Mode", status: "ok", message: "GitHub-only bot mode" });
+    checks.push({ name: "SLACK_BOT_TOKEN", status: "ok", message: "Not required in GitHub-only mode" });
+    checks.push({ name: "SLACK_APP_TOKEN", status: "ok", message: "Not required in GitHub-only mode" });
+  } else {
+    checkRequiredEnv(checks, "SLACK_BOT_TOKEN", "xoxb-");
+    checkRequiredEnv(checks, "SLACK_APP_TOKEN", "xapp-");
+  }
   checkOptionalToken(checks, "SLACK_USER_TOKEN", "xoxp-");
   checkRequiredEnv(checks, "CLOUDFLARE_ACCOUNT_ID");
   checkRequiredEnv(checks, "CLOUDFLARE_API_TOKEN");
@@ -229,6 +236,24 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "ALLOW_GUESTS", status: "warn", message: "guest accounts are allowed — verify this matches your security policy" });
   } else {
     checks.push({ name: "ALLOW_GUESTS", status: "ok", message: "guest accounts are refused (safe default)" });
+  }
+
+  // GitHub-only mode
+  if (githubOnly) {
+    if (isSet("GITHUB_WEBHOOK_SECRET")) {
+      checks.push({ name: "GITHUB_WEBHOOK_SECRET", status: "ok", message: "Set" });
+    } else {
+      checks.push({ name: "GITHUB_WEBHOOK_SECRET", status: "warn", message: "Not set — webhook signatures will not be verified" });
+    }
+    const webhookPort = parseInt(env("GITHUB_WEBHOOK_PORT") || "3000", 10);
+    if (Number.isNaN(webhookPort) || webhookPort <= 0) {
+      checks.push({ name: "GITHUB_WEBHOOK_PORT", status: "warn", message: "Invalid port" });
+    } else {
+      checks.push({ name: "GITHUB_WEBHOOK_PORT", status: "ok", message: `${webhookPort}` });
+    }
+    if (isSet("GITHUB_ONLY_ALLOWED_REPOS") || isSet("GITHUB_ONLY_ALLOWED_ORGS")) {
+      checks.push({ name: "GitHub allowlist", status: "ok", message: "Restricted to configured repos/orgs" });
+    }
   }
 
   // GitHub

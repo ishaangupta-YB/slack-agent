@@ -27,6 +27,7 @@ export const readFileTool: Tool = {
     "Read a file relative to the project root. Optionally provide offset/limit for line ranges.",
   params: readParams,
   tier: "basic",
+  githubBot: true,
   run(input) {
     const path = safePath(input.path);
     if (!path) return "Error: path is outside the workspace";
@@ -49,6 +50,7 @@ export const writeFileTool: Tool = {
     "Create or overwrite a file relative to the project root. Use with caution. (privileged)",
   params: writeParams,
   tier: "privileged",
+  githubBot: true,
   run(input) {
     const path = safePath(input.path);
     if (!path) return "Error: path is outside the workspace";
@@ -71,6 +73,7 @@ export const editFileTool: Tool = {
     "Replace an exact string inside a file relative to the project root. (privileged)",
   params: editParams,
   tier: "privileged",
+  githubBot: true,
   run(input) {
     const path = safePath(input.path);
     if (!path) return "Error: path is outside the workspace";

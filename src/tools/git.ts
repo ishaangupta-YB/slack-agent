@@ -64,6 +64,7 @@ export const cloneRepoTool: Tool = {
     "Clone a GitHub repository into CODE_REPOS_DIR so search_code can navigate it. Provide repo as owner/name. Optional branch.",
   params: cloneRepoParams,
   tier: "basic",
+  githubBot: true,
   async run(input) {
     const parsed = parseRepoName(input.repo);
     if (!parsed) {

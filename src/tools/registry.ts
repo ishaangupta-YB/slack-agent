@@ -68,14 +68,31 @@ export async function shutdownTools(): Promise<void> {
   registry = new Map<string, Tool>(staticTools.map((t) => [t.name, t]));
 }
 
-export function listTools(tier: AccessTier = "basic"): Tool[] {
-  return [...registry.values()].filter((t) => isAtLeast(tier, t.tier ?? "basic"));
+export type ToolEnvironment = "slack" | "github";
+
+function isToolAvailableInEnvironment(tool: Tool, environment: ToolEnvironment): boolean {
+  if (environment === "github") return tool.githubBot === true;
+  return true;
 }
 
-export function getTool(name: string, tier: AccessTier = "basic"): Tool | undefined {
+export function listTools(
+  tier: AccessTier = "basic",
+  environment: ToolEnvironment = "slack",
+): Tool[] {
+  return [...registry.values()].filter(
+    (t) => isAtLeast(tier, t.tier ?? "basic") && isToolAvailableInEnvironment(t, environment),
+  );
+}
+
+export function getTool(
+  name: string,
+  tier: AccessTier = "basic",
+  environment: ToolEnvironment = "slack",
+): Tool | undefined {
   const tool = registry.get(name);
   if (!tool) return undefined;
   if (!isAtLeast(tier, tool.tier ?? "basic")) return undefined;
+  if (!isToolAvailableInEnvironment(tool, environment)) return undefined;
   return tool;
 }
 
@@ -83,13 +100,14 @@ export async function runToolCall(
   call: ToolCall,
   maxOutputChars = 8_000,
   tier: AccessTier = "basic",
+  environment: ToolEnvironment = "slack",
 ): Promise<ToolResult> {
-  const tool = getTool(call.tool, tier);
+  const tool = getTool(call.tool, tier, environment);
   if (!tool) {
     return {
       tool: call.tool,
       params: call.params,
-      result: `Tool ${call.tool} is not available for your access tier (${tier}).`,
+      result: `Tool ${call.tool} is not available${environment === "github" ? " in GitHub-only mode" : ` for your access tier (${tier})`}.`,
       error: true,
     };
   }

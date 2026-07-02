@@ -41,6 +41,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
+| **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, with no Slack tokens or production database access. |
 
 ---
 
@@ -176,7 +177,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 11. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
 12. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
 13. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
-14. **Status / help:**
+14. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@moon-bot`, and watch it reply by posting a comment — no Slack workspace needed.
+15. **Status / help:**
     `/moonbot status`
 
 ---

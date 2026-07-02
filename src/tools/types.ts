@@ -6,6 +6,7 @@ export interface Tool {
   description: string;
   params: ZodTypeAny;
   tier?: AccessTier;
+  githubBot?: boolean;
   run: (params: z.infer<ZodTypeAny>) => Promise<string> | string;
 }
 

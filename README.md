@@ -24,6 +24,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
 - **Inline feedback + reset** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session.
+- **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
 
 ---
 
@@ -174,6 +175,9 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 | `HF_TOKEN` / `HF_BUCKET_REPO` | no | Use HuggingFace Bucket for artifacts |
 | `MCP_SERVERS` | no | JSON map of MCP servers |
 | `USER_TIERS` / `OKTA_*` | no | Access-tier resolution |
+| `GITHUB_ONLY` | no | Set to `true` to run as a GitHub-only bot (no Slack required) |
+| `GITHUB_WEBHOOK_PORT` / `GITHUB_WEBHOOK_SECRET` | no | GitHub webhook receiver port and HMAC secret |
+| `GITHUB_ONLY_ALLOWED_REPOS` / `GITHUB_ONLY_ALLOWED_ORGS` | no | Restrict GitHub bot to specific repos/orgs |
 
 See `.env.example` for the full list.
 
@@ -221,6 +225,10 @@ Try these in Slack to show off the core tracks:
 ## Deployment
 
 A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_PORT` and runs in Socket Mode — no public ingress URL is required for Slack events.
+
+### GitHub-only bot mode
+
+Moon Bot can also run as a separate, credential-poor GitHub bot. Set `GITHUB_ONLY=true`, configure `GITHUB_WEBHOOK_SECRET`, and point a GitHub App or repository webhook at `http://<host>:3000/`. The bot replies to `@moon-bot` mentions on issues and PRs. In this mode Slack tokens and production database credentials are not required, and only GitHub-safe tools are exposed to the agent.
 
 ```bash
 docker compose pull

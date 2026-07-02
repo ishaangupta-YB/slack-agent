@@ -26,6 +26,7 @@ export const statusTool = {
   description:
     "Report Moon Bot's current configuration, enabled integrations, scheduled tasks, and security posture. Useful for health-checking the bot during setup or demos.",
   tier: "basic" as const,
+  githubBot: true,
   params: statusParams,
   run: async (): Promise<string> => {
     const skills = loadSkills();
@@ -51,7 +52,7 @@ export const statusTool = {
       `*LLM retries:* ${cfg.cloudflare.retries}`,
       `*Memory context entries:* ${cfg.agent.memoryContextEntries}`,
       `*Max context messages:* ${cfg.agent.maxContextMessages === 0 ? "unlimited" : cfg.agent.maxContextMessages}`,
-      `*Slack mode:* Socket Mode + Slack AI Assistant`,
+      `*Mode:* ${cfg.githubBot.enabled ? "GitHub-only bot" : "Socket Mode + Slack AI Assistant"}`,
       `*Slack message retries:* ${cfg.slack.sayRetries} (base delay ${cfg.slack.sayRetryBaseMs}ms)`,
       `*Loaded skills:* ${skills.map((s) => s.name).join(", ")}`,
       `*MCP servers:* ${mcpServers}`,

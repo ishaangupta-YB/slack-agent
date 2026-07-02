@@ -15,6 +15,7 @@ export const helpTool: Tool = {
     "Show a concise help message describing Moon Bot capabilities. Invoke this when the user greets the bot, asks for help, asks what it can do, or requests examples.",
   params,
   tier: "basic",
+  githubBot: true,
   run(input) {
     const model = cfg.cloudflare.model;
     const bucketMode = cfg.hf.token && cfg.hf.bucketRepo ? "HuggingFace Bucket" : "Local filesystem";

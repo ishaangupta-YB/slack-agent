@@ -11,7 +11,7 @@ import {
   formatParseErrors,
   parseToolCallsWithErrors,
 } from "./tools/parser.js";
-import { listTools, runToolCall } from "./tools/registry.js";
+import { listTools, runToolCall, type ToolEnvironment } from "./tools/registry.js";
 import { appendMemory, getMemoryByThreadKey, searchMemory, type MemoryEntry } from "./tools/memory.js";
 import { resolveAccessTier, type AccessTier } from "./auth/tiers.js";
 import { getToolContext } from "./context.js";
@@ -67,16 +67,25 @@ async function buildMemoryContext(threadKey: string, prompt: string): Promise<st
   return formatMemoryContext(combined);
 }
 
-function systemPrompt(tier: AccessTier, memoryContext = ""): string {
+function systemPrompt(
+  tier: AccessTier,
+  memoryContext = "",
+  environment: ToolEnvironment = "slack",
+): string {
   if (cfg.agent.systemPromptOverride) return cfg.agent.systemPromptOverride;
+  const persona =
+    environment === "github"
+      ? "You are Moon Bot, a helpful engineering assistant that monitors GitHub issues and pull requests. " +
+        "You answer questions about code, review changes, and can open pull requests or post comments. "
+      : "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
+        "You answer questions about code, metrics, and operations. ";
   return (
-    "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
-    "You answer questions about code, metrics, and operations. " +
+    persona +
     `Your access tier is ${tier}. Only use tools available at your tier. ` +
     "You have access to tools. Use them when facts are not in your context. " +
     "Be concise but thorough, defaulting to Slack-compatible markdown." +
     memoryContext +
-    formatToolInstructions(listTools(tier)) +
+    formatToolInstructions(listTools(tier, environment)) +
     buildSkillPrompt(skills)
   );
 }
@@ -210,6 +219,7 @@ export function prepareLlmMessages(
   tier: AccessTier,
   memoryContext: string,
   maxContextMessages: number,
+  environment: ToolEnvironment = "slack",
 ): LlmMessage[] {
   const messages: LlmMessage[] = storedMessages.map((m) => ({
     role: m.role,
@@ -217,7 +227,7 @@ export function prepareLlmMessages(
   }));
 
   if (messages.length > 0 && messages[0].role === "system") {
-    messages[0].content = systemPrompt(tier, memoryContext);
+    messages[0].content = systemPrompt(tier, memoryContext, environment);
   }
 
   return truncateLlmMessages(messages, maxContextMessages);
@@ -243,6 +253,7 @@ async function runToolLoop(
   messages: LlmMessage[],
   tier: AccessTier,
   userId?: string,
+  environment: ToolEnvironment = "slack",
 ): Promise<string> {
   const maxIterations = 10;
 
@@ -273,7 +284,7 @@ async function runToolLoop(
     if (calls.length > 0) {
       const results = await Promise.all(
         calls.map((call) =>
-          runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier),
+          runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier, environment),
         ),
       );
       parts.push(results.map(formatToolResult).join("\n\n"));
@@ -362,6 +373,7 @@ export async function handleMessage(
   messageTs: string,
   userId: string,
   userEmail?: string,
+  environment: ToolEnvironment = "slack",
 ): Promise<HandleMessageResult> {
   return runLocked(threadKey, async () => {
     const tier = await resolveAccessTier(userId, userEmail);
@@ -389,7 +401,7 @@ export async function handleMessage(
       await ensureSessionFile(entry.sessionFilename);
       appendSessionMessage(entry.sessionFilename, {
         role: "system",
-        content: systemPrompt(tier, memoryContext),
+        content: systemPrompt(tier, memoryContext, environment),
         ts: new Date().toISOString(),
       });
     }
@@ -414,9 +426,10 @@ export async function handleMessage(
       tier,
       memoryContext,
       cfg.agent.maxContextMessages,
+      environment,
     );
 
-    const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
+    const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId, environment);
 
     await appendMemory({
       id: randomUUID(),

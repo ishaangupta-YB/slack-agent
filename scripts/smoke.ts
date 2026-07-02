@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { randomUUID } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -8,7 +8,7 @@ import { parseToolCalls, parseToolCallsWithErrors, formatToolResult, formatParse
 import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { safeSay } from "../src/slack-delivery.js";
 import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
-import { initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
+import { getTool, initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
 import { bucket } from "../src/storage/bucket.js";
 import { cfg } from "../src/config.js";
@@ -49,6 +49,7 @@ import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
 import { clearGitHubTokenCache } from "../src/integrations/github.js";
+import { startGitHubBotServer, stopGitHubBotServer } from "../src/github-bot.js";
 import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
 
@@ -1366,6 +1367,136 @@ rLQ+epZplw==
 
   console.log("GitHub App auth and commit_to_pr passed");
 
+  // GitHub-only bot mode
+  const githubOnlyBasicTools = listTools("basic", "github").map((t) => t.name).sort();
+  assert.deepStrictEqual(
+    githubOnlyBasicTools,
+    [
+      "clone_repo",
+      "comment_on_issue",
+      "commit_to_pr",
+      "create_issue",
+      "memory",
+      "moon_help",
+      "open_pr",
+      "read_file",
+      "search_code",
+      "system_status",
+    ].sort(),
+  );
+
+  const githubOnlyPrivilegedTools = listTools("privileged", "github").map((t) => t.name).sort();
+  assert(githubOnlyPrivilegedTools.includes("write_file"), "write_file should be available in GitHub-only privileged tier");
+  assert(githubOnlyPrivilegedTools.includes("edit_file"), "edit_file should be available in GitHub-only privileged tier");
+
+  const slackOnlyTools = [
+    "search_slack",
+    "es_query",
+    "mongo_query",
+    "athena_query",
+    "sizzle_query",
+    "plausible_query",
+    "weekly_report",
+    "deploy_report",
+    "public_status",
+    "report_injection",
+  ];
+  for (const name of slackOnlyTools) {
+    assert.strictEqual(
+      getTool(name, "basic", "github"),
+      undefined,
+      `Expected ${name} to be unavailable in GitHub-only mode`,
+    );
+  }
+
+  const originalGhWebhookPort = cfg.githubBot.webhookPort;
+  const originalGhWebhookSecret = cfg.githubBot.webhookSecret;
+  cfg.githubBot.webhookPort = 0;
+  cfg.githubBot.webhookSecret = "test-secret";
+  cfg.githubBot.allowedRepos = ["gh-owner/gh-repo"];
+
+  const ghServer = await startGitHubBotServer();
+  const address = ghServer.address();
+  assert(address && typeof address !== "string");
+  const ghPort = address.port;
+
+  const webhookSecret = "test-secret";
+  const makeSignature = (body: string) => {
+    const hmac = createHmac("sha256", webhookSecret).update(body).digest("hex");
+    return `sha256=${hmac}`;
+  };
+
+  const sendWebhook = async (event: string, body: object, signature?: string) => {
+    const payload = JSON.stringify(body);
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "X-GitHub-Event": event,
+      "X-GitHub-Delivery": randomUUID(),
+    };
+    if (signature !== undefined) headers["X-Hub-Signature-256"] = signature;
+    return fetch(`http://localhost:${ghPort}/`, {
+      method: "POST",
+      headers,
+      body: payload,
+    });
+  };
+
+  const noSignature = await sendWebhook("issue_comment", { action: "created" });
+  assert.strictEqual(noSignature.status, 401);
+
+  const badSignature = await sendWebhook("issue_comment", { action: "created" }, "sha256=deadbeef");
+  assert.strictEqual(badSignature.status, 401);
+
+  const noMentionBody = {
+    action: "created",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    issue: { number: 42, user: { login: "gh-owner" } },
+    comment: { body: "just a regular comment", user: { login: "alice" }, id: 1001 },
+    sender: { login: "alice" },
+  };
+  const noMention = await sendWebhook("issue_comment", noMentionBody, makeSignature(JSON.stringify(noMentionBody)));
+  assert.strictEqual(noMention.status, 200);
+  const noMentionJson = (await noMention.json()) as { result: string };
+  assert(noMentionJson.result.includes("no @moon-bot mention"));
+
+  let ghBotCommentBody = "";
+  const originalFetchForGhBot = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("/repos/gh-owner/gh-repo/issues/42/comments")) {
+      const body = typeof init?.body === "string" ? init.body : "";
+      ghBotCommentBody = body;
+      return new Response(JSON.stringify({ html_url: "https://github.com/gh-owner/gh-repo/issues/42#issuecomment-1", id: 1 }), { status: 201, headers: { "content-type": "application/json" } });
+    }
+    return originalFetchForGhBot(input, init);
+  };
+
+  const originalGhTokenCfgForGhBot = cfg.integrations.githubToken;
+  cfg.integrations.githubToken = "ghp_test";
+  setChatOverride(async () => "Hello from the GitHub bot!");
+
+  const mentionBody = {
+    action: "created",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    issue: { number: 42, user: { login: "gh-owner" } },
+    comment: { body: "@moon-bot explain this issue", user: { login: "alice" }, id: 1002 },
+    sender: { login: "alice" },
+  };
+  const mention = await sendWebhook("issue_comment", mentionBody, makeSignature(JSON.stringify(mentionBody)));
+  assert.strictEqual(mention.status, 200);
+  const mentionJson = (await mention.json()) as { result: string };
+  assert.strictEqual(mentionJson.result, "replied");
+  assert(ghBotCommentBody.includes("Hello from the GitHub bot!"), "Expected comment body to include agent reply");
+
+  cfg.githubBot.webhookPort = originalGhWebhookPort;
+  cfg.githubBot.webhookSecret = originalGhWebhookSecret;
+  cfg.githubBot.allowedRepos = [];
+  cfg.integrations.githubToken = originalGhTokenCfgForGhBot;
+  globalThis.fetch = originalFetchForGhBot;
+  clearChatOverride();
+  stopGitHubBotServer();
+  console.log("GitHub-only bot mode passed");
+
   // End-to-end ReAct agent loop with a mocked LLM
   setChatOverride(async (messages) => {
     const lastMessage = messages[messages.length - 1];
@@ -2540,6 +2671,7 @@ rLQ+epZplw==
     "help",
     "reports",
     "social-impact",
+    "github-bot",
   ]) {
     assert(
       skillNames.includes(expected),

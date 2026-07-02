@@ -1,4 +1,3 @@
-import { app } from "./slack.js";
 import { cfg } from "./config.js";
 import { startBucketServer, stopBucketServer } from "./storage/server.js";
 import { initializeTools, shutdownTools } from "./tools/registry.js";
@@ -19,7 +18,11 @@ const isCheckMode = process.argv.includes("--check");
   await initializeTools();
 
   if (isCheckMode) {
-    console.log("Moon Bot startup check passed — ready to start in Socket Mode");
+    console.log(
+      cfg.githubBot.enabled
+        ? "Moon Bot startup check passed — ready to start in GitHub-only mode"
+        : "Moon Bot startup check passed — ready to start in Socket Mode",
+    );
     await shutdownTools();
     stopEsProxy();
     stopPlausibleProxy();
@@ -28,6 +31,13 @@ const isCheckMode = process.argv.includes("--check");
     process.exit(0);
   }
 
+  if (cfg.githubBot.enabled) {
+    const { startGitHubBotServer } = await import("./github-bot.js");
+    await startGitHubBotServer();
+    return;
+  }
+
+  const { app } = await import("./slack.js");
   await startScheduler(app);
   await app.start();
   console.log("Moon Bot is running in Socket Mode");
@@ -40,10 +50,16 @@ async function shutdown(signal: string) {
   stopPlausibleProxy();
   stopHfProxy();
   stopBucketServer();
-  try {
-    await app.stop();
-  } catch {
-    // ignore
+  if (!cfg.githubBot.enabled) {
+    try {
+      const { app } = await import("./slack.js");
+      await app.stop();
+    } catch {
+      // ignore
+    }
+  } else {
+    const { stopGitHubBotServer } = await import("./github-bot.js");
+    stopGitHubBotServer();
   }
   await shutdownTools();
   process.exit(0);

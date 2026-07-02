@@ -193,5 +193,6 @@ export const searchCodeTool: Tool = {
     "Search across local cloned code repositories by file path or content. Use this to find symbols, implementations, or examples in codebase(s).",
   params: searchCodeSchema,
   tier: "basic",
+  githubBot: true,
   run: searchCode,
 };

@@ -276,6 +276,7 @@ export const openPrTool: Tool = {
     "Open a GitHub pull request. Provide repo (owner/name), branch name, PR title/body, and optional files to commit. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: openPrParams,
   tier: "basic",
+  githubBot: true,
   run: openPullRequest,
 };
 
@@ -285,6 +286,7 @@ export const commitToPrTool: Tool = {
     "Push an additional commit to an existing pull request branch. Provide repo (owner/name), branch name, commit message, and files. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback.",
   params: commitToPrParams,
   tier: "basic",
+  githubBot: true,
   run: commitToPullRequest,
 };
 
@@ -294,6 +296,7 @@ export const createIssueTool: Tool = {
     "Create a GitHub issue. Provide repo (owner/name), title, and body. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: createIssueParams,
   tier: "basic",
+  githubBot: true,
   run: createGitHubIssue,
 };
 
@@ -303,5 +306,6 @@ export const commentOnIssueTool: Tool = {
     "Post a comment on an existing GitHub issue or pull request. Provide repo (owner/name), issue_number, and body. GitHub auth uses a short-lived GitHub App token when configured, or GITHUB_TOKEN as a fallback. The Slack requester and agent trace URL are appended automatically from the conversation context.",
   params: commentOnIssueParams,
   tier: "basic",
+  githubBot: true,
   run: commentOnGitHubIssue,
 };

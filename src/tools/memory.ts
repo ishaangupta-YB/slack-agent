@@ -123,6 +123,7 @@ export const memoryTool: Tool = {
     "Read the shared memory store. mode=recent returns recent interactions; mode=search filters by query.",
   params,
   tier: "basic",
+  githubBot: true,
   async run(input) {
     const limit = input.limit ?? 10;
     let entries: MemoryEntry[];
