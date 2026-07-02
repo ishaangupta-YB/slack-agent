@@ -23,6 +23,7 @@ import { statusTool } from "./tools/status.js";
 import { safeSay } from "./slack-delivery.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
+import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -365,10 +366,11 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | status | ping | report].
+ * Slash command entry point: /moonbot [help | status | diagnose | ping | report].
  *
- * Gives users a quick, discoverable way to check capabilities, health, and
- * live LLM connectivity without starting a threaded conversation.
+ * Gives users a quick, discoverable way to check capabilities, health,
+ * configuration diagnostics, and live LLM connectivity without starting a
+ * threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -395,6 +397,15 @@ export async function handleMoonbotCommand({
     const text = await statusTool.run();
     await respond({
       text,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "diagnose") {
+    const result = await runDiagnostics();
+    await respond({
+      text: formatDiagnosticResultForSlack(result),
       response_type: "ephemeral",
     });
     return;
@@ -457,6 +468,7 @@ export async function handleMoonbotCommand({
       "Try:\n" +
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot status` — my current configuration\n" +
+      "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `@Moon Bot search Slack for deploy discussions`",

@@ -2125,6 +2125,21 @@ rLQ+epZplw==
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
 
+  await dispatchSlashCommand("diagnose");
+  const diagnoseText = slashResponses[0].text ?? "";
+  assert(diagnoseText.includes("Moon Bot diagnostic"), "diagnose command should include diagnostic header");
+  assert(diagnoseText.includes("SLACK_BOT_TOKEN"), "diagnose command should list Slack bot token check");
+  assert(diagnoseText.includes("CLOUDFLARE_ACCOUNT_ID"), "diagnose command should list Cloudflare account check");
+  assert(
+    !diagnoseText.includes(cfg.cloudflare.apiToken),
+    "diagnose command must not expose Cloudflare API token",
+  );
+  assert(
+    !diagnoseText.includes(cfg.slack.botToken),
+    "diagnose command must not expose Slack bot token",
+  );
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "diagnose command should be ephemeral");
+
   await dispatchSlashCommand("report");
   assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");
   assert(slashResponses[0].text?.includes("/moonbot report deploy"), "bare report command should show deploy usage");
