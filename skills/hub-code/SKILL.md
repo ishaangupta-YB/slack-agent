@@ -22,7 +22,8 @@ git clone https://github.com/huggingface/huggingface_hub repos/huggingface_hub
 
 - `clone_repo`: clone a GitHub repository into `CODE_REPOS_DIR` on demand.
 - `search_code`: search across all cloned repos by file path or file content.
-- `read_file`: read a specific file once `search_code` finds it.
+- `list_files`: browse the directory tree of a cloned repo.
+- `read_file`: read a specific file once `search_code` or `list_files` finds it.
 - `write_file` / `edit_file`: propose changes after understanding the code.
 
 ## How to use `search_code`
@@ -45,11 +46,18 @@ Search within a single repo:
 {"tool": "search_code", "params": {"repo": "huggingface_hub", "query": "create_repo", "mode": "both"}}
 ```
 
+Browse the top-level directories of a cloned repo:
+
+```json
+{"tool": "list_files", "params": {"path": "repos/huggingface_hub", "recursive": false}}
+```
+
 ## Workflow tips
 
-1. Start broad with `search_code` (`mode: "files"`) to locate relevant files.
-2. Read the most promising files with `read_file`.
-3. If you need a PR, make the edit locally with `write_file`/`edit_file` and then
+1. Browse the repo root with `list_files` to understand the directory layout.
+2. Start broad with `search_code` (`mode: "files"`) to locate relevant files.
+3. Read the most promising files with `read_file`.
+4. If you need a PR, make the edit locally with `write_file`/`edit_file` and then
    call `open_pr`.
 
 Always prefer small, focused reads over dumping whole directories.

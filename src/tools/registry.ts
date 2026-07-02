@@ -1,7 +1,7 @@
 import type { Tool, ToolCall, ToolResult } from "./types.js";
 import { isAtLeast, type AccessTier } from "../auth/tiers.js";
 import { bashTool } from "./bash.js";
-import { readFileTool, writeFileTool, editFileTool } from "./filesystem.js";
+import { readFileTool, writeFileTool, editFileTool, listFilesTool } from "./filesystem.js";
 import { searchCodeTool } from "./code.js";
 import { cloneRepoTool } from "./git.js";
 import { memoryTool } from "./memory.js";
@@ -26,6 +26,7 @@ const staticTools: Tool[] = [
   readFileTool,
   writeFileTool,
   editFileTool,
+  listFilesTool,
   searchCodeTool,
   cloneRepoTool,
   memoryTool,

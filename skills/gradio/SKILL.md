@@ -25,7 +25,8 @@ Use the same code-navigation tools as `hub-code` and `workloads`:
 
 - `clone_repo` to add the Gradio repository to the search index.
 - `search_code` to locate files, components, examples, or tests across the Gradio codebase.
-- `read_file` to inspect a file once `search_code` finds it.
+- `list_files` to browse the directory tree of a cloned repo.
+- `read_file` to inspect a file once `search_code` or `list_files` finds it.
 - `write_file` / `edit_file` to propose changes, then `open_pr` to submit them.
 
 ## Common patterns

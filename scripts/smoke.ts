@@ -155,6 +155,36 @@ async function main() {
   rmSync(writeTestPath, { force: true });
   console.log("Filesystem path traversal guard passed");
 
+  // File listing tool
+  const listTestDir = join(process.cwd(), "sessions", "list-test");
+  mkdirSync(join(listTestDir, "nested"), { recursive: true });
+  writeFileSync(join(listTestDir, "a.txt"), "alpha");
+  writeFileSync(join(listTestDir, "nested", "b.txt"), "beta");
+
+  const listFlat = await runToolCall({ tool: "list_files", params: { path: "sessions/list-test" } });
+  assert.strictEqual(listFlat.error, undefined);
+  assert(listFlat.result.includes("a.txt"), `flat listing should include a.txt: ${listFlat.result}`);
+  assert(listFlat.result.includes("nested/"), `flat listing should include nested/: ${listFlat.result}`);
+  assert(!listFlat.result.includes("b.txt"), `flat listing should not recurse: ${listFlat.result}`);
+
+  const listRecursive = await runToolCall({
+    tool: "list_files",
+    params: { path: "sessions/list-test", recursive: true },
+  });
+  assert(listRecursive.result.includes("nested/b.txt"), `recursive listing should include nested/b.txt: ${listRecursive.result}`);
+
+  const listLimit = await runToolCall({
+    tool: "list_files",
+    params: { path: "sessions/list-test", recursive: true, limit: 1 },
+  });
+  assert(listLimit.result.includes("truncated"), `limited listing should be truncated: ${listLimit.result}`);
+
+  const listOutside = await runToolCall({ tool: "list_files", params: { path: "/etc" } });
+  assert(listOutside.result.includes("outside the workspace"));
+
+  rmSync(listTestDir, { recursive: true, force: true });
+  console.log("File listing tool passed");
+
   // Bash disabled by default
   const bashResult = await runToolCall({ tool: "bash", params: { command: "echo hi" } });
   assert(bashResult.result.includes("disabled"));
@@ -1378,6 +1408,7 @@ rLQ+epZplw==
       "comment_on_issue",
       "commit_to_pr",
       "create_issue",
+      "list_files",
       "memory",
       "moon_help",
       "open_pr",

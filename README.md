@@ -12,7 +12,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 
 ## What it does
 
-- **Code Q&A** — clone repos, search files by name or content, read and edit code, open PRs, file issues, and comment on existing issues/PRs.
+- **Code Q&A** — clone repos, search files by name or content, browse directories, read and edit code, open PRs, file issues, and comment on existing issues/PRs.
 - **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats.
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
 - **Agent for Good** — designed for under-resourced nonprofit, civic-tech, and open-source teams that need to monitor public services, respond to incidents, and communicate impact without dedicated SREs.
@@ -57,7 +57,7 @@ flowchart TD
     J --> J3[memory]
     J --> J4[open_pr / create_issue / commit_to_pr]
     J --> J5[es_query / mongo_query / athena_query / sizzle_query / plausible_query]
-    J --> J6[search_code / clone_repo]
+    J --> J6[search_code / clone_repo / list_files]
     J --> J7[search_slack]
 
     F --> L[Bucket storage]

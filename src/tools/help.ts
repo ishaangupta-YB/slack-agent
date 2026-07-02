@@ -58,6 +58,7 @@ export const helpTool: Tool = {
         `**Code & GitHub**\n` +
         `• \`search_code\` — search cloned repos by file path or content\n` +
         `• \`read_file\` / \`write_file\` / \`edit_file\` — inspect and modify code in the workspace\n` +
+        `• \`list_files\` — browse directories in a cloned repo\n` +
         `• \`clone_repo\` — clone a GitHub repo into the workspace\n` +
         `• \`open_pr\` / \`commit_to_pr\` / \`create_issue\` / \`comment_on_issue\` — open PRs/issues, push follow-up commits, and post comments\n\n` +
         `**Example prompts**\n` +

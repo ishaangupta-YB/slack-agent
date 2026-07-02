@@ -29,7 +29,8 @@ Use the same code-navigation tools as `hub-code`:
 
 - `clone_repo` to add a new repository to the search index.
 - `search_code` to locate files, functions, or config across Spaces, Endpoints, and Jobs.
-- `read_file` to inspect a file once `search_code` finds it.
+- `list_files` to browse the directory tree of a cloned repo.
+- `read_file` to inspect a file once `search_code` or `list_files` finds it.
 - `write_file` / `edit_file` to propose changes, then `open_pr` to submit them.
 
 ## Common patterns

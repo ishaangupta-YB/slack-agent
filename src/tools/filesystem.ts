@@ -1,5 +1,5 @@
-import { existsSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
-import { dirname, normalize, resolve, sep } from "node:path";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
+import { dirname, join, normalize, resolve, sep } from "node:path";
 import { z } from "zod";
 import type { Tool } from "./types.js";
 
@@ -84,5 +84,69 @@ export const editFileTool: Tool = {
     if (occurrences > 1) return `Error: oldString found ${occurrences} times; provide more context.`;
     writeFileSync(path, content.replace(input.oldString, input.newString), "utf-8");
     return `Edited ${input.path}`;
+  },
+};
+
+function humanSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
+const listParams = z.object({
+  path: z.string().default("."),
+  recursive: z.boolean().default(false),
+  maxDepth: z.number().int().min(1).max(10).default(3),
+  limit: z.number().int().min(1).max(1000).default(200),
+});
+
+export const listFilesTool: Tool = {
+  name: "list_files",
+  description:
+    "List files and directories under a workspace-relative path. Useful for browsing a cloned repo before reading specific files.",
+  params: listParams,
+  tier: "basic",
+  githubBot: true,
+  run(input) {
+    const base = safePath(input.path);
+    if (!base) return "Error: path is outside the workspace";
+    if (!existsSync(base)) return `Error: directory not found: ${input.path}`;
+    const stat = statSync(base);
+    if (!stat.isDirectory()) return `Error: ${input.path} is not a directory`;
+
+    const lines: string[] = [`Listing ":${input.path || "."}"\n`];
+
+    function addEntries(dir: string, rel: string, depth: number) {
+      if (lines.length - 1 >= input.limit) return;
+      const entries = readdirSync(dir, { withFileTypes: true });
+      // Directories first, then files.
+      const dirs = entries.filter((e) => e.isDirectory());
+      const files = entries.filter((e) => !e.isDirectory());
+      for (const entry of [...dirs, ...files]) {
+        if (lines.length - 1 >= input.limit) break;
+        const entryRel = rel ? `${rel}/${entry.name}` : entry.name;
+        if (entry.isDirectory()) {
+          lines.push(`- ${entryRel}/`);
+          if (input.recursive && depth < input.maxDepth) {
+            addEntries(join(dir, entry.name), entryRel, depth + 1);
+          }
+        } else {
+          try {
+            const size = humanSize(statSync(join(dir, entry.name)).size);
+            lines.push(`- ${entryRel} (${size})`);
+          } catch {
+            lines.push(`- ${entryRel}`);
+          }
+        }
+      }
+    }
+
+    addEntries(base, "", 1);
+    const count = lines.length - 1;
+    if (count === 0) return `Directory ":${input.path || "."}" is empty.`;
+    if (lines.length - 1 >= input.limit) {
+      lines.push(`\n... (listing truncated to ${input.limit} entries)`);
+    }
+    return lines.join("\n");
   },
 };
