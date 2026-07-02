@@ -8,6 +8,7 @@ export function buildResponseBlocks(
   responseUrl: string,
   sessionUrl: string,
   traceUrl: string,
+  threadKey: string,
 ): KnownBlock[] {
   const displayText = text.trim() || "_No response generated._";
   const truncated = displayText.length > MAX_RESPONSE_CHARS
@@ -44,14 +45,14 @@ export function buildResponseBlocks(
           type: "button",
           text: { type: "plain_text", text: "👍 Helpful", emoji: true },
           action_id: "feedback_helpful",
-          value: "helpful",
+          value: threadKey,
           style: "primary",
         },
         {
           type: "button",
           text: { type: "plain_text", text: "👎 Not helpful", emoji: true },
           action_id: "feedback_not_helpful",
-          value: "not_helpful",
+          value: threadKey,
         },
       ],
     },
@@ -62,7 +63,7 @@ export function buildResponseBlocks(
           type: "button",
           text: { type: "plain_text", text: "🔄 Start over", emoji: true },
           action_id: "reset_thread",
-          value: "reset",
+          value: threadKey,
         },
       ],
     },
@@ -74,8 +75,9 @@ export function prepareSlackMessage(
   responseUrl: string,
   sessionUrl: string,
   traceUrl: string,
+  threadKey: string,
 ): { text: string; blocks: KnownBlock[] } {
-  const blocks = buildResponseBlocks(text, responseUrl, sessionUrl, traceUrl);
+  const blocks = buildResponseBlocks(text, responseUrl, sessionUrl, traceUrl, threadKey);
   let fallbackText = text.trim() || "_No response generated._";
   if (fallbackText.length > MAX_FALLBACK_CHARS) {
     fallbackText = fallbackText.slice(0, MAX_FALLBACK_CHARS) + "\n\n_(truncated — see full response in thread)_";

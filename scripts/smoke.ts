@@ -24,13 +24,15 @@ import {
   stripBotMention,
   handleMoonbotCommand,
   handleAskMoonBotShortcut,
+  handleFeedbackAction,
+  handleResetThread,
 } from "../src/slack.js";
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs } from "@slack/bolt";
-import { recordFeedback, feedbackLogPath } from "../src/feedback.js";
+import { feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
-import { getSessionFilenameByThreadKey, handleMessage, resetThread } from "../src/agent.js";
+import { getSessionFilenameByThreadKey, handleMessage } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -2330,8 +2332,17 @@ rLQ+epZplw==
 
   // Feedback buttons: every response should expose helpful / not-helpful actions,
   // and feedback should be persisted to a JSONL log.
-  const feedbackMsg = prepareSlackMessage("Here is my helpful answer.", "https://example.com/r", "https://example.com/s", "https://example.com/t");
-  const actionsBlock = feedbackMsg.blocks[1] as { elements?: Array<{ action_id?: string; style?: string }> };
+  const feedbackThreadKey = "C1:123.456";
+  const feedbackMsg = prepareSlackMessage(
+    "Here is my helpful answer.",
+    "https://example.com/r",
+    "https://example.com/s",
+    "https://example.com/t",
+    feedbackThreadKey,
+  );
+  const actionsBlock = feedbackMsg.blocks[1] as {
+    elements?: Array<{ action_id?: string; style?: string; value?: string }>;
+  };
   assert(Array.isArray(actionsBlock?.elements), "response actions block should contain elements");
   const actionIds = actionsBlock.elements!.map((e) => e.action_id);
   assert(actionIds.includes("open_trace_viewer"), "response should include open_trace_viewer button");
@@ -2339,60 +2350,168 @@ rLQ+epZplw==
   assert(actionIds.includes("feedback_not_helpful"), "response should include feedback_not_helpful button");
   const helpfulButton = actionsBlock.elements!.find((e) => e.action_id === "feedback_helpful");
   assert.strictEqual(helpfulButton?.style, "primary", "helpful button should be styled primary");
+  assert.strictEqual(
+    helpfulButton?.value,
+    feedbackThreadKey,
+    "feedback buttons should carry the thread key in their value",
+  );
+  const notHelpfulButton = actionsBlock.elements!.find((e) => e.action_id === "feedback_not_helpful");
+  assert.strictEqual(notHelpfulButton?.value, feedbackThreadKey, "not-helpful button should carry the thread key");
 
   const resetBlock = feedbackMsg.blocks[2] as {
     type?: string;
-    elements?: Array<{ action_id?: string }>;
+    elements?: Array<{ action_id?: string; value?: string }>;
   };
   assert.strictEqual(resetBlock?.type, "actions", "response should include a reset actions block");
+  const resetButton = resetBlock?.elements?.find((e) => e.action_id === "reset_thread");
+  assert(resetButton, "response should include reset_thread button");
+  assert.strictEqual(resetButton?.value, feedbackThreadKey, "reset button should carry the thread key");
+
+  // Helper to exercise reset and feedback action handlers with mocked Slack context.
+  function makeActionClient() {
+    const ephemeralTexts: string[] = [];
+    const client = {
+      chat: {
+        postEphemeral: async (args: { text: string }) => {
+          ephemeralTexts.push(args.text);
+          return { ok: true };
+        },
+      },
+    } as unknown as WebClient;
+    return { client, getTexts: () => ephemeralTexts };
+  }
+
+  function makeActionArgs(opts: {
+    actionId: string;
+    value?: string;
+    channel: string;
+    ts: string;
+    threadTs?: string;
+  }) {
+    return {
+      ack: async () => {},
+      body: {
+        user: { id: "U1" },
+        channel: { id: opts.channel },
+        message: { ts: opts.ts, thread_ts: opts.threadTs },
+      },
+      action: { action_id: opts.actionId, value: opts.value },
+    };
+  }
+
+  // Threaded channel: reset and feedback should resolve to the correct session.
+  const channelThreadKey = "C2:777000.000001";
+  setChatOverride(async () => "Hello from the channel thread.");
+  await handleMessage(channelThreadKey, "hello", "777000.000001", "U_CHANNEL");
+  clearChatOverride();
+  const channelSession = await getSessionFilenameByThreadKey(channelThreadKey);
+  assert(channelSession, "channel thread should have a session");
+
+  const resetChannel = makeActionClient();
+  await handleResetThread({
+    ...makeActionArgs({ actionId: "reset_thread", value: channelThreadKey, channel: "C2", ts: "777000.000001", threadTs: "777000.000001" }),
+    client: resetChannel.client,
+  } as never);
   assert(
-    resetBlock?.elements?.some((e) => e.action_id === "reset_thread"),
-    "response should include reset_thread button",
+    resetChannel.getTexts().some((t) => t.includes("has been reset")),
+    "reset action should confirm a threaded channel session was reset",
   );
-
-  const feedbackPath = feedbackLogPath();
-  if (existsSync(feedbackPath)) rmSync(feedbackPath, { force: true });
-  recordFeedback({
-    ts: new Date().toISOString(),
-    kind: "helpful",
-    userId: "U1",
-    channel: "C1",
-    messageTs: "123.456",
-    threadKey: "C1:123.456",
-    sessionFilename: "test-session.jsonl",
-  });
-  assert(existsSync(feedbackPath), "feedback log file should be created after recording feedback");
-  const feedbackLines = readFileSync(feedbackPath, "utf-8").split("\n").filter(Boolean);
-  assert.strictEqual(feedbackLines.length, 1);
-  const feedbackEvent = JSON.parse(feedbackLines[0]) as Record<string, unknown>;
-  assert.strictEqual(feedbackEvent.kind, "helpful");
-  assert.strictEqual(feedbackEvent.userId, "U1");
-  assert.strictEqual(feedbackEvent.sessionFilename, "test-session.jsonl");
-
-  // Thread-key to session filename lookup should match the thread map.
-  const lookupThreadKey = `feedback-lookup-${randomUUID()}`;
-  setChatOverride(async () => "Hello, I am Moon Bot.");
-  await handleMessage(lookupThreadKey, "hello", "1234567890.000000", "U_LOOKUP");
-  clearChatOverride();
-  const lookupFilename = await getSessionFilenameByThreadKey(lookupThreadKey);
-  assert(lookupFilename, "getSessionFilenameByThreadKey should return the session filename");
-  assert(lookupFilename.endsWith(".jsonl"), `Expected JSONL filename, got ${lookupFilename}`);
-
-  // Resetting a thread should remove its entry and delete the local session file,
-  // so the next message starts a brand-new session.
-  const resetThreadKey = `reset-${randomUUID()}`;
-  setChatOverride(async () => "Session started.");
-  await handleMessage(resetThreadKey, "hello", "2000.0001", "U_RESET");
-  clearChatOverride();
-  const resetFilename = await getSessionFilenameByThreadKey(resetThreadKey);
-  assert(resetFilename, "thread should have a session filename before reset");
-  const resetExisted = await resetThread(resetThreadKey);
-  assert(resetExisted, "resetThread should report that the thread existed");
   assert.strictEqual(
-    await getSessionFilenameByThreadKey(resetThreadKey),
+    await getSessionFilenameByThreadKey(channelThreadKey),
     undefined,
-    "thread-map entry should be removed after reset",
+    "channel thread session should be removed after reset action",
   );
+
+  // Recreate the channel session and send feedback to verify session lookup via value.
+  setChatOverride(async () => "Hello again.");
+  await handleMessage(channelThreadKey, "hello", "777000.000002", "U_CHANNEL");
+  clearChatOverride();
+  const feedbackChannelSession = await getSessionFilenameByThreadKey(channelThreadKey);
+  assert(feedbackChannelSession, "channel thread should have a session for feedback");
+  if (existsSync(feedbackLogPath())) rmSync(feedbackLogPath(), { force: true });
+  const feedbackChannel = makeActionClient();
+  await handleFeedbackAction({
+    ...makeActionArgs({ actionId: "feedback_helpful", value: channelThreadKey, channel: "C2", ts: "777000.000002", threadTs: "777000.000001" }),
+    client: feedbackChannel.client,
+  } as never);
+  assert(
+    feedbackChannel.getTexts().some((t) => t.includes("Thanks for the feedback")),
+    "feedback action should confirm helpful vote",
+  );
+  const channelFeedbackLines = readFileSync(feedbackLogPath(), "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const channelFeedbackEvent = JSON.parse(channelFeedbackLines[channelFeedbackLines.length - 1]!) as Record<string, unknown>;
+  assert.strictEqual(channelFeedbackEvent.sessionFilename, feedbackChannelSession, "feedback should record the correct channel session filename");
+  assert.strictEqual(channelFeedbackEvent.threadKey, channelThreadKey, "feedback should record the correct thread key");
+
+  // One-on-one DM: sessions are keyed by channel alone, so the action value must
+  // be used instead of a naive {channel}:{ts} computation.
+  const dmThreadKey = "D2";
+  setChatOverride(async () => "Hello from a DM.");
+  await handleMessage(dmThreadKey, "hello", "777001.000001", "U_DM");
+  clearChatOverride();
+  const dmSession = await getSessionFilenameByThreadKey(dmThreadKey);
+  assert(dmSession, "DM should have a session keyed by channel");
+
+  const resetDm = makeActionClient();
+  await handleResetThread({
+    ...makeActionArgs({ actionId: "reset_thread", value: dmThreadKey, channel: "D2", ts: "777001.000001" }),
+    client: resetDm.client,
+  } as never);
+  assert(
+    resetDm.getTexts().some((t) => t.includes("has been reset")),
+    "reset action should confirm a DM session was reset",
+  );
+  assert.strictEqual(
+    await getSessionFilenameByThreadKey(dmThreadKey),
+    undefined,
+    "DM session should be removed after reset action",
+  );
+
+  // Recreate DM session, send feedback, and verify session lookup.
+  setChatOverride(async () => "Hello again in DM.");
+  await handleMessage(dmThreadKey, "hello", "777001.000002", "U_DM");
+  clearChatOverride();
+  const dmFeedbackSession = await getSessionFilenameByThreadKey(dmThreadKey);
+  assert(dmFeedbackSession, "DM should have a session for feedback");
+  const feedbackDm = makeActionClient();
+  await handleFeedbackAction({
+    ...makeActionArgs({ actionId: "feedback_not_helpful", value: dmThreadKey, channel: "D2", ts: "777001.000002" }),
+    client: feedbackDm.client,
+  } as never);
+  assert(
+    feedbackDm.getTexts().some((t) => t.includes("use this to improve")),
+    "feedback action should confirm not-helpful vote",
+  );
+  const dmFeedbackLines = readFileSync(feedbackLogPath(), "utf-8")
+    .split("\n")
+    .filter(Boolean);
+  const dmFeedbackEvent = JSON.parse(dmFeedbackLines[dmFeedbackLines.length - 1]!) as Record<string, unknown>;
+  assert.strictEqual(dmFeedbackEvent.sessionFilename, dmFeedbackSession, "feedback should record the correct DM session filename");
+  assert.strictEqual(dmFeedbackEvent.threadKey, dmThreadKey, "feedback should record the correct DM thread key");
+
+  // Legacy fallback: a reset button with no embedded value still computes a
+  // thread key from the Slack message payload.
+  const legacyThreadKey = "legacy-channel:111.222";
+  setChatOverride(async () => "Legacy session.");
+  await handleMessage(legacyThreadKey, "hello", "111.222", "U_LEGACY");
+  clearChatOverride();
+  const resetLegacy = makeActionClient();
+  await handleResetThread({
+    ...makeActionArgs({ actionId: "reset_thread", channel: "legacy-channel", ts: "111.222" }),
+    client: resetLegacy.client,
+  } as never);
+  assert(
+    resetLegacy.getTexts().some((t) => t.includes("has been reset")),
+    "reset action should fall back to computed thread key when value is absent",
+  );
+  assert.strictEqual(
+    await getSessionFilenameByThreadKey(legacyThreadKey),
+    undefined,
+    "legacy-computed thread session should be removed",
+  );
+
   console.log("Response feedback buttons passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.

@@ -187,6 +187,7 @@ async function handleIncomingMessage({
       responseUrl,
       sessionUrl,
       traceUrl,
+      threadKey,
     );
     await safeSay(
       say,
@@ -540,7 +541,7 @@ app.shortcut("ask_moon_bot", handleAskMoonBotShortcut as never);
  * brief ephemeral confirmation is sent. This gives hackathon judges and
  * sandbox users a quick, interactive way to flag helpful or unhelpful replies.
  */
-async function handleFeedbackAction({
+export async function handleFeedbackAction({
   ack,
   body,
   client,
@@ -548,15 +549,29 @@ async function handleFeedbackAction({
 }: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
   await ack();
 
-  const kind = (action as { value?: string }).value as FeedbackKind | undefined;
-  if (!kind || (kind !== "helpful" && kind !== "not_helpful")) return;
+  const actionId = (action as { action_id?: string }).action_id ?? "";
+  const kind: FeedbackKind | undefined =
+    actionId === "feedback_helpful"
+      ? "helpful"
+      : actionId === "feedback_not_helpful"
+        ? "not_helpful"
+        : undefined;
+  if (!kind) return;
 
   const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
   const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
   const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
   const messageTs = message?.ts ?? "unknown";
   const threadTs = message?.thread_ts;
-  const threadKey = threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`;
+
+  // New responses embed the exact thread key in the button value so feedback
+  // works for one-on-one DM sessions (keyed by channel) as well as threaded
+  // channel/MPIM sessions. Fall back to the previous computed key for legacy
+  // messages or payloads without a value.
+  const actionValue = (action as { value?: string }).value;
+  const threadKey =
+    actionValue ??
+    (threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`);
 
   const sessionFilename = await import("./agent.js").then((m) =>
     m.getSessionFilenameByThreadKey(threadKey),
@@ -591,10 +606,11 @@ app.action("feedback_not_helpful", handleFeedbackAction as never);
  * user wants to begin a fresh task. After a reset, the next message in the
  * thread starts a brand-new agent session.
  */
-async function handleResetThread({
+export async function handleResetThread({
   ack,
   body,
   client,
+  action,
 }: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
   await ack();
 
@@ -603,7 +619,14 @@ async function handleResetThread({
   const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
   const messageTs = message?.ts ?? "unknown";
   const threadTs = message?.thread_ts;
-  const threadKey = threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`;
+
+  // Use the thread key carried by the button value so resetting works for
+  // one-on-one DM sessions (keyed by channel alone) in addition to threaded
+  // channel/MPIM sessions. Fall back to the computed key for older messages.
+  const actionValue = (action as { value?: string }).value;
+  const threadKey =
+    actionValue ??
+    (threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`);
 
   const existed = await resetThread(threadKey);
 
