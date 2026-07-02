@@ -333,6 +333,10 @@ async function main() {
               permalink: "https://example.slack.com/archives/C1/p123",
               channel_name: "proj-gizmo",
               author_name: "alice",
+              context_messages: {
+                before: [{ text: "What is the timeline for Gizmo?" }],
+                after: [{ text: "Ship it on Monday." }],
+              },
             },
           ],
           channels: [
@@ -350,13 +354,16 @@ async function main() {
 
   const slackSearchResult = await runToolCall({
     tool: "search_slack",
-    params: { query: "project gizmo", limit: 3 },
+    params: { query: "project gizmo", limit: 3, include_context_messages: true },
   });
   assert.strictEqual(slackSearchResult.error, undefined);
   assert(slackSearchResult.result.includes("Project Gizmo ships next week"));
+  assert(slackSearchResult.result.includes("_Before_: What is the timeline for Gizmo?"));
+  assert(slackSearchResult.result.includes("_After_: Ship it on Monday."));
   assert(capturedSearchRequest?.url?.includes("assistant.search.context"));
   assert.strictEqual(capturedSearchRequest?.body?.query, "project gizmo");
   assert.strictEqual(capturedSearchRequest?.body?.limit, 3);
+  assert.strictEqual(capturedSearchRequest?.body?.include_context_messages, true);
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetch;
   cfg.slack.userToken = originalSlackUserToken;

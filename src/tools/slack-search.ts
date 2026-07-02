@@ -63,6 +63,20 @@ function pickToken(): { token: string; actionToken?: string } | undefined {
   return undefined;
 }
 
+function formatContextMessages(
+  context?: SlackSearchResultItem["context_messages"],
+): string {
+  if (!context) return "";
+  const before = (context.before ?? [])
+    .map((m) => `> _Before_: ${(m.text ?? "").replace(/\n+/g, " ")}`)
+    .join("\n");
+  const after = (context.after ?? [])
+    .map((m) => `> _After_: ${(m.text ?? "").replace(/\n+/g, " ")}`)
+    .join("\n");
+  const pieces = [before, after].filter(Boolean);
+  return pieces.length ? "\n" + pieces.join("\n") : "";
+}
+
 function formatSearchResult(result: SlackSearchResponse, query: string): string {
   if (!result.ok) {
     return `Slack search failed: ${result.error ?? "unknown error"}`;
@@ -76,7 +90,8 @@ function formatSearchResult(result: SlackSearchResponse, query: string): string 
     parts.push("**Messages**");
     for (const m of messages) {
       const preview = (m.content ?? m.text ?? "(no preview)").replace(/\n+/g, " ");
-      parts.push(`- ${preview} — <${m.permalink ?? "#"}|view> (${m.author_name ?? "unknown"} in #${m.channel_name ?? "?"})`);
+      const context = formatContextMessages(m.context_messages);
+      parts.push(`- ${preview} — <${m.permalink ?? "#"}|view> (${m.author_name ?? "unknown"} in #${m.channel_name ?? "?"})${context}`);
     }
   }
 
