@@ -21,7 +21,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent track), Moon Bo
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
-- **Inline feedback** — every response includes 👍 / 👎 buttons; feedback is logged for continuous improvement.
+- **Inline feedback + reset** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session.
 
 ---
 

@@ -36,6 +36,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **App Home + slash command** | Home tab overview and `/moonbot help | status` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
+| **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
 
 ---
 
@@ -163,7 +164,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 7. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
 8. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
-9. **Status / help:**  
+9. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
+10. **Status / help:**  
    `/moonbot status`
 
 ---

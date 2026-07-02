@@ -55,6 +55,17 @@ export function buildResponseBlocks(
         },
       ],
     },
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: { type: "plain_text", text: "🔄 Start over", emoji: true },
+          action_id: "reset_thread",
+          value: "reset",
+        },
+      ],
+    },
   ] as unknown as KnownBlock[];
 }
 

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { cfg } from "./config.js";
 import { bucket } from "./storage/bucket.js";
@@ -186,6 +186,32 @@ export async function getSessionFilenameByThreadKey(
 export async function hasThreadKey(threadKey: string): Promise<boolean> {
   const map = await ensureThreadMap();
   return threadKey in map;
+}
+
+/**
+ * Reset an active thread by removing its thread-map entry and deleting the
+ * local session file.
+ *
+ * This is used by the Slack "Start over" action so users can clear a
+ * conversation and begin a fresh agent session on their next message. The
+ * operation is serialized on the thread key to avoid racing with an in-flight
+ * message handler.
+ */
+export async function resetThread(threadKey: string): Promise<boolean> {
+  return runLocked(threadKey, async () => {
+    const map = await ensureThreadMap();
+    const entry = map[threadKey];
+    if (!entry) return false;
+
+    const path = sessionFilePath(entry.sessionFilename);
+    if (existsSync(path)) {
+      rmSync(path, { force: true });
+    }
+
+    delete map[threadKey];
+    await writeThreadMap(map);
+    return true;
+  });
 }
 
 const threadLocks = new Map<string, Promise<unknown>>();

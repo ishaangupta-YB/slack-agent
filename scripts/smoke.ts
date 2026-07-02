@@ -30,7 +30,7 @@ import { recordFeedback, feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer } from "../src/storage/server.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
-import { getSessionFilenameByThreadKey, handleMessage } from "../src/agent.js";
+import { getSessionFilenameByThreadKey, handleMessage, resetThread } from "../src/agent.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -1833,7 +1833,7 @@ rLQ+epZplw==
   // Slack message delivery safety: fallback text respects Slack's 40,000 char limit and empty replies are handled.
   const shortMsg = prepareSlackMessage("hello", "https://example.com/r", "https://example.com/s", "https://example.com/t");
   assert.strictEqual(shortMsg.text, "hello");
-  assert.strictEqual(shortMsg.blocks.length, 2);
+  assert.strictEqual(shortMsg.blocks.length, 3);
 
   const emptyMsg = prepareSlackMessage("   ", "https://example.com/r", "https://example.com/s", "https://example.com/t");
   assert.strictEqual(emptyMsg.text, "_No response generated._");
@@ -2071,6 +2071,16 @@ rLQ+epZplw==
   const helpfulButton = actionsBlock.elements!.find((e) => e.action_id === "feedback_helpful");
   assert.strictEqual(helpfulButton?.style, "primary", "helpful button should be styled primary");
 
+  const resetBlock = feedbackMsg.blocks[2] as {
+    type?: string;
+    elements?: Array<{ action_id?: string }>;
+  };
+  assert.strictEqual(resetBlock?.type, "actions", "response should include a reset actions block");
+  assert(
+    resetBlock?.elements?.some((e) => e.action_id === "reset_thread"),
+    "response should include reset_thread button",
+  );
+
   const feedbackPath = feedbackLogPath();
   if (existsSync(feedbackPath)) rmSync(feedbackPath, { force: true });
   recordFeedback({
@@ -2098,6 +2108,22 @@ rLQ+epZplw==
   const lookupFilename = await getSessionFilenameByThreadKey(lookupThreadKey);
   assert(lookupFilename, "getSessionFilenameByThreadKey should return the session filename");
   assert(lookupFilename.endsWith(".jsonl"), `Expected JSONL filename, got ${lookupFilename}`);
+
+  // Resetting a thread should remove its entry and delete the local session file,
+  // so the next message starts a brand-new session.
+  const resetThreadKey = `reset-${randomUUID()}`;
+  setChatOverride(async () => "Session started.");
+  await handleMessage(resetThreadKey, "hello", "2000.0001", "U_RESET");
+  clearChatOverride();
+  const resetFilename = await getSessionFilenameByThreadKey(resetThreadKey);
+  assert(resetFilename, "thread should have a session filename before reset");
+  const resetExisted = await resetThread(resetThreadKey);
+  assert(resetExisted, "resetThread should report that the thread existed");
+  assert.strictEqual(
+    await getSessionFilenameByThreadKey(resetThreadKey),
+    undefined,
+    "thread-map entry should be removed after reset",
+  );
   console.log("Response feedback buttons passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.

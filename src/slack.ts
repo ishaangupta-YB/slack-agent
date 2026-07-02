@@ -12,7 +12,7 @@ import {
 } from "@slack/bolt";
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
 import { cfg } from "./config.js";
-import { handleMessage, hasThreadKey } from "./agent.js";
+import { handleMessage, hasThreadKey, resetThread } from "./agent.js";
 import { uploadArtifacts } from "./artifacts.js";
 import { prepareSlackMessage } from "./slack-blocks.js";
 import { runWithToolContext } from "./context.js";
@@ -547,6 +547,42 @@ async function handleFeedbackAction({
 
 app.action("feedback_helpful", handleFeedbackAction as never);
 app.action("feedback_not_helpful", handleFeedbackAction as never);
+
+/**
+ * Reset action: users can tap "Start over" on any Moon Bot response to clear
+ * the current thread session.
+ *
+ * This is useful when a conversation drifts, the context window fills up, or a
+ * user wants to begin a fresh task. After a reset, the next message in the
+ * thread starts a brand-new agent session.
+ */
+async function handleResetThread({
+  ack,
+  body,
+  client,
+}: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
+  await ack();
+
+  const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
+  const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
+  const messageTs = message?.ts ?? "unknown";
+  const threadTs = message?.thread_ts;
+  const threadKey = threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`;
+
+  const existed = await resetThread(threadKey);
+
+  await client.chat.postEphemeral({
+    channel,
+    user: userId,
+    thread_ts: threadTs,
+    text: existed
+      ? "Got it — this thread has been reset. Your next message will start a fresh session."
+      : "This thread was not active, so there was nothing to reset.",
+  });
+}
+
+app.action("reset_thread", handleResetThread as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);
