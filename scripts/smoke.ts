@@ -1377,6 +1377,47 @@ rLQ+epZplw==
   globalThis.fetch = originalFetch7;
   console.log("Cloudflare Workers AI retry passed");
 
+  // Cloudflare fallback model when primary returns not-found
+  const originalFallbackModel = cfg.cloudflare.fallbackModel;
+  cfg.cloudflare.fallbackModel = "@cf/moonshotai/kimi-k2.6";
+  clearChatOverride();
+  const originalFetch8 = globalThis.fetch;
+  let primaryCalled = false;
+  let fallbackCalled = false;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (!url.includes("/ai/run/")) {
+      return originalFetch8(input, init);
+    }
+    if (url.includes(cfg.cloudflare.model)) {
+      primaryCalled = true;
+      return new Response(JSON.stringify({ message: "model not found" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (url.includes("@cf/moonshotai/kimi-k2.6")) {
+      fallbackCalled = true;
+      return new Response(JSON.stringify({ result: { response: "fallback-success" } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    return originalFetch8(input, init);
+  };
+
+  const { chat: chatWithFallback } = await import("../src/llm/cloudflare.js");
+  const fallbackResult = await chatWithFallback([
+    { role: "system", content: "You are a helpful assistant." },
+    { role: "user", content: "Hello" },
+  ]);
+  assert.strictEqual(fallbackResult, "fallback-success");
+  assert.strictEqual(primaryCalled, true, "Primary model endpoint should be called");
+  assert.strictEqual(fallbackCalled, true, "Fallback model endpoint should be called");
+  globalThis.fetch = originalFetch8;
+  cfg.cloudflare.fallbackModel = originalFallbackModel;
+  console.log("Cloudflare fallback model passed");
+
   // Artifact upload
   const sessionsDir = process.env.SESSIONS_DIR || "./sessions";
   const sessionFilename = "test-session.jsonl";

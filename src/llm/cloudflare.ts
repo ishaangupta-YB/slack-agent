@@ -10,9 +10,6 @@ interface RunResponse {
   result?: { response?: string } | string;
 }
 
-const endpoint =
-  `https://api.cloudflare.com/client/v4/accounts/${cfg.cloudflare.accountId}/ai/run/${cfg.cloudflare.model}`;
-
 let chatOverride: ((messages: Message[]) => Promise<string>) | undefined;
 
 export function setChatOverride(fn: (messages: Message[]) => Promise<string>): void {
@@ -27,8 +24,12 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchChat(messages: Message[], signal: AbortSignal): Promise<RunResponse> {
-  const resp = await fetch(endpoint, {
+function runEndpoint(model: string): string {
+  return `https://api.cloudflare.com/client/v4/accounts/${cfg.cloudflare.accountId}/ai/run/${model}`;
+}
+
+async function fetchChat(messages: Message[], signal: AbortSignal, model: string): Promise<RunResponse> {
+  const resp = await fetch(runEndpoint(model), {
     method: "POST",
     headers: {
       Authorization: `Bearer ${cfg.cloudflare.apiToken}`,
@@ -40,12 +41,20 @@ async function fetchChat(messages: Message[], signal: AbortSignal): Promise<RunR
 
   if (!resp.ok) {
     const body = await resp.text();
-    throw new Error(
-      `Cloudflare Workers AI error ${resp.status}: ${body}`,
-    );
+    throw new Error(`Cloudflare Workers AI error ${resp.status}: ${body}`);
   }
 
   return (await resp.json()) as RunResponse;
+}
+
+function extractStatus(err: unknown): number | undefined {
+  if (err instanceof Error) {
+    const statusMatch = err.message.match(/Cloudflare Workers AI error (\d{3})/);
+    if (statusMatch) {
+      return parseInt(statusMatch[1], 10);
+    }
+  }
+  return undefined;
 }
 
 function isRetryableError(err: unknown): boolean {
@@ -53,20 +62,24 @@ function isRetryableError(err: unknown): boolean {
     if (err.name === "AbortError" || err.message.includes("fetch failed")) {
       return true;
     }
-    const statusMatch = err.message.match(/Cloudflare Workers AI error (\d{3})/);
-    if (statusMatch) {
-      const status = parseInt(statusMatch[1], 10);
+    const status = extractStatus(err);
+    if (status !== undefined) {
       return status >= 500 || status === 429;
     }
   }
   return false;
 }
 
-export async function chat(messages: Message[]): Promise<string> {
-  if (chatOverride) {
-    return chatOverride(messages);
+function isModelNotFoundError(err: unknown): boolean {
+  const status = extractStatus(err);
+  if (status === 404 || status === 422) return true;
+  if (status === 400 && err instanceof Error && /not found/i.test(err.message)) {
+    return true;
   }
+  return false;
+}
 
+async function chatWithModel(model: string, messages: Message[]): Promise<string> {
   const maxRetries = cfg.cloudflare.retries;
   const timeoutMs = cfg.cloudflare.timeoutMs;
   let lastError: Error | undefined;
@@ -76,7 +89,7 @@ export async function chat(messages: Message[]): Promise<string> {
     const timer = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-      const json = await fetchChat(messages, controller.signal);
+      const json = await fetchChat(messages, controller.signal, model);
       clearTimeout(timer);
 
       if (typeof json.result === "string") {
@@ -103,6 +116,26 @@ export async function chat(messages: Message[]): Promise<string> {
   }
 
   throw lastError ?? new Error("Cloudflare chat failed after retries");
+}
+
+export async function chat(messages: Message[]): Promise<string> {
+  if (chatOverride) {
+    return chatOverride(messages);
+  }
+
+  try {
+    return await chatWithModel(cfg.cloudflare.model, messages);
+  } catch (err) {
+    if (cfg.cloudflare.fallbackModel && isModelNotFoundError(err)) {
+      console.warn(
+        `Primary Cloudflare model ${cfg.cloudflare.model} unavailable; trying fallback ${cfg.cloudflare.fallbackModel}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return await chatWithModel(cfg.cloudflare.fallbackModel, messages);
+    }
+    throw err;
+  }
 }
 
 export interface PingResultOk {

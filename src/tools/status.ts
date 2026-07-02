@@ -44,7 +44,9 @@ export const statusTool = {
       `*Moon Bot status* 🌙`,
       ``,
       `*Version:* ${packageVersion()}`,
-      `*Model:* ${cfg.cloudflare.model}`,
+      `*Model:* ${cfg.cloudflare.model}${
+        cfg.cloudflare.fallbackModel ? ` (fallback: ${cfg.cloudflare.fallbackModel})` : ""
+      }`,
       `*LLM timeout:* ${cfg.cloudflare.timeoutMs}ms`,
       `*LLM retries:* ${cfg.cloudflare.retries}`,
       `*Slack mode:* Socket Mode + Slack AI Assistant`,

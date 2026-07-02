@@ -115,6 +115,15 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "CLOUDFLARE_RETRIES", status: "ok", message: `${cfRetries} retries` });
   }
 
+  const fallbackModel = env("CLOUDFLARE_FALLBACK_MODEL");
+  if (!fallbackModel) {
+    checks.push({ name: "CLOUDFLARE_FALLBACK_MODEL", status: "ok", message: "none configured" });
+  } else if (fallbackModel.startsWith("@cf/")) {
+    checks.push({ name: "CLOUDFLARE_FALLBACK_MODEL", status: "ok", message: fallbackModel });
+  } else {
+    checks.push({ name: "CLOUDFLARE_FALLBACK_MODEL", status: "warn", message: `${fallbackModel} does not start with @cf/ — verify this model is available` });
+  }
+
   const slackSayRetries = parseInt(env("SLACK_SAY_RETRIES") || "2", 10);
   const slackSayRetryBaseMs = parseInt(env("SLACK_SAY_RETRY_BASE_MS") || "1000", 10);
   if (Number.isNaN(slackSayRetries) || slackSayRetries < 0) {

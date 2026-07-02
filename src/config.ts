@@ -14,6 +14,7 @@ export const cfg = {
     accountId: requireEnv("CLOUDFLARE_ACCOUNT_ID"),
     apiToken: requireEnv("CLOUDFLARE_API_TOKEN"),
     model: process.env.CLOUDFLARE_MODEL || "@cf/moonshotai/kimi-k2.7-code",
+    fallbackModel: process.env.CLOUDFLARE_FALLBACK_MODEL || "",
     timeoutMs: parseInt(process.env.CLOUDFLARE_TIMEOUT_MS || "120000", 10),
     retries: parseInt(process.env.CLOUDFLARE_RETRIES || "2", 10),
   },

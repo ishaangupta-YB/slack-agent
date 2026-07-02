@@ -157,6 +157,8 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 | `SLACK_APP_TOKEN` | yes | App-level token for Socket Mode (`xapp-...`) |
 | `CLOUDFLARE_ACCOUNT_ID` | yes | Cloudflare account for Workers AI |
 | `CLOUDFLARE_API_TOKEN` | yes | Cloudflare API token with Workers AI permission |
+| `CLOUDFLARE_MODEL` | no | Workers AI model (default: `@cf/moonshotai/kimi-k2.7-code`) |
+| `CLOUDFLARE_FALLBACK_MODEL` | no | Fallback model used when the primary model is unavailable |
 | `SLACK_USER_TOKEN` | no | User token (`xoxp-...`) for Real-Time Search without an action_token |
 | `SLACK_SAY_RETRIES` | no | Retries for transient Slack API errors when posting messages (default: 2) |
 | `SLACK_SAY_RETRY_BASE_MS` | no | Base backoff for Slack message retries in ms (default: 1000) |
