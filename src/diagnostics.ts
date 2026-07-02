@@ -1,5 +1,6 @@
 import { access, constants, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
+import { pingLLM } from "./llm/cloudflare.js";
 
 export interface DiagnosticCheck {
   name: string;
@@ -122,6 +123,26 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "CLOUDFLARE_FALLBACK_MODEL", status: "ok", message: fallbackModel });
   } else {
     checks.push({ name: "CLOUDFLARE_FALLBACK_MODEL", status: "warn", message: `${fallbackModel} does not start with @cf/ — verify this model is available` });
+  }
+
+  // Optional end-to-end LLM connectivity check. Enabled with DIAGNOSE_LLM_PING=true
+  // so routine diagnostics stay fast and offline-safe; enable it during pre-flight
+  // Slack testing to confirm Cloudflare Workers AI is reachable.
+  if (env("DIAGNOSE_LLM_PING") === "true") {
+    try {
+      const ping = await pingLLM();
+      if (ping.ok) {
+        checks.push({ name: "LLM connectivity", status: "ok", message: `${ping.model} responded in ${ping.latencyMs}ms` });
+      } else {
+        checks.push({ name: "LLM connectivity", status: "warn", message: `${ping.model} unreachable: ${ping.error}` });
+      }
+    } catch (err) {
+      checks.push({
+        name: "LLM connectivity",
+        status: "warn",
+        message: `Ping failed: ${err instanceof Error ? err.message : String(err)}`,
+      });
+    }
   }
 
   const slackSayRetries = parseInt(env("SLACK_SAY_RETRIES") || "2", 10);

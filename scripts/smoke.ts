@@ -2707,11 +2707,17 @@ rLQ+epZplw==
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
 
+  setChatOverride(async () => "pong");
   await dispatchSlashCommand("diagnose");
+  clearChatOverride();
   const diagnoseText = slashResponses[0].text ?? "";
   assert(diagnoseText.includes("Moon Bot diagnostic"), "diagnose command should include diagnostic header");
   assert(diagnoseText.includes("SLACK_BOT_TOKEN"), "diagnose command should list Slack bot token check");
   assert(diagnoseText.includes("CLOUDFLARE_ACCOUNT_ID"), "diagnose command should list Cloudflare account check");
+  assert(
+    diagnoseText.includes("LLM connectivity"),
+    "diagnose command should include LLM connectivity check when DIAGNOSE_LLM_PING=true",
+  );
   assert(
     !diagnoseText.includes(cfg.cloudflare.apiToken),
     "diagnose command must not expose Cloudflare API token",
