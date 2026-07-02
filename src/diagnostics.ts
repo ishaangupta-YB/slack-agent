@@ -137,6 +137,13 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "SLACK_SAY_RETRY_BASE_MS", status: "ok", message: `${slackSayRetryBaseMs}ms` });
   }
 
+  const memoryContextEntries = parseInt(env("MEMORY_CONTEXT_ENTRIES") || "3", 10);
+  if (Number.isNaN(memoryContextEntries) || memoryContextEntries < 0) {
+    checks.push({ name: "MEMORY_CONTEXT_ENTRIES", status: "warn", message: "Invalid value; must be a non-negative integer (0 disables memory injection)" });
+  } else {
+    checks.push({ name: "MEMORY_CONTEXT_ENTRIES", status: "ok", message: `${memoryContextEntries} entries injected into the system prompt` });
+  }
+
   // Writable state directories
   const sessionsDir = env("SESSIONS_DIR") || "./sessions";
   if (await ensureDirWritable(sessionsDir)) {

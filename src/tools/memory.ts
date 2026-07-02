@@ -89,6 +89,17 @@ export async function searchMemory(query: string, limit = 20): Promise<MemoryEnt
   });
 }
 
+/** Return the most recent memory entries for a specific Slack thread key. */
+export async function getMemoryByThreadKey(threadKey: string, limit = 10): Promise<MemoryEntry[]> {
+  return queueMemoryOp(async () => {
+    const store = await readStore();
+    return store.entries
+      .filter((e) => e.threadKey === threadKey)
+      .slice(-Math.max(0, limit))
+      .reverse();
+  });
+}
+
 export async function appendMemory(entry: MemoryEntry): Promise<void> {
   return queueMemoryOp(async () => {
     const store = await readStore();

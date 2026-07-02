@@ -31,7 +31,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
 | **Code Q&A** | Clone repos, search files by name or content, read/edit code, and open PRs. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
-| **Resumable sessions** | Every Slack thread is an independent, persistent session backed by a bucket; conversations survive restarts. |
+| **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
 | **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
@@ -172,8 +172,9 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
 10. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
 11. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-12. **Status / help:**  
-   `/moonbot status`
+12. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
+13. **Status / help:**
+    `/moonbot status`
 
 ---
 

@@ -49,6 +49,7 @@ export const statusTool = {
       }`,
       `*LLM timeout:* ${cfg.cloudflare.timeoutMs}ms`,
       `*LLM retries:* ${cfg.cloudflare.retries}`,
+      `*Memory context entries:* ${cfg.agent.memoryContextEntries}`,
       `*Slack mode:* Socket Mode + Slack AI Assistant`,
       `*Slack message retries:* ${cfg.slack.sayRetries} (base delay ${cfg.slack.sayRetryBaseMs}ms)`,
       `*Loaded skills:* ${skills.map((s) => s.name).join(", ")}`,

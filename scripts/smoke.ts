@@ -1329,6 +1329,49 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("End-to-end ReAct agent loop passed");
 
+  // Automatic memory context injection: prior interactions are recalled into
+  // the system prompt when the user asks a related question.
+  const memoryRecallThreadKey = "C-memory-recall:1776379256.080000";
+  const memoryRecallUserId = "Umemoryrecall";
+  await appendMemory({
+    id: "memory-recall-staging-db",
+    timestamp: new Date().toISOString(),
+    threadKey: "C-some-other-thread",
+    userId: memoryRecallUserId,
+    prompt: "What is the hostname for the moonbot-memory-recall-staging-db?",
+    outcome: "staging-db.example.com",
+  });
+  setChatOverride(async (messages) => {
+    const system = messages.find((m) => m.role === "system");
+    assert(system, "Expected a system message when recalling memory");
+    assert(
+      system.content.includes("Memory of past conversations"),
+      "System prompt should include a memory context section",
+    );
+    assert(
+      system.content.includes("moonbot-memory-recall-staging-db"),
+      "System prompt memory context should include the related prior prompt",
+    );
+    assert(
+      system.content.includes("staging-db.example.com"),
+      "System prompt memory context should include the prior answer",
+    );
+    return "I recall the staging database is staging-db.example.com.";
+  });
+  const memoryRecallResult = await handleMessage(
+    memoryRecallThreadKey,
+    "What is the hostname for the moonbot-memory-recall-staging-db?",
+    "1776379256.080001",
+    memoryRecallUserId,
+  );
+  assert(
+    memoryRecallResult.text.includes("staging-db.example.com"),
+    `Expected memory recall in reply, got: ${memoryRecallResult.text}`,
+  );
+
+  clearChatOverride();
+  console.log("Automatic memory context injection passed");
+
   // Session restore from bucket after simulated pod restart
   await bucket.write(`sessions/${e2eResult.sessionFilename}`, readFileSync(e2eSessionPath));
   await bucket.write(

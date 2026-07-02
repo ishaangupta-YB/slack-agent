@@ -11,7 +11,7 @@ import {
   parseToolCalls,
 } from "./tools/parser.js";
 import { listTools, runToolCall } from "./tools/registry.js";
-import { appendMemory } from "./tools/memory.js";
+import { appendMemory, getMemoryByThreadKey, searchMemory, type MemoryEntry } from "./tools/memory.js";
 import { resolveAccessTier, type AccessTier } from "./auth/tiers.js";
 import { getToolContext } from "./context.js";
 
@@ -31,7 +31,42 @@ export interface StoredMessage {
 
 const skills = loadSkills();
 
-function systemPrompt(tier: AccessTier): string {
+function formatMemoryContext(entries: MemoryEntry[]): string {
+  if (entries.length === 0) return "";
+  const lines = entries.map((e) => {
+    const date = new Date(e.timestamp).toISOString();
+    return `- ${date} thread=${e.threadKey}\nQ: ${e.prompt}\nA: ${e.outcome}`;
+  });
+  return (
+    "\n\n## Memory of past conversations\n" +
+    "Use the following prior interactions to answer if they are relevant.\n\n" +
+    lines.join("\n\n")
+  );
+}
+
+async function buildMemoryContext(threadKey: string, prompt: string): Promise<string> {
+  const limit = cfg.agent.memoryContextEntries;
+  if (limit <= 0) return "";
+
+  const sameThread = await getMemoryByThreadKey(threadKey, Math.max(1, limit));
+  const relevant = prompt.trim()
+    ? await searchMemory(prompt, Math.max(1, limit))
+    : [];
+
+  // De-duplicate by id while preserving order (same-thread first, then related).
+  const seen = new Set<string>();
+  const combined: MemoryEntry[] = [];
+  for (const e of [...sameThread, ...relevant]) {
+    if (!seen.has(e.id)) {
+      seen.add(e.id);
+      combined.push(e);
+      if (combined.length >= limit) break;
+    }
+  }
+  return formatMemoryContext(combined);
+}
+
+function systemPrompt(tier: AccessTier, memoryContext = ""): string {
   if (cfg.agent.systemPromptOverride) return cfg.agent.systemPromptOverride;
   return (
     "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
@@ -39,6 +74,7 @@ function systemPrompt(tier: AccessTier): string {
     `Your access tier is ${tier}. Only use tools available at your tier. ` +
     "You have access to tools. Use them when facts are not in your context. " +
     "Be concise but thorough, defaulting to Slack-compatible markdown." +
+    memoryContext +
     formatToolInstructions(listTools(tier)) +
     buildSkillPrompt(skills)
   );
@@ -242,6 +278,8 @@ export async function handleMessage(
     toolCtx.userEmail = userEmail;
     toolCtx.tier = tier;
 
+    const memoryContext = await buildMemoryContext(threadKey, text);
+
     const map = await ensureThreadMap();
     let entry = map[threadKey];
 
@@ -259,7 +297,7 @@ export async function handleMessage(
       await ensureSessionFile(entry.sessionFilename);
       appendSessionMessage(entry.sessionFilename, {
         role: "system",
-        content: systemPrompt(tier),
+        content: systemPrompt(tier, memoryContext),
         ts: new Date().toISOString(),
       });
     }
@@ -284,9 +322,10 @@ export async function handleMessage(
       content: m.content,
     }));
 
-    // Ensure the first system message always reflects the user's current tier.
+    // Ensure the first system message always reflects the user's current tier
+    // and includes any relevant cross-thread memory.
     if (messages.length > 0 && messages[0].role === "system") {
-      messages[0].content = systemPrompt(tier);
+      messages[0].content = systemPrompt(tier, memoryContext);
     }
 
     const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId);
