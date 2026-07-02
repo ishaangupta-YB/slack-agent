@@ -7,6 +7,8 @@ import { startEsProxy, stopEsProxy } from "./proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "./proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "./proxy/hf.js";
 
+const isCheckMode = process.argv.includes("--check");
+
 (async () => {
   if (cfg.storage.enableBucketServer) {
     await startBucketServer();
@@ -15,6 +17,13 @@ import { startHfProxy, stopHfProxy } from "./proxy/hf.js";
   await startPlausibleProxy();
   await startHfProxy();
   await initializeTools();
+
+  if (isCheckMode) {
+    console.log("Moon Bot startup check passed — ready to start in Socket Mode");
+    await shutdownTools();
+    process.exit(0);
+  }
+
   startScheduler(app);
   await app.start();
   console.log("Moon Bot is running in Socket Mode");

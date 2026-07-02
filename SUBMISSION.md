@@ -128,9 +128,10 @@ Runtime flow:
 cp .env.example .env
 # fill in SLACK_BOT_TOKEN, SLACK_APP_TOKEN, CLOUDFLARE_ACCOUNT_ID, CLOUDFLARE_API_TOKEN
 npm install
+npm run build
+node dist/app.js --check
 npm run diagnose
 npm run verify-slack
-npm run build
 npm start
 ```
 
@@ -189,6 +190,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 - [x] Code type-checks, lints, builds, and passes the smoke suite
 - [x] Docker / docker-compose / Kubernetes deployment surfaces present
 - [x] README with architecture diagram and quick-start
+- [x] Production bundle startup check (`node dist/app.js --check`)
 - [x] Pre-flight diagnostic (`npm run diagnose`)
 - [x] Slack connectivity verification (`npm run verify-slack`)
 - [ ] Slack developer sandbox URL (to be filled when sandbox is provisioned)

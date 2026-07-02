@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { spawn } from "node:child_process";
 import { parseToolCalls, formatToolResult } from "../src/tools/parser.js";
 import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { safeSay } from "../src/slack-delivery.js";
@@ -1851,6 +1852,48 @@ rLQ+epZplw==
   assert(existsSync(join(process.env.SESSIONS_DIR!, "thread-map.json")), "ask CLI should persist thread-map");
   clearChatOverride();
   console.log("Local ask CLI passed");
+
+  // Production bundle startup check: verify the compiled dist/app.js initializes cleanly.
+  const checkSessionsDir = "/tmp/moon-bot-smoke-check-sessions";
+  const checkBucketDir = "/tmp/moon-bot-smoke-check-bucket";
+  if (existsSync(checkSessionsDir)) rmSync(checkSessionsDir, { recursive: true, force: true });
+  if (existsSync(checkBucketDir)) rmSync(checkBucketDir, { recursive: true, force: true });
+
+  const checkEnv = {
+    ...process.env,
+    SLACK_BOT_TOKEN: "xoxb-test",
+    SLACK_APP_TOKEN: "xapp-test",
+    CLOUDFLARE_ACCOUNT_ID: "test",
+    CLOUDFLARE_API_TOKEN: "test",
+    MEMORY_FILE: join(checkSessionsDir, "memory.json"),
+    BUCKET_DIR: checkBucketDir,
+    SESSIONS_DIR: checkSessionsDir,
+    THREAD_MAP_FILE: join(checkSessionsDir, "thread-map.json"),
+    SECURITY_AUDIT_LOG_FILE: join(checkSessionsDir, "audit.jsonl"),
+    BUCKET_HTTP_PORT: "13003",
+  };
+
+  const { checkExitCode, checkStdout } = await new Promise<{ checkExitCode: number; checkStdout: string }>(
+    (resolve) => {
+      const child = spawn("node", ["dist/app.js", "--check"], {
+        env: checkEnv,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      let stdout = "";
+      child.stdout.on("data", (data) => {
+        stdout += String(data);
+      });
+      child.on("close", (code) => {
+        resolve({ checkExitCode: code ?? 1, checkStdout: stdout });
+      });
+    },
+  );
+  assert.strictEqual(checkExitCode, 0, "Production bundle --check should exit cleanly");
+  assert(
+    checkStdout.includes("startup check passed"),
+    "Production bundle --check should print startup check passed",
+  );
+  console.log("Production bundle startup check passed");
 
   console.log("smoke tests passed");
   clean();
