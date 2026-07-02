@@ -25,6 +25,7 @@ import { publicStatusTool } from "./tools/public-status.js";
 import { searchSlackTool } from "./tools/slack-search.js";
 import { safeSay } from "./slack-delivery.js";
 import { getDemoMessage } from "./demo.js";
+import { getMetrics } from "./storage/metrics.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
@@ -143,6 +144,17 @@ export function stripBotMention(text: string, botUserId?: string): string {
     return text.replace(new RegExp(`<@${escaped}(?:\\|[^>]*)?>\\s*`, "g"), "").trim();
   }
   return text.replace(/^<@[A-Z0-9_-]+(?:\|[^>]*)?>\s*/, "").trim();
+}
+
+function formatDuration(totalSeconds: number): string {
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${seconds}s`;
+  }
+  return `${minutes}m ${seconds}s`;
 }
 
 async function handleIncomingMessage({
@@ -485,6 +497,23 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "metrics") {
+    const m = getMetrics();
+    await respond({
+      text:
+        `*Moon Bot runtime metrics* 📊\n` +
+        `• Uptime: ${formatDuration(m.uptimeSeconds)}\n` +
+        `• Sessions: ${m.sessions}\n` +
+        `• Thread map entries: ${m.threadMapEntries}\n` +
+        `• Memory entries: ${m.memoryEntries}\n` +
+        `• Feedback entries: ${m.feedbackEntries}\n` +
+        `• Audit entries: ${m.auditEntries}\n` +
+        `• Response artifacts: ${m.responseArtifacts}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
   if (subcommand === "diagnose") {
     const result = await runDiagnostics();
     await respond({
@@ -603,6 +632,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot demo` — curated hackathon demo prompts\n" +
       "• `/moonbot status` — my current configuration\n" +
+      "• `/moonbot metrics` — runtime usage metrics\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +

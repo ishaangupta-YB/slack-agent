@@ -3070,6 +3070,16 @@ rLQ+epZplw==
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
 
+  await dispatchSlashCommand("metrics");
+  const metricsText = slashResponses[0].text ?? "";
+  assert(metricsText.includes("Moon Bot runtime metrics"), "metrics command should include header");
+  assert(metricsText.includes("Uptime:"), "metrics command should list uptime");
+  assert(metricsText.includes("Sessions:"), "metrics command should list sessions");
+  assert(metricsText.includes("Thread map entries:"), "metrics command should list thread map entries");
+  assert(metricsText.includes("Memory entries:"), "metrics command should list memory entries");
+  assert(metricsText.includes("Response artifacts:"), "metrics command should list response artifacts");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "metrics command should be ephemeral");
+
   setChatOverride(async () => "pong");
   await dispatchSlashCommand("diagnose");
   clearChatOverride();
