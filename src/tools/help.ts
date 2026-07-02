@@ -46,7 +46,8 @@ export const helpTool: Tool = {
         `• \`/moonbot ping\` — live LLM connectivity check\n` +
         `• \`/moonbot whoami\` — your access tier and guest status\n` +
         `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
-        `• \`/moonbot report deploy\` — deploy impact check on demand\n\n` +
+        `• \`/moonbot report deploy\` — deploy impact check on demand\n` +
+        `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.`,
 
       code:
@@ -85,11 +86,12 @@ export const helpTool: Tool = {
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
         `• Public status monitor — watches civic/nonprofit service status pages and posts incident alerts\n` +
-        `• Slash commands: \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
+        `• Slash commands: \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot diagnose\`, \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +
-        `• “Show me your system status.”`,
+        `• “Show me your system status.”\n` +
+        `• “Check the status page for status.cloudflare.com.”`,
     };
 
     const privacy =

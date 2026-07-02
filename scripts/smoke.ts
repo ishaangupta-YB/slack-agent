@@ -2658,6 +2658,40 @@ rLQ+epZplw==
     "deploy report should show fallback text when ES is unconfigured",
   );
 
+  // /moonbot statuspage — on-demand public status page check.
+  const originalFetchForStatuspage = globalThis.fetch;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("status.example.com")) {
+      return new Response(
+        JSON.stringify({
+          page: { name: "Example Service", updated_at: "2026-07-02T10:00:00Z" },
+          status: { indicator: "major", description: "Outage reported" },
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    return originalFetchForStatuspage(input);
+  }) as typeof fetch;
+
+  await dispatchSlashCommand("statuspage");
+  assert(
+    slashResponses[0].text?.includes("/moonbot statuspage <url>"),
+    "bare statuspage command should show usage",
+  );
+
+  await dispatchSlashCommand("statuspage https://status.example.com/api/v2/status.json");
+  const statuspageText = slashResponses[0].text ?? "";
+  assert(statuspageText.includes("Example Service"), "statuspage command should return service name");
+  assert(statuspageText.includes("major"), "statuspage command should include indicator");
+  assert.strictEqual(
+    slashResponses[0].response_type,
+    "ephemeral",
+    "statuspage command should be ephemeral",
+  );
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatuspage;
+
   // /moonbot ping — live LLM connectivity check.
   clearChatOverride();
   setChatOverride(async () => "PONG");

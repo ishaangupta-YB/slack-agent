@@ -21,6 +21,7 @@ import { publishHomeView } from "./app-home.js";
 import { pingLLM } from "./llm/cloudflare.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
+import { publicStatusTool } from "./tools/public-status.js";
 import { safeSay } from "./slack-delivery.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport } from "./scheduler.js";
@@ -492,6 +493,31 @@ export async function handleMoonbotCommand({
         "• `/moonbot report deploy [timestamp]` — deploy impact check (defaults to 15 minutes ago)",
       response_type: "ephemeral",
     });
+    return;
+  }
+
+  if (subcommand === "statuspage") {
+    const url = args[1];
+    if (!url) {
+      await respond({
+        text:
+          "*Moon Bot status page check* 🌐\n" +
+          "Check a public status page on demand: `/moonbot statuspage <url>`\n" +
+          "Example: `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json`",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    try {
+      const summary = await publicStatusTool.run({ status_page_url: url });
+      await respond({ text: summary, response_type: "ephemeral" });
+    } catch (err) {
+      await respond({
+        text: `Could not check status page: ${err instanceof Error ? err.message : String(err)}`,
+        response_type: "ephemeral",
+      });
+    }
     return;
   }
 

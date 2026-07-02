@@ -36,7 +36,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
 | **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | report` for quick discovery. |
+| **App Home + slash command** | Home tab overview and `/moonbot help | status | diagnose | ping | whoami | report | statuspage` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **Inline feedback** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies. |
 | **Start over reset** | Tapping "Start over" on any reply clears the thread session so the next message begins fresh. |
@@ -166,14 +166,16 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 6. **Inline feedback:** after any response, click 👍 or 👎 and confirm the ephemeral thank-you.
 7. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
-8. **Live diagnostics, LLM ping, and identity:**  
+8. **Public status page on demand:**  
+   `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json`
+9. **Live diagnostics, LLM ping, and identity:**  
    `/moonbot diagnose`, `/moonbot ping`, and `/moonbot whoami`
-9. **Agent for Good — public service monitoring:**  
-   `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
-10. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
-11. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-12. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
-13. **Status / help:**
+10. **Agent for Good — public service monitoring:**  
+    `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
+11. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
+12. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
+13. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
+14. **Status / help:**
     `/moonbot status`
 
 ---
