@@ -31,13 +31,13 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
 | **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up HuggingFace Hub model/dataset/Space metadata. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
-| **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
+| **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. Users can also explicitly save facts with `/moonbot remember <fact>` and recall recent memories with `/moonbot memory [limit]`. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
 | **Runtime metrics** | The bucket server exposes a `/metrics` endpoint and `/moonbot metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
 | **Request correlation IDs** | Every Slack message and GitHub webhook gets a short correlation ID that is persisted into the session JSONL and included in error logs, making it easy to trace a failure back to the originating message. |
 | **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | search | report | statuspage | impact` for quick discovery. |
+| **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | remember | memory | search | report | statuspage | impact` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Moon Bot reads them as context (requires the `files:read` scope). |
 | **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; after a 👎, a *Regenerate response* button asks Moon Bot to retry with a different approach. Users can also react with emoji 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
@@ -185,13 +185,13 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `/moonbot report weekly` and `/moonbot report deploy`
 9. **Public status page and impact monitoring on demand:**  
    `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json` and `/moonbot impact`
-10. **Live diagnostics, demo prompts, LLM ping, identity, audit log, and thread info:**  
-    `/moonbot diagnose`, `/moonbot demo`, `/moonbot tools`, `/moonbot ping`, `/moonbot whoami`, `/moonbot audit` (privileged), and `/moonbot thread`
+10. **Live diagnostics, demo prompts, LLM ping, identity, audit log, thread info, and memory management:**  
+    `/moonbot diagnose`, `/moonbot demo`, `/moonbot tools`, `/moonbot ping`, `/moonbot whoami`, `/moonbot audit` (privileged), `/moonbot thread`, `/moonbot remember <fact>`, and `/moonbot memory [limit]`
 11. **Agent for Good — public service monitoring:**  
     `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
 12. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
 13. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-14. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
+14. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt. Or explicitly save a fact with `/moonbot remember staging DB host is db-staging.example.com` and later ask in another thread: "What was the staging DB host?"
 15. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@moon-bot`, and watch it reply by posting a comment — no Slack workspace needed.
 16. **Status / help:**
     `/moonbot status`
@@ -209,7 +209,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools + file attachments | Demonstrate an external MCP tool, query Elasticsearch/MongoDB/Plausible, or upload a `.log`/`.txt` file and ask Moon Bot to summarize it. |
 | 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/moonbot impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
-| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot audit` (privileged), `/moonbot ping`, `/moonbot status`, `/moonbot tools`, `/moonbot whoami`, `/moonbot thread`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
+| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot audit` (privileged), `/moonbot ping`, `/moonbot status`, `/moonbot tools`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember`, `/moonbot memory`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:55–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---

@@ -1,5 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { cfg } from "../config.js";
 import { bucket } from "../storage/bucket.js";
@@ -109,6 +110,36 @@ export async function appendMemory(entry: MemoryEntry): Promise<void> {
     }
     await writeStore(store);
   });
+}
+
+/**
+ * Explicitly remember a fact so it can be recalled in future conversations.
+ * Used by the `/moonbot remember` slash command to let users inject durable
+ * context into the shared memory store.
+ */
+export async function rememberFact(
+  threadKey: string,
+  userId: string,
+  text: string,
+): Promise<void> {
+  await appendMemory({
+    id: randomUUID(),
+    timestamp: new Date().toISOString(),
+    threadKey,
+    userId,
+    prompt: `[remember] ${text}`,
+    outcome: `[remembered] ${text}`,
+  });
+}
+
+export function formatMemoryEntry(entry: MemoryEntry): string {
+  const date = new Date(entry.timestamp).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `• *${date}* — ${entry.prompt.replace(/^\[remember\] /, "")}`;
 }
 
 const params = z.object({

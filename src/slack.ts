@@ -37,6 +37,7 @@ import { getDemoMessage } from "./demo.js";
 import { getMetrics } from "./storage/metrics.js";
 import { downloadSlackFiles, formatSlackFiles, type SlackFile } from "./slack-files.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
+import { getMemoryRecent, rememberFact, formatMemoryEntry } from "./tools/memory.js";
 import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
 import { readRecentAuditEvents } from "./tools/security.js";
@@ -548,7 +549,7 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | tools | status | diagnose | ping | whoami | thread | search | report | statuspage | impact].
+ * Slash command entry point: /moonbot [help | demo | tools | status | diagnose | ping | whoami | thread | remember | memory | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, tool inventory, real-time search, session info,
@@ -834,6 +835,47 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "remember") {
+    const text = args.slice(1).join(" ").trim();
+    if (!text) {
+      await respond({
+        text:
+          "*Remember* 🧠\n" +
+          "Save a fact so I can recall it in future conversations: `/moonbot remember <fact>`\n" +
+          "Example: `/moonbot remember staging DB host is db-staging.example.com`",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const threadKey = `remember:${command.user_id}:${command.channel_id}`;
+    await rememberFact(threadKey, command.user_id, text);
+    await respond({
+      text: `*Remembered* 🧠\nI'll recall this in future conversations:\n• ${text}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "memory") {
+    const limit = Math.min(parseInt(args[1] || "5", 10) || 5, 20);
+    const entries = await getMemoryRecent(limit);
+    if (entries.length === 0) {
+      await respond({
+        text: "*Memory* 🧠\nNo memories stored yet. Use `/moonbot remember <fact>` to add one.",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const lines = entries.map(formatMemoryEntry).join("\n");
+    await respond({
+      text: `*Recent memories* 🧠 (showing ${entries.length})\n${lines}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
   await respond({
     text:
       "*Moon Bot* 🌙\n" +
@@ -849,6 +891,8 @@ export async function handleMoonbotCommand({
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +
       "• `/moonbot thread` — your current DM session info\n" +
+      "• `/moonbot remember <fact>` — save a fact for future conversations\n" +
+      "• `/moonbot memory [limit]` — recall recent remembered facts\n" +
       "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `/moonbot impact` — public service status monitoring for the Agent for Good track\n" +

@@ -30,7 +30,7 @@
         "command": "/moonbot",
         "url": "https://example.com/slack/slash",
         "description": "Open Moon Bot help, status, or start a conversation",
-        "usage_hint": "[help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | search | report | statuspage | impact]",
+        "usage_hint": "[help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | remember | memory | search | report | statuspage | impact]",
         "should_escape": false
       }
     ]

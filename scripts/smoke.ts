@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { parseToolCalls, parseToolCallsWithErrors, formatToolResult, formatParseErrors } from "../src/tools/parser.js";
 import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { safeSay } from "../src/slack-delivery.js";
-import { appendMemory, getMemoryRecent, searchMemory } from "../src/tools/memory.js";
+import { appendMemory, getMemoryRecent, rememberFact, searchMemory, formatMemoryEntry } from "../src/tools/memory.js";
 import { getTool, initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
 import { bucket } from "../src/storage/bucket.js";
@@ -2260,6 +2260,29 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("Automatic memory context injection passed");
 
+  // Explicit memory facts: rememberFact writes durable entries that the
+  // cross-thread memory recall can surface in future conversations.
+  const rememberThreadKey = "remember:C-remember:U-remember";
+  const rememberUserId = "U-remember";
+  const rememberFactText = "The moon-bot staging DB host is db-staging.example.com";
+  await rememberFact(rememberThreadKey, rememberUserId, rememberFactText);
+  const recentMemories = await getMemoryRecent(5);
+  assert(
+    recentMemories.some((e) => e.prompt === `[remember] ${rememberFactText}`),
+    "rememberFact should add a memory entry for the fact",
+  );
+  assert.strictEqual(
+    formatMemoryEntry(recentMemories[0]),
+    `• *${new Date(recentMemories[0].timestamp).toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })}* — ${rememberFactText}`,
+    "formatMemoryEntry should render the remembered fact",
+  );
+  console.log("Explicit memory facts passed");
+
   // Context window truncation: long Slack threads are pruned before being sent
   // to the LLM, while keeping the system message and tool-call/observation pairs
   // intact.
@@ -3991,6 +4014,8 @@ rLQ+epZplw==
   assert(slashResponses[0].text?.includes("/moonbot tools"), "welcome fallback should mention /moonbot tools");
   assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
   assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
+  assert(slashResponses[0].text?.includes("/moonbot remember"), "welcome fallback should mention /moonbot remember");
+  assert(slashResponses[0].text?.includes("/moonbot memory"), "welcome fallback should mention /moonbot memory");
 
   await dispatchSlashCommand("help code");
   assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
@@ -4002,6 +4027,16 @@ rLQ+epZplw==
   assert(
     slashResponses[0].text?.includes("search_issues"),
     "code help should mention search_issues",
+  );
+
+  await dispatchSlashCommand("help");
+  assert(
+    slashResponses[0].text?.includes("/moonbot remember"),
+    "general help should mention /moonbot remember",
+  );
+  assert(
+    slashResponses[0].text?.includes("/moonbot memory"),
+    "general help should mention /moonbot memory",
   );
 
   await dispatchSlashCommand("demo");
@@ -4128,6 +4163,53 @@ rLQ+epZplw==
   assert(threadInfoText.includes("Session file:"), "thread command should list session filename");
   assert(threadInfoText.includes("Visible messages:"), "thread command should list message count");
   assert(threadInfoText.includes("1"), "thread command should count one visible user/assistant pair");
+
+  // /moonbot remember and /moonbot memory slash commands.
+  const rememberSlashFact = "The moon-bot slash-remember test fact is alpha-42";
+
+  await dispatchSlashCommand("remember");
+  assert(
+    slashResponses[0].text?.includes("Save a fact"),
+    "bare remember command should show usage",
+  );
+  assert(
+    slashResponses[0].text?.includes("staging DB host"),
+    "remember usage should include an example",
+  );
+
+  await dispatchSlashCommand(`remember ${rememberSlashFact}`);
+  assert(
+    slashResponses[0].text?.includes("Remembered"),
+    "remember command should confirm the fact was saved",
+  );
+  assert(
+    slashResponses[0].text?.includes(rememberSlashFact),
+    "remember command should echo the saved fact",
+  );
+  assert.strictEqual(
+    slashResponses[0].response_type,
+    "ephemeral",
+    "remember command should be ephemeral",
+  );
+
+  await dispatchSlashCommand("memory");
+  const memoryText = slashResponses[0].text ?? "";
+  assert(memoryText.includes("Recent memories"), "memory command should show a header");
+  assert(
+    memoryText.includes(rememberSlashFact),
+    "memory command should list the remembered fact",
+  );
+  assert.strictEqual(
+    slashResponses[0].response_type,
+    "ephemeral",
+    "memory command should be ephemeral",
+  );
+
+  await dispatchSlashCommand("memory 3");
+  assert(
+    slashResponses[0].text?.includes("Recent memories"),
+    "memory command with limit should still show the header",
+  );
 
   await dispatchSlashCommand("report");
   assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");
