@@ -44,6 +44,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
 | **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, with no Slack tokens or production database access. |
+| **Submission readiness** | `npm run prepare-submission` checks that required deliverable files exist, forbidden files are not tracked by git, and `SUBMISSION.md` has no unchecked checklist items or placeholders. |
 
 ---
 
@@ -143,6 +144,7 @@ npm run build
 node dist/app.js --check
 npm run diagnose
 npm run verify-slack
+npm run prepare-submission
 npm start
 ```
 
@@ -230,6 +232,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 - [x] Production bundle startup check (`node dist/app.js --check`)
 - [x] Pre-flight diagnostic (`npm run diagnose`)
 - [x] Slack connectivity verification (`npm run verify-slack`)
+- [x] Submission readiness check (`npm run prepare-submission`)
 - [ ] Slack developer sandbox URL (to be filled when sandbox is provisioned)
 - [ ] Demo video link (to be filled before final submission)
 - [ ] Slack Marketplace App ID (only required if entering the Organizations track)

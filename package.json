@@ -13,6 +13,7 @@
     "diagnose": "tsx scripts/diagnose.ts",
     "verify-slack": "tsx scripts/verify-slack.ts",
     "slack-e2e": "tsx scripts/slack-e2e.ts",
+    "prepare-submission": "tsx scripts/prepare-submission.ts",
     "healthcheck": "node dist/healthcheck.js",
     "typecheck": "tsc --noEmit"
   },

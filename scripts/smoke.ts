@@ -59,6 +59,7 @@ import { logSecurityEvent } from "../src/tools/security.js";
 import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
 import { runSlackE2E } from "./slack-e2e.js";
+import { checkSubmission } from "./prepare-submission.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -3413,6 +3414,47 @@ rLQ+epZplw==
     }
   }
   console.log(".env.example validated");
+
+  // Prepare-submission checker: validates deliverable files, git tracking rules, and submission checklist.
+  const originalSubmission = readFileSync("SUBMISSION.md", "utf8");
+  try {
+    const initialResult = checkSubmission();
+    assert(
+      initialResult.issues.some((i) => i.check === "unchecked-submission-item"),
+      "Expected current SUBMISSION.md to have unchecked hackathon placeholders",
+    );
+
+    const cleanSubmission =
+      originalSubmission.replace(
+        /- \[ \] Slack developer sandbox URL.*$/m,
+        "- [x] Slack developer sandbox URL: https://example.slack.com",
+      )
+      .replace(
+        /- \[ \] Demo video link.*$/m,
+        "- [x] Demo video link: https://example.com/demo.mp4",
+      )
+      .replace(
+        /- \[ \] Slack Marketplace App ID.*$/m,
+        "- [x] Slack Marketplace App ID (only required if entering the Organizations track): N/A",
+      );
+    writeFileSync("SUBMISSION.md", cleanSubmission);
+    const cleanResult = checkSubmission();
+    assert.strictEqual(cleanResult.ok, true, `Clean submission should pass: ${JSON.stringify(cleanResult.issues)}`);
+
+    const placeholderSubmission = cleanSubmission.replace(
+      "https://example.com/demo.mp4",
+      "https://example.com/demo.mp4 (to be filled)",
+    );
+    writeFileSync("SUBMISSION.md", placeholderSubmission);
+    const placeholderResult = checkSubmission();
+    assert(
+      placeholderResult.issues.some((i) => i.check === "placeholder-in-submission"),
+      "Expected placeholder marker to be detected",
+    );
+  } finally {
+    writeFileSync("SUBMISSION.md", originalSubmission);
+  }
+  console.log("Prepare-submission checker passed");
 
   // Bot mention stripping from app_mention / DM text
   assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
