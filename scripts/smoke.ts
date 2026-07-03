@@ -3772,6 +3772,8 @@ rLQ+epZplw==
     slashCommands.some((c) => c.command === "/moonbot"),
     "manifest must register /moonbot slash command",
   );
+  const moonbotUsageHint = slashCommands.find((c) => c.command === "/moonbot")?.usage_hint ?? "";
+  assert(moonbotUsageHint.includes("version"), "manifest /moonbot usage hint should mention version subcommand");
   console.log("Slack app manifest validated");
 
   // Kubernetes secret example must use env var names that match src/config.ts
@@ -4072,6 +4074,7 @@ rLQ+epZplw==
   assert(slashResponses[0].text?.includes("Moon Bot"));
   assert(slashResponses[0].text?.includes("/moonbot help"));
   assert(slashResponses[0].text?.includes("/moonbot tools"), "welcome fallback should mention /moonbot tools");
+  assert(slashResponses[0].text?.includes("/moonbot version"), "welcome fallback should mention /moonbot version");
   assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
   assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
   assert(slashResponses[0].text?.includes("/moonbot remember"), "welcome fallback should mention /moonbot remember");
@@ -4142,6 +4145,16 @@ rLQ+epZplw==
   assert(statusText.includes("Moon Bot status"), "status command should include status header");
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
+
+  await dispatchSlashCommand("version");
+  const versionText = slashResponses[0].text ?? "";
+  assert(versionText.includes("Moon Bot"), "version command should mention Moon Bot");
+  assert(/v\d+\.\d+\.\d+/.test(versionText), "version command should include a semver version string");
+  assert(versionText.includes("Node.js"), "version command should include Node.js version");
+  assert(versionText.includes("Uptime:"), "version command should include uptime");
+  assert(versionText.includes("Socket Mode"), "version command should mention Socket Mode");
+  assert(versionText.includes("Default model:"), "version command should mention default model");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "version command should be ephemeral");
 
   await dispatchSlashCommand("metrics");
   const metricsText = slashResponses[0].text ?? "";

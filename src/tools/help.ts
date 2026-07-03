@@ -44,6 +44,7 @@ export const helpTool: Tool = {
         `• \`/moonbot help\` — this message\n` +
         `• \`/moonbot demo\` — curated hackathon demo prompts\n` +
         `• \`/moonbot tools\` — tools available to your access tier\n` +
+        `• \`/moonbot version\` — build and runtime version\n` +
         `• \`/moonbot status\` — current configuration\n` +
         `• \`/moonbot metrics\` — runtime usage metrics\n` +
         `• \`/moonbot diagnose\` — pre-flight configuration check\n` +
@@ -105,7 +106,7 @@ export const helpTool: Tool = {
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
         `• Public status monitor — watches civic/nonprofit service status pages and posts incident and recovery alerts\n` +
-        `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot impact\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot tools\`, \`/moonbot audit [limit]\` (privileged), \`/moonbot ping\`, \`/moonbot remember <fact>\`, \`/moonbot memory [limit]\`, \`/moonbot forget <text|all>\`, or \`/moonbot whoami\`\n\n` +
+        `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot impact\`, \`/moonbot version\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot tools\`, \`/moonbot audit [limit]\` (privileged), \`/moonbot ping\`, \`/moonbot remember <fact>\`, \`/moonbot memory [limit]\`, \`/moonbot forget <text|all>\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +

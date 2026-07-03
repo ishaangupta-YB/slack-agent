@@ -41,6 +41,7 @@ import { getMemoryRecent, rememberFact, forgetMemory, clearAllMemory, formatMemo
 import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
 import { readRecentAuditEvents } from "./tools/security.js";
+import { formatVersionInfo } from "./version.js";
 
 export const app = new App({
   token: cfg.slack.botToken,
@@ -553,7 +554,7 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | tools | status | diagnose | ping | whoami | thread | remember | memory | search | report | statuspage | impact].
+ * Slash command entry point: /moonbot [help | demo | tools | version | status | diagnose | ping | whoami | thread | remember | memory | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, tool inventory, real-time search, session info,
@@ -642,6 +643,14 @@ export async function handleMoonbotCommand({
     const text = await statusTool.run();
     await respond({
       text,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "version" || subcommand === "v") {
+    await respond({
+      text: formatVersionInfo(),
       response_type: "ephemeral",
     });
     return;
@@ -922,6 +931,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot demo` — curated hackathon demo prompts\n" +
       "• `/moonbot tools` — tools available to your access tier\n" +
+      "• `/moonbot version` — build and runtime version\n" +
       "• `/moonbot status` — my current configuration\n" +
       "• `/moonbot metrics` — runtime usage metrics\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +

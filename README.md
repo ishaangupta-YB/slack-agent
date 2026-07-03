@@ -156,7 +156,7 @@ npm run prepare-submission     # verify deliverables are present and forbidden f
 - Reply in any thread Moon Bot has joined without @-mentioning it again.
 - In DMs: just send a message — replies stay in the main DM view and the whole DM history shares one continuous session.
 - Open the Slack AI Assistant panel and select **Moon Bot**.
-- Use `/moonbot help`, `/moonbot demo`, `/moonbot tools`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, `/moonbot forget <text|all>`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
+- Use `/moonbot help`, `/moonbot demo`, `/moonbot tools`, `/moonbot version`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, `/moonbot forget <text|all>`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
 
 ---
 
