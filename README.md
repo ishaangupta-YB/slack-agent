@@ -110,7 +110,7 @@ Runtime flow:
 The easiest path is to import `manifest.json` from this repo:
 
 1. Go to [api.slack.com/apps](https://api.slack.com/apps) → **Create New App** → **From manifest**.
-2. Paste the contents of `manifest.json`.
+2. Paste the contents of `manifest.json`, or run `npm run slack-manifest-url` to get a one-click app-creation URL from the command line.
 3. Install the app to your developer sandbox workspace.
 4. Copy the **Bot User OAuth Token** (`xoxb-...`) and **App-Level Token** (`xapp-...`).
 
@@ -212,6 +212,7 @@ npm run verify-cloudflare # Pre-flight Cloudflare Workers AI model validation
 npm run verify-slack      # Pre-flight Slack connectivity validation
 npm run verify-github     # Pre-flight GitHub credential validation
 npm run slack-e2e         # Live end-to-end Slack message test
+npm run slack-manifest-url # Print a one-click Slack app-creation URL
 npm run dev          # Run with tsx (no build step)
 ```
 

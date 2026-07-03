@@ -18,6 +18,7 @@
     "slack-e2e": "tsx scripts/slack-e2e.ts",
     "prepare-submission": "tsx scripts/prepare-submission.ts",
     "fill-submission": "tsx scripts/fill-submission.ts",
+    "slack-manifest-url": "tsx scripts/slack-manifest-url.ts",
     "healthcheck": "node dist/healthcheck.js",
     "typecheck": "tsc --noEmit"
   },

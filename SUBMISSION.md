@@ -47,6 +47,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
 | **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, with no Slack tokens or production database access. |
+| **Slack app creation helper** | `npm run slack-manifest-url` outputs a one-click URL that pre-fills `manifest.json` at [api.slack.com/apps](https://api.slack.com/apps), speeding up sandbox provisioning. |
 | **Submission readiness** | `npm run prepare-submission` checks that required deliverable files exist, forbidden files are not tracked by git, and `SUBMISSION.md` has no unchecked checklist items or placeholders. |
 
 ---
@@ -133,7 +134,7 @@ Runtime flow:
 
 ## Getting started in a Slack sandbox
 
-1. Create a Slack app from `manifest.json` at [api.slack.com/apps](https://api.slack.com/apps).
+1. Create a Slack app from `manifest.json` at [api.slack.com/apps](https://api.slack.com/apps) — or run `npm run slack-manifest-url` to generate a one-click app-creation URL from the command line.
 2. Install the app to your developer sandbox.
 3. Copy the bot token (`xoxb-...`) and app-level token (`xapp-...`).
 4. Configure a Cloudflare Workers AI token and account ID.
@@ -150,6 +151,7 @@ npm run verify-cloudflare
 npm run verify-slack
 npm run verify-github
 npm run verify
+npm run slack-manifest-url   # optional one-click Slack app-creation URL
 npm run fill-submission
 npm run prepare-submission
 npm start

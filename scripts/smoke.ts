@@ -3871,6 +3871,22 @@ rLQ+epZplw==
   assert(moonbotUsageHint.includes("version"), "manifest /moonbot usage hint should mention version subcommand");
   console.log("Slack app manifest validated");
 
+  // Slack manifest URL generator
+  const { generateSlackManifestUrl } = await import("./slack-manifest-url.ts");
+  const manifestUrl = generateSlackManifestUrl();
+  assert(
+    manifestUrl.startsWith("https://api.slack.com/apps?new_app=1&manifest_json="),
+    "slack manifest URL must use the Slack app creation endpoint",
+  );
+  const manifestUrlPayload = decodeURIComponent(manifestUrl.split("manifest_json=")[1]);
+  const manifestFromUrl = JSON.parse(manifestUrlPayload) as Record<string, unknown>;
+  assert(
+    (manifestFromUrl.features as { assistant_view?: { name?: string } })?.assistant_view?.name === "Moon Bot",
+    "encoded manifest payload must preserve the assistant view name",
+  );
+  assert((manifestFromUrl.oauth_config as { scopes?: { bot?: string[] } })?.scopes?.bot?.includes("chat:write"), "encoded manifest payload must preserve bot scopes");
+  console.log("Slack manifest URL generator passed");
+
   // Kubernetes secret example must use env var names that match src/config.ts
   const secretExampleRaw = readFileSync("k8s/secret.example.yaml", "utf-8");
   const disallowedKeys = ["OKTA_ORG_URL", "OKTA_GROUP_MAP"];
