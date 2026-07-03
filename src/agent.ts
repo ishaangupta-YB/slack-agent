@@ -273,6 +273,7 @@ async function runToolLoop(
   tier: AccessTier,
   userId?: string,
   environment: ToolEnvironment = "slack",
+  onToolStatus?: (toolNames: string[]) => unknown,
 ): Promise<string> {
   const maxIterations = 10;
 
@@ -301,6 +302,17 @@ async function runToolLoop(
     }
 
     if (calls.length > 0) {
+      // Report live status to UI surfaces (e.g. Slack Assistant panel) so the
+      // user knows a multi-turn tool execution is in progress.
+      const uniqueToolNames = [...new Set(calls.map((c) => c.tool))];
+      if (onToolStatus) {
+        try {
+          await onToolStatus(uniqueToolNames);
+        } catch {
+          // Status updates are best-effort; do not let them break the loop.
+        }
+      }
+
       const results = await Promise.all(
         calls.map((call) =>
           runToolCall(call, cfg.agent.maxMemoryEntries > 0 ? 8_000 : 8_000, tier, environment),
@@ -423,6 +435,7 @@ export async function handleMessage(
   userId: string,
   userEmail?: string,
   environment: ToolEnvironment = "slack",
+  onToolStatus?: (toolNames: string[]) => unknown,
 ): Promise<HandleMessageResult> {
   return runLocked(threadKey, async () => {
     const tier = await resolveAccessTier(userId, userEmail);
@@ -478,7 +491,14 @@ export async function handleMessage(
       environment,
     );
 
-    const reply = await runToolLoop(entry.sessionFilename, messages, tier, userId, environment);
+    const reply = await runToolLoop(
+      entry.sessionFilename,
+      messages,
+      tier,
+      userId,
+      environment,
+      (names) => onToolStatus?.(names),
+    );
 
     await appendMemory({
       id: randomUUID(),

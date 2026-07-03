@@ -26,7 +26,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 
 | Feature | What it does |
 |---------|--------------|
-| **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts and status updates. |
+| **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
 | **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, and look up HuggingFace Hub model/dataset/Space metadata. |

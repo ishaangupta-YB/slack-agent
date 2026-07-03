@@ -4,7 +4,7 @@
 
 Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent for Good track), Moon Bot combines three hackathon-mandatory technologies:
 
-- **Slack AI capabilities** — native assistant panel integration with suggested prompts and contextual status.
+- **Slack AI capabilities** — native assistant panel integration with suggested prompts, contextual status, and live progress messages while tools run.
 - **MCP server integration** — dynamically discovers and invokes tools from external Model Context Protocol servers.
 - **Real-Time Search API** — searches Slack conversation history on demand via `assistant.search.context`.
 

@@ -185,10 +185,12 @@ async function handleIncomingMessage({
   event,
   say,
   client,
+  onToolStatus,
 }: {
   event: MessageEventShape;
   say: SayFn;
   client: WebClient;
+  onToolStatus?: (toolNames: string[]) => unknown;
 }) {
   const userId = event.user;
   const text = event.text ?? "";
@@ -221,7 +223,7 @@ async function handleIncomingMessage({
   try {
     const { text: reply, sessionFilename, skipped } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
-      () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail),
+      () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail, "slack", onToolStatus),
     );
     if (skipped) return;
     const { responseUrl, sessionUrl, traceUrl } = await uploadArtifacts(
@@ -409,6 +411,12 @@ const moonAssistant = new Assistant({
         },
         say,
         client,
+        onToolStatus: (names) =>
+          setStatus(
+            names.length === 1
+              ? `Moon Bot is using ${names[0]}...`
+              : `Moon Bot is using ${names.join(", ")}...`,
+          ),
       });
     } finally {
       await setStatus("");

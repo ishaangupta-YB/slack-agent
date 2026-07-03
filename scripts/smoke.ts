@@ -1677,6 +1677,38 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("End-to-end ReAct agent loop passed");
 
+  // Live assistant status updates: the ReAct loop should report which tools are
+  // being executed so the Slack AI Assistant panel can surface progress.
+  setChatOverride(async (messages) => {
+    const lastMessage = messages[messages.length - 1];
+    const isObservation =
+      lastMessage?.role === "user" &&
+      typeof lastMessage?.content === "string" &&
+      lastMessage.content.includes("[tool result] read_file");
+    if (isObservation) {
+      return "Status update test complete.";
+    }
+    return '<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}}\n</tool_call>';
+  });
+
+  const statusToolNames: string[][] = [];
+  await handleMessage(
+    "status-update-thread",
+    "Trigger a status update during tool use",
+    "1776379257.000000",
+    "U1",
+    undefined,
+    "slack",
+    async (names) => statusToolNames.push(names),
+  );
+  assert(statusToolNames.length >= 1, "onToolStatus should be called during tool execution");
+  assert(
+    statusToolNames[0].includes("read_file"),
+    `Expected first status update to include read_file, got: ${JSON.stringify(statusToolNames[0])}`,
+  );
+  clearChatOverride();
+  console.log("Assistant status update callback passed");
+
   // ReAct self-correction: malformed tool calls are reported back to the model
   // so it can retry with valid JSON instead of silently failing.
   let selfCorrectionAttempts = 0;
