@@ -17,6 +17,7 @@
     "verify": "tsx scripts/verify-all.ts",
     "slack-e2e": "tsx scripts/slack-e2e.ts",
     "prepare-submission": "tsx scripts/prepare-submission.ts",
+    "fill-submission": "tsx scripts/fill-submission.ts",
     "healthcheck": "node dist/healthcheck.js",
     "typecheck": "tsc --noEmit"
   },

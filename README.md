@@ -146,6 +146,7 @@ npm run verify-slack           # validate Slack token scopes and connectivity
 npm run verify-github          # validate GitHub token or App credentials and API reachability
 npm run verify                 # run diagnose + verify-cloudflare + verify-slack + verify-github in one command
 npm run slack-e2e              # post a test message and verify Moon Bot replies (requires SLACK_E2E_CHANNEL)
+npm run fill-submission        # fill SUBMISSION.md placeholders when sandbox/video/Marketplace ID are ready
 npm run prepare-submission     # verify deliverables are present and forbidden files are untracked
 ```
 

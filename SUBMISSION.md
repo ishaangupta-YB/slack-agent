@@ -150,11 +150,14 @@ npm run verify-cloudflare
 npm run verify-slack
 npm run verify-github
 npm run verify
+npm run fill-submission
 npm run prepare-submission
 npm start
 ```
 
 `npm run verify-slack` also compares the installed bot token's actual scopes with the scopes declared in `manifest.json` and generates a Socket Mode connection URL via `apps.connections.open`, catching stale app installs or missing `connections:write` scope before the bot starts Socket Mode.
+
+Once your Slack sandbox and demo video are ready, set `SLACK_SANDBOX_URL` and `DEMO_VIDEO_URL` in `.env` and run `npm run fill-submission` to fill the checklist placeholders inside `SUBMISSION.md`.
 
 `npm run verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot connects to Slack. `npm run verify-github` validates that a personal access token or GitHub App installation can authenticate to the GitHub API, lists token scopes, and confirms App-token exchange so GitHub tools (PRs, issues, code review) work before the bot starts. Once Slack and Cloudflare credentials are configured, `npm run verify` runs `diagnose`, `verify-cloudflare`, `verify-slack`, and `verify-github` in one step and prints a consolidated report. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
 

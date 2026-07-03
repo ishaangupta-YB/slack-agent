@@ -66,6 +66,7 @@ import { verifyGitHub } from "./verify-github.js";
 import { runAllPreflightChecks } from "./verify-all.js";
 import { runSlackE2E } from "./slack-e2e.js";
 import { checkSubmission } from "./prepare-submission.js";
+import { fillSubmission } from "./fill-submission.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -4050,6 +4051,22 @@ rLQ+epZplw==
     writeFileSync("SUBMISSION.md", originalSubmission);
   }
   console.log("Prepare-submission checker passed");
+
+  // Fill-submission helper: fills SUBMISSION.md placeholders from env values.
+  const sampleSubmission = readFileSync("SUBMISSION.md", "utf8");
+  const envValues = {
+    SLACK_SANDBOX_URL: "https://demo.slack.com",
+    DEMO_VIDEO_URL: "https://example.com/video.mp4",
+    SLACK_MARKETPLACE_APP_ID: "A1234567890",
+  };
+  const filled = fillSubmission(sampleSubmission, envValues);
+  assert(filled.includes("[x] Slack developer sandbox URL: https://demo.slack.com"), "sandbox URL placeholder should be filled");
+  assert(filled.includes("[x] Demo video link: https://example.com/video.mp4"), "demo video placeholder should be filled");
+  assert(filled.includes("[x] Slack Marketplace App ID: A1234567890"), "Marketplace App ID placeholder should be filled");
+  assert(!filled.toLowerCase().includes("(to be filled"), "fillSubmission should remove placeholder markers");
+  const unfilled = fillSubmission(sampleSubmission, {});
+  assert.strictEqual(unfilled, sampleSubmission, "fillSubmission should not change content when env values are absent");
+  console.log("Fill-submission helper passed");
 
   // Bot mention stripping from app_mention / DM text
   assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
