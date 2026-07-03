@@ -25,9 +25,13 @@ const requiredFiles = [
   "k8s/deployment.yaml",
   "k8s/kustomization.yaml",
   "k8s/secret.example.yaml",
+  "k8s/github-only/deployment.yaml",
+  "k8s/github-only/kustomization.yaml",
+  "k8s/github-only/secret.example.yaml",
+  "k8s/github-only/service.yaml",
 ];
 
-const forbiddenTrackedFiles = ["WRITEUP.md", ".env", "k8s/secret.yaml"];
+const forbiddenTrackedFiles = ["WRITEUP.md", ".env", "k8s/secret.yaml", "k8s/github-only/secret.yaml"];
 
 const placeholderMarkers = ["(to be filled", "<fill", "TODO:", "FIXME:"];
 

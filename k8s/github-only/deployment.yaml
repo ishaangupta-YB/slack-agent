@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moon-bot-github-only
+  namespace: moon-bot
+  labels:
+    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/component: github-bot
+spec:
+  # The GitHub webhook receiver is stateless HTTP, but start with one replica
+  # until load-balancer / ingress wiring is configured.
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: moon-bot
+      app.kubernetes.io/component: github-bot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: moon-bot
+        app.kubernetes.io/component: github-bot
+    spec:
+      serviceAccountName: moon-bot
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: github-bot
+          image: moon-bot:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: webhook
+              containerPort: 3000
+            - name: http
+              containerPort: 3001
+          envFrom:
+            - secretRef:
+                name: moon-bot-github-only-env
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: webhook
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: webhook
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: data
+          emptyDir:
+            sizeLimit: 5Gi

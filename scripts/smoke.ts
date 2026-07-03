@@ -3850,6 +3850,60 @@ rLQ+epZplw==
 
   console.log("K8s secret example validated");
 
+  // GitHub-only Kubernetes overlay should be present, minimal, and free of Slack/production credentials.
+  const ghSecretExampleRaw = readFileSync("k8s/github-only/secret.example.yaml", "utf-8");
+  assert(ghSecretExampleRaw.includes('GITHUB_ONLY: "true"'), "GitHub-only secret example must set GITHUB_ONLY=true");
+  assert(
+    ghSecretExampleRaw.includes("CLOUDFLARE_ACCOUNT_ID:") && ghSecretExampleRaw.includes("CLOUDFLARE_API_TOKEN:"),
+    "GitHub-only secret example must document Cloudflare credentials (still required in GitHub-only mode)",
+  );
+  const slackOnlySecrets = [
+    "SLACK_BOT_TOKEN",
+    "SLACK_APP_TOKEN",
+    "SLACK_USER_TOKEN",
+    "ES_URL",
+    "MONGODB_URI",
+    "AWS_ACCESS_KEY_ID",
+    "PLAUSIBLE_API_KEY",
+  ];
+  for (const name of slackOnlySecrets) {
+    assert(
+      !ghSecretExampleRaw.includes(`${name}:`),
+      `GitHub-only secret example must not include production/Slack credential ${name}`,
+    );
+  }
+
+  const ghDeploymentRaw = readFileSync("k8s/github-only/deployment.yaml", "utf-8");
+  assert(ghDeploymentRaw.includes("name: moon-bot-github-only"), "GitHub-only deployment must be named moon-bot-github-only");
+  assert(
+    ghDeploymentRaw.includes("containerPort: 3000") && ghDeploymentRaw.includes("port: webhook"),
+    "GitHub-only deployment must expose port 3000 for the webhook receiver",
+  );
+  assert(
+    ghDeploymentRaw.includes("name: moon-bot-github-only-env"),
+    "GitHub-only deployment must mount the moon-bot-github-only-env secret",
+  );
+  assert(
+    ghDeploymentRaw.includes("app.kubernetes.io/component: github-bot"),
+    "GitHub-only deployment must use the github-bot component label",
+  );
+
+  const ghServiceRaw = readFileSync("k8s/github-only/service.yaml", "utf-8");
+  assert(ghServiceRaw.includes("port: 3000"), "GitHub-only service must expose port 3000");
+  assert(
+    ghServiceRaw.includes("app.kubernetes.io/component: github-bot"),
+    "GitHub-only service must select the github-bot component",
+  );
+
+  const ghKustomizationRaw = readFileSync("k8s/github-only/kustomization.yaml", "utf-8");
+  for (const resource of ["secret.yaml", "deployment.yaml", "service.yaml", "../namespace.yaml", "../serviceaccount.yaml"]) {
+    assert(
+      ghKustomizationRaw.includes(`- ${resource}`),
+      `GitHub-only kustomization must reference ${resource}`,
+    );
+  }
+  console.log("GitHub-only Kubernetes manifests validated");
+
   // .env.example must stay in sync with source code so operators know every available option.
   function collectEnvNamesFromDir(dir: string): Set<string> {
     const names = new Set<string>();

@@ -222,7 +222,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 
 - Socket Mode means no public URL is required for Slack events.
 - The artifact bucket server serves response markdown and JSONL traces on `BUCKET_HTTP_PORT`.
-- A production-ready Dockerfile, `docker-compose.yml`, and `k8s/` manifests are included.
+- A production-ready Dockerfile, `docker-compose.yml`, `k8s/` manifests, and a separate `k8s/github-only/` overlay for the credential-poor GitHub bot pod are included.
 - `manifest.json` requests all required OAuth scopes and bot events.
 
 ---

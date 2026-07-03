@@ -60,6 +60,13 @@ jobs:
             exit 1
           fi
 
+      - name: Ensure k8s/github-only/secret.yaml is not tracked
+        run: |
+          if git ls-files --error-unmatch k8s/github-only/secret.yaml >/dev/null 2>&1; then
+            echo "ERROR: k8s/github-only/secret.yaml contains secrets and must not be committed."
+            exit 1
+          fi
+
       - name: Validate Kubernetes YAML
         run: |
           python3 - <<'PY'

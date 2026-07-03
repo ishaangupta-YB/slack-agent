@@ -2,6 +2,7 @@
 .env
 .env.local
 k8s/secret.yaml
+k8s/github-only/secret.yaml
 
 # Build outputs
 node_modules

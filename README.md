@@ -98,7 +98,7 @@ Runtime flow:
 - **Cloudflare Workers AI** for Kimi K2.7 (default) or Kimi 2.6
 - **@modelcontextprotocol/sdk** for MCP client support
 - **HuggingFace Hub buckets** (or local filesystem) for persistent artifacts
-- **Docker + docker-compose** for deployment
+- **Docker + docker-compose + Kubernetes** for deployment
 
 ---
 
@@ -242,7 +242,7 @@ Try these in Slack to show off the core tracks:
 
 ## Deployment
 
-A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_HOST:BUCKET_HTTP_PORT` (set to `0.0.0.0:3001` by default in the image), uses `src/healthcheck.ts` for container health checks, and runs in Socket Mode — no public ingress URL is required for Slack events.
+A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_HOST:BUCKET_HTTP_PORT` (set to `0.0.0.0:3001` by default in the image), uses `src/healthcheck.ts` for container health checks, and runs in Socket Mode — no public ingress URL is required for Slack events. Kubernetes manifests are in `k8s/` for the Slack pod and `k8s/github-only/` for the credential-poor GitHub bot pod.
 
 ### GitHub-only bot mode
 
