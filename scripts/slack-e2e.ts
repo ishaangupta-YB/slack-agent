@@ -25,7 +25,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 /**
- * Send a test message to a Slack channel/DM and poll until Moon Bot replies.
+ * Send a test message to a Slack channel/DM and poll until Ishu replies.
  *
  * This works for both threaded channel replies (using conversations.replies)
  * and one-on-one DM top-level replies (using conversations.history as a
@@ -38,7 +38,7 @@ export async function runSlackE2E(
 ): Promise<SlackE2EResult> {
   const start = Date.now();
   const messageText =
-    opts.messageText ?? `Moon Bot Slack end-to-end test ${Date.now()}`;
+    opts.messageText ?? `Ishu Slack end-to-end test ${Date.now()}`;
   const timeoutMs = opts.timeoutMs ??
     Number.parseInt(process.env.SLACK_E2E_TIMEOUT_MS ?? "60000", 10);
   const pollIntervalMs = opts.pollIntervalMs ?? 3000;
@@ -127,7 +127,7 @@ export async function runSlackE2E(
     ok: false,
     botUserId,
     postedTs,
-    error: `No reply from Moon Bot within ${timeoutMs}ms`,
+    error: `No reply from Ishu within ${timeoutMs}ms`,
     durationMs: Date.now() - start,
   };
 }

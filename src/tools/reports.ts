@@ -19,7 +19,7 @@ async function runDeployReport(input: z.infer<typeof deployReportParams>): Promi
 export const weeklyReportTool: Tool = {
   name: "weekly_report",
   description:
-    "Generate the Moon Bot weekly ops report on demand. When Elasticsearch is configured, returns live error rates, rate-limiting mentions, and Gitaly health. Otherwise returns a fallback template.",
+    "Generate the Ishu weekly ops report on demand. When Elasticsearch is configured, returns live error rates, rate-limiting mentions, and Gitaly health. Otherwise returns a fallback template.",
   params: weeklyReportParams,
   tier: "basic",
   run: runWeeklyReport,

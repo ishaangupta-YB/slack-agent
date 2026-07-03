@@ -1,6 +1,6 @@
 # Status
 
-Use the `system_status` tool to show what Moon Bot has available right now — which integrations are connected, what model is in use, which skills are loaded, and whether scheduled tasks are enabled.
+Use the `system_status` tool to show what Ishu has available right now — which integrations are connected, what model is in use, which skills are loaded, and whether scheduled tasks are enabled.
 
 ## When to use it
 

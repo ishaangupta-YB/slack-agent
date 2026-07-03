@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: moon-bot
-  namespace: moon-bot
+  name: ishu
+  namespace: ishu
   labels:
-    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/name: ishu
     app.kubernetes.io/component: app
 spec:
   # Socket Mode keeps a single WebSocket to Slack per App-Level Token.
@@ -14,30 +14,30 @@ spec:
     type: Recreate
   selector:
     matchLabels:
-      app.kubernetes.io/name: moon-bot
+      app.kubernetes.io/name: ishu
       app.kubernetes.io/component: app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: moon-bot
+        app.kubernetes.io/name: ishu
         app.kubernetes.io/component: app
     spec:
-      serviceAccountName: moon-bot
+      serviceAccountName: ishu
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
         fsGroup: 1000
       containers:
-        - name: moon-bot
-          image: moon-bot:latest
+        - name: ishu
+          image: ishu:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: http
               containerPort: 3001
           envFrom:
             - secretRef:
-                name: moon-bot-env
+                name: ishu-env
           resources:
             requests:
               memory: "256Mi"

@@ -45,7 +45,7 @@ export interface SafeSayOptions {
  * Deliver a Slack message with automatic retry and exponential backoff.
  *
  * Slack enforces rate limits and can return transient errors; this helper
- * ensures Moon Bot retries rate-limited or network-related failures before
+ * ensures Ishu retries rate-limited or network-related failures before
  * giving up, which keeps long-running ReAct sessions reliable in production.
  *
  * For rate_limited errors the Slack-provided retry_after hint is honored.

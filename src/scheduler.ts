@@ -152,7 +152,7 @@ async function getWeeklyMetrics(now: Date): Promise<{
 
 async function weeklyFallbackReport(now: Date): Promise<string> {
   return (
-    `*Moon Bot Weekly Ops Report* 🌙\n` +
+    `*Ishu Weekly Ops Report* 🌙\n` +
     `_Generated at ${now.toISOString()} UTC_\n\n` +
     `Elasticsearch is not connected, so this is a template report. Once ES_URL is ` +
     `configured, this report will include live error rates, rate-limiting patterns, ` +
@@ -171,7 +171,7 @@ export async function generateWeeklyReport(): Promise<string> {
     const totalErrorRate = metrics.errorRate;
 
     return (
-      `*Moon Bot Weekly Ops Report* 🌙\n` +
+      `*Ishu Weekly Ops Report* 🌙\n` +
       `_Generated at ${now.toISOString()} UTC_\n\n` +
       `• Total logs (7d): ${metrics.totalLogs.toLocaleString()}\n` +
       `• Error-level logs: ${metrics.errorCount.toLocaleString()} (${totalErrorRate}%)\n` +
@@ -182,7 +182,7 @@ export async function generateWeeklyReport(): Promise<string> {
     );
   } catch (err) {
     return (
-      `*Moon Bot Weekly Ops Report* 🌙\n` +
+      `*Ishu Weekly Ops Report* 🌙\n` +
       `_Generated at ${now.toISOString()} UTC_\n\n` +
       `Could not generate the live report: ${err instanceof Error ? err.message : String(err)}`
     );
@@ -436,17 +436,17 @@ export async function getPublicStatusImpactSummary(): Promise<string> {
 
   if (!channel || pages.length === 0) {
     return (
-      "*Moon Bot public service impact* 🌍\n" +
+      "*Ishu public service impact* 🌍\n" +
       "Public status monitoring is not configured.\n\n" +
       "Enable it by setting `STATUS_MONITOR_CHANNEL` and `STATUS_MONITOR_PAGES` " +
-      "so Moon Bot can watch nonprofit, civic-tech, and open-source services " +
+      "so Ishu can watch nonprofit, civic-tech, and open-source services " +
       "and alert the channel when they go down."
     );
   }
 
   const state = await loadStatusMonitorState();
   let summary =
-    `*Moon Bot public service impact* 🌍\n` +
+    `*Ishu public service impact* 🌍\n` +
     `_Monitoring ${pages.length} public status page(s) and posting alerts to <#${channel}>. _\n\n`;
 
   for (const url of pages) {
@@ -457,7 +457,7 @@ export async function getPublicStatusImpactSummary(): Promise<string> {
   }
 
   summary +=
-    "\n_Check a page on demand with `/moonbot statuspage <url>` or ask Moon Bot " +
+    "\n_Check a page on demand with `/ishu statuspage <url>` or ask Ishu " +
     "to summarize a public service status. _";
   return summary;
 }

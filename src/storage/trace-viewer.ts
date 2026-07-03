@@ -98,7 +98,7 @@ export function renderSessionTrace(filename: string, jsonl: string): string {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Moon Bot Trace — ${escapeHtml(filename)}</title>
+  <title>Ishu Trace — ${escapeHtml(filename)}</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem; background: #f6f8fa; color: #1f2328; }
     h1 { font-size: 1.25rem; margin-bottom: 0.5rem; }
@@ -119,7 +119,7 @@ export function renderSessionTrace(filename: string, jsonl: string): string {
   </style>
 </head>
 <body>
-  <h1>🌙 Moon Bot Session Trace</h1>
+  <h1>🌙 Ishu Session Trace</h1>
   <p class="subhead">${escapeHtml(filename)} &middot; ${lines.length} turn${lines.length === 1 ? "" : "s"}</p>
   <table>
     <thead>
@@ -138,13 +138,13 @@ export function renderTraceError(message: string): string {
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Moon Bot Trace</title>
+  <title>Ishu Trace</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem; background: #fff0f0; color: #82071e; }
   </style>
 </head>
 <body>
-  <h1>🌙 Moon Bot Trace</h1>
+  <h1>🌙 Ishu Trace</h1>
   <p>${escapeHtml(message)}</p>
 </body>
 </html>`;

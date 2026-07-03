@@ -112,7 +112,7 @@ async function fetchWithAuth(
       Authorization: `Bearer ${token}`,
       Accept: "application/vnd.github+json",
       "X-GitHub-Api-Version": "2022-11-28",
-      "User-Agent": "moon-bot-verify",
+      "User-Agent": "ishu-verify",
     },
   });
 }
@@ -271,7 +271,7 @@ export async function verifyGitHub(options?: VerifyGitHubOptions): Promise<GitHu
 }
 
 function formatReport(result: GitHubVerifyResult): void {
-  console.log("Moon Bot GitHub connectivity verification\n");
+  console.log("Ishu GitHub connectivity verification\n");
   for (const check of result.checks) {
     const icon = check.ok ? "✅" : "❌";
     console.log(`${icon} ${check.name}: ${check.message}`);

@@ -155,7 +155,7 @@ export type PingResult = PingResultOk | PingResultError;
 
 /**
  * Send a tiny prompt to the Cloudflare Workers AI endpoint and report whether
- * the LLM is reachable and how long it took. This is used by the `/moonbot ping`
+ * the LLM is reachable and how long it took. This is used by the `/ishu ping`
  * slash command so sandbox testers can confirm model connectivity from Slack.
  */
 export async function pingLLM(): Promise<PingResult> {

@@ -20,7 +20,7 @@ Call it with a natural-language or keyword `query`. Optional parameters:
 - `sort`: `"score"` or `"timestamp"`
 - `sort_dir`: `"asc"` or `"desc"`
 
-When Moon Bot is invoked in a Slack thread, the current channel is automatically sent as `context_channel_id` so Slack can surface results from the conversation you are in.
+When Ishu is invoked in a Slack thread, the current channel is automatically sent as `context_channel_id` so Slack can surface results from the conversation you are in.
 
 ## Authentication
 

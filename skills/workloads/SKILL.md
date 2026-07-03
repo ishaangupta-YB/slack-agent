@@ -4,7 +4,7 @@ This skill helps you navigate and operate the workspaces that run user-facing Hu
 
 ## Repositories
 
-Clone the following repositories (or your organization's equivalents) into `CODE_REPOS_DIR` (default `./repos`). You can ask Moon Bot to clone a repo for you at any time:
+Clone the following repositories (or your organization's equivalents) into `CODE_REPOS_DIR` (default `./repos`). You can ask Ishu to clone a repo for you at any time:
 
 ```json
 {"tool": "clone_repo", "params": {"repo": "huggingface/spaces"}}

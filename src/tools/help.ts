@@ -10,9 +10,9 @@ const params = z.object({
 });
 
 export const helpTool: Tool = {
-  name: "moon_help",
+  name: "ishu_help",
   description:
-    "Show a concise help message describing Moon Bot capabilities. Invoke this when the user greets the bot, asks for help, asks what it can do, or requests examples.",
+    "Show a concise help message describing Ishu capabilities. Invoke this when the user greets the bot, asks for help, asks what it can do, or requests examples.",
   params,
   tier: "basic",
   githubBot: true,
@@ -21,7 +21,7 @@ export const helpTool: Tool = {
     const bucketMode = cfg.hf.token && cfg.hf.bucketRepo ? "HuggingFace Bucket" : "Local filesystem";
 
     const header =
-      `👋 Hi! I’m **Moon Bot**, a Slack-native engineering assistant powered by \`${model}\`.\n\n` +
+      `👋 Hi! I’m **Ishu**, a Slack-native engineering assistant powered by \`${model}\`.\n\n` +
       `I run in Socket Mode and keep every conversation in its own thread so I can remember context across messages and restarts. Session artifacts are stored in a **${bucketMode}** bucket.\n`;
 
     const sections: Record<string, string> = {
@@ -33,7 +33,7 @@ export const helpTool: Tool = {
         `• Plausible traffic analytics, public status pages, and Slack real-time search\n` +
         `• Weekly ops reports, deploy-impact monitoring, and proactive public status monitoring\n\n` +
         `**How to talk to me**\n` +
-        `• Mention me in a channel: \`@Moon Bot <your question>\`\n` +
+        `• Mention me in a channel: \`@ishu <your question>\`\n` +
         `• Send me a direct message — no mention needed\n` +
         `• Open the Slack AI Assistant panel and start a thread with me\n\n` +
         `Type one of these to dig deeper:\n` +
@@ -41,26 +41,26 @@ export const helpTool: Tool = {
         `• \`help data\` — databases, logs, and analytics\n` +
         `• \`help slack\` — Slack search and workspace tools\n\n` +
         `**Slash commands**\n` +
-        `• \`/moonbot help\` — this message\n` +
-        `• \`/moonbot demo\` — curated hackathon demo prompts\n` +
-        `• \`/moonbot tools\` — tools available to your access tier\n` +
-        `• \`/moonbot version\` — build and runtime version\n` +
-        `• \`/moonbot status\` — current configuration\n` +
-        `• \`/moonbot metrics\` — runtime usage metrics\n` +
-        `• \`/moonbot diagnose\` — pre-flight configuration check\n` +
-        `• \`/moonbot audit [limit]\` — view recent security audit events (privileged only)\n` +
-        `• \`/moonbot reload\` — reload skills from disk without restarting (privileged only)\n` +
-        `• \`/moonbot ping\` — live LLM connectivity check\n` +
-        `• \`/moonbot whoami\` — your access tier and guest status\n` +
-        `• \`/moonbot thread\` — your current DM session info\n` +
-        `• \`/moonbot remember <fact>\` — save a fact for future conversations\n` +
-        `• \`/moonbot memory [limit]\` — recall recent remembered facts\n` +
-        `• \`/moonbot forget <text|all>\` — remove remembered facts\n` +
-        `• \`/moonbot search <query>\` — search Slack history with the Real-Time Search API\n` +
-        `• \`/moonbot report weekly\` — weekly ops report on demand\n` +
-        `• \`/moonbot report deploy\` — deploy impact check on demand\n` +
-        `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n` +
-        `• \`/moonbot impact\` — public service status monitoring for the Agent for Good track\n\n` +
+        `• \`/ishu help\` — this message\n` +
+        `• \`/ishu demo\` — curated hackathon demo prompts\n` +
+        `• \`/ishu tools\` — tools available to your access tier\n` +
+        `• \`/ishu version\` — build and runtime version\n` +
+        `• \`/ishu status\` — current configuration\n` +
+        `• \`/ishu metrics\` — runtime usage metrics\n` +
+        `• \`/ishu diagnose\` — pre-flight configuration check\n` +
+        `• \`/ishu audit [limit]\` — view recent security audit events (privileged only)\n` +
+        `• \`/ishu reload\` — reload skills from disk without restarting (privileged only)\n` +
+        `• \`/ishu ping\` — live LLM connectivity check\n` +
+        `• \`/ishu whoami\` — your access tier and guest status\n` +
+        `• \`/ishu thread\` — your current DM session info\n` +
+        `• \`/ishu remember <fact>\` — save a fact for future conversations\n` +
+        `• \`/ishu memory [limit]\` — recall recent remembered facts\n` +
+        `• \`/ishu forget <text|all>\` — remove remembered facts\n` +
+        `• \`/ishu search <query>\` — search Slack history with the Real-Time Search API\n` +
+        `• \`/ishu report weekly\` — weekly ops report on demand\n` +
+        `• \`/ishu report deploy\` — deploy impact check on demand\n` +
+        `• \`/ishu statuspage <url>\` — check a public service status page on demand\n` +
+        `• \`/ishu impact\` — public service status monitoring for the Agent for Good track\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.\n` +
         `Click 👍 / 👎 to give feedback; after a thumbs-down, you can tap *Regenerate response* to ask me to try again.\n` +
         `You can also react with :+1:/:-1: (feedback), :arrows_counterclockwise: (reset thread), or :question: (show help).`,
@@ -107,19 +107,19 @@ export const helpTool: Tool = {
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
         `• Public status monitor — watches civic/nonprofit service status pages and posts incident and recovery alerts\n` +
-        `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot impact\`, \`/moonbot version\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot tools\`, \`/moonbot audit [limit]\` (privileged), \`/moonbot reload\` (privileged), \`/moonbot ping\`, \`/moonbot remember <fact>\`, \`/moonbot memory [limit]\`, \`/moonbot forget <text|all>\`, or \`/moonbot whoami\`\n\n` +
+        `• Slash commands: \`/ishu search <query>\`, \`/ishu report weekly\`, \`/ishu report deploy\`, \`/ishu statuspage <url>\`, \`/ishu impact\`, \`/ishu version\`, \`/ishu status\`, \`/ishu metrics\`, \`/ishu diagnose\`, \`/ishu tools\`, \`/ishu audit [limit]\` (privileged), \`/ishu reload\` (privileged), \`/ishu ping\`, \`/ishu remember <fact>\`, \`/ishu memory [limit]\`, \`/ishu forget <text|all>\`, or \`/ishu whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +
         `• “Run the weekly report.”\n` +
         `• “Show me your system status.”\n` +
         `• “Check the status page for status.cloudflare.com.”\n\n` +
         `**Emoji reactions**\n` +
-        `React to any Moon Bot message with :+1: / :-1: for feedback, :arrows_counterclockwise: to reset the thread, or :question: for help.\n` +
+        `React to any Ishu message with :+1: / :-1: for feedback, :arrows_counterclockwise: to reset the thread, or :question: for help.\n` +
         `After a thumbs-down feedback button, you can also choose *Regenerate response* to retry the answer.`,
     };
 
     const privacy =
-      `\n\n_Access to data tools is governed by your access tier. Guests are not allowed to use Moon Bot unless explicitly configured._`;
+      `\n\n_Access to data tools is governed by your access tier. Guests are not allowed to use Ishu unless explicitly configured._`;
 
     return `${header}\n\n${sections[input.topic]}${privacy}`;
   },

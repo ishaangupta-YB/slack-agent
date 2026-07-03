@@ -24,7 +24,7 @@ function packageVersion(): string {
 export const statusTool = {
   name: "system_status",
   description:
-    "Report Moon Bot's current configuration, enabled integrations, scheduled tasks, and security posture. Useful for health-checking the bot during setup or demos.",
+    "Report Ishu's current configuration, enabled integrations, scheduled tasks, and security posture. Useful for health-checking the bot during setup or demos.",
   tier: "basic" as const,
   githubBot: true,
   params: statusParams,
@@ -42,7 +42,7 @@ export const statusTool = {
         : "default tier only";
 
     const lines = [
-      `*Moon Bot status* 🌙`,
+      `*Ishu status* 🌙`,
       ``,
       `*Version:* ${packageVersion()}`,
       `*Model:* ${cfg.cloudflare.model}${

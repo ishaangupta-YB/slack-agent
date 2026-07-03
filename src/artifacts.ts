@@ -24,7 +24,7 @@ export async function uploadArtifacts(
   const responsePath = `responses/${sanitizeFilename(threadKey)}_${sanitizeFilename(now)}_${randomUUID().slice(0, 8)}.md`;
 
   const responseMarkdown = [
-    `# Moon Bot response`,
+    `# Ishu response`,
     "",
     `- Thread: ${threadKey}`,
     `- Time: ${now}`,

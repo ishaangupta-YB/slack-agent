@@ -67,7 +67,7 @@ export async function initializeMcpClients(config: McpServersConfig): Promise<To
   const tools: Tool[] = [];
 
   for (const [serverName, serverConfig] of Object.entries(config)) {
-    const client = new Client({ name: "moon-bot-mcp-client", version: "0.1.0" });
+    const client = new Client({ name: "ishu-mcp-client", version: "0.1.0" });
     const transport = buildTransport(serverName, serverConfig);
 
     try {

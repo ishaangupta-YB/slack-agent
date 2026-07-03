@@ -1,6 +1,6 @@
 # Security & Safety
 
-Moon Bot can touch sensitive systems (Elasticsearch, MongoDB, GitHub, shell). Use these safety features to keep usage responsible and auditable.
+Ishu can touch sensitive systems (Elasticsearch, MongoDB, GitHub, shell). Use these safety features to keep usage responsible and auditable.
 
 ## Prompt injection reporting
 
@@ -29,7 +29,7 @@ Security events live in the JSONL audit log (`SECURITY_AUDIT_LOG_FILE`). Each en
 
 ## Access tiers
 
-Moon Bot assigns each Slack user an access tier that controls which tools are available:
+Ishu assigns each Slack user an access tier that controls which tools are available:
 
 - **basic** — code Q&A, shell, read-only GitHub, Plausible analytics, Slack search, memory.
 - **elastic** — basic plus Elasticsearch, AWS Athena, and Sizzle/DuckDB query tools.
@@ -39,4 +39,4 @@ Tiers are resolved from an explicit `USER_TIERS` mapping or from Okta group memb
 
 ## Guest account policy
 
-By default, Slack guest accounts (single-channel and multi-channel guests) are not allowed to use Moon Bot. The bot checks the user's Slack profile on every conversation and refuses guest accounts with an explanatory message unless `ALLOW_GUESTS=true` is set.
+By default, Slack guest accounts (single-channel and multi-channel guests) are not allowed to use Ishu. The bot checks the user's Slack profile on every conversation and refuses guest accounts with an explanatory message unless `ALLOW_GUESTS=true` is set.

@@ -1,6 +1,6 @@
 # Help / capabilities
 
-When the user greets Moon Bot, asks what it can do, says "help", "capabilities", or "examples", invoke the `moon_help` tool to provide a friendly, concise overview.
+When the user greets Ishu, asks what it can do, says "help", "capabilities", or "examples", invoke the `ishu_help` tool to provide a friendly, concise overview.
 
 If the user's message hints at a specific area, pass the matching `topic`:
 

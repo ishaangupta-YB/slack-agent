@@ -1,10 +1,10 @@
-# moon-bot
+# ishu
 
-Use this skill when the user asks about Moon Bot itself: how it is built, where a feature lives, how configuration works, or how to understand its source code.
+Use this skill when the user asks about Ishu itself: how it is built, where a feature lives, how configuration works, or how to understand its source code.
 
 ## Architecture overview
 
-Moon Bot is a Slack-native engineering agent written in Node.js 22+/TypeScript (ESM). The high-level flow is:
+Ishu is a Slack-native engineering agent written in Node.js 22+/TypeScript (ESM). The high-level flow is:
 
 1. Slack events arrive via Socket Mode in `src/slack.ts`.
 2. `src/slack.ts` validates the user, resolves their access tier, strips bot mentions, suppresses duplicate/out-of-order events, and routes the message.
@@ -28,11 +28,11 @@ Moon Bot is a Slack-native engineering agent written in Node.js 22+/TypeScript (
 | `src/integrations/es.ts` | Shared Elasticsearch query helper used by the `es_query` tool and scheduled reports. |
 | `src/auth/tiers.ts` | Basic / elastic / privileged access-tier resolution from `USER_TIERS` or Okta group membership. |
 | `src/scheduler.ts` | Weekly ops report, post-deploy impact monitor, and public-status monitor with restart-safe state. |
-| `src/github-bot.ts` | Optional GitHub-only mode that replies to `@moon-bot` mentions on issues/PRs without any Slack credentials. |
+| `src/github-bot.ts` | Optional GitHub-only mode that replies to `@ishu` mentions on issues/PRs without any Slack credentials. |
 | `src/skills/loader.ts` | Loads every `skills/<name>/SKILL.md` file into the system prompt (including this one). |
-| `src/diagnostics.ts` | Pre-flight configuration checks used by `npm run diagnose` and `/moonbot diagnose`. |
+| `src/diagnostics.ts` | Pre-flight configuration checks used by `npm run diagnose` and `/ishu diagnose`. |
 
-## How to answer questions about Moon Bot
+## How to answer questions about Ishu
 
 Use these tools, in order:
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Moon Bot pre-flight configuration diagnostic.
+ * Ishu pre-flight configuration diagnostic.
  *
  * Run this before starting the bot in Slack to catch missing env vars,
  * unwritable directories, and incomplete integration configs. It exits

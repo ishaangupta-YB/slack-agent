@@ -76,9 +76,9 @@ function systemPrompt(
   if (cfg.agent.systemPromptOverride) return cfg.agent.systemPromptOverride;
   const persona =
     environment === "github"
-      ? "You are Moon Bot, a helpful engineering assistant that monitors GitHub issues and pull requests. " +
+      ? "You are Ishu, a helpful engineering assistant that monitors GitHub issues and pull requests. " +
         "You answer questions about code, review PR diffs, and can open pull requests or post comments. "
-      : "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
+      : "You are Ishu, a helpful engineering assistant that lives in Slack. " +
         "You answer questions about code, metrics, and operations. ";
   return (
     persona +
@@ -390,7 +390,7 @@ export interface ThreadInfo {
 
 /**
  * Return a human-readable summary of an active thread session for the given
- * thread key. Used by the `/moonbot thread` slash command so users can inspect
+ * thread key. Used by the `/ishu thread` slash command so users can inspect
  * their current DM session without invoking the full agent.
  */
 export async function getThreadInfo(threadKey: string): Promise<ThreadInfo> {

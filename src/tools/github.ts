@@ -145,7 +145,7 @@ async function applyContextDefaults<T extends { requestedBy?: string; traceUrl?:
 }
 
 function buildFooter(requestedBy?: string, traceUrl?: string): string {
-  const lines = ["", "---", "_Created by Moon Bot_"];
+  const lines = ["", "---", "_Created by Ishu_"];
   if (requestedBy) {
     lines.push(`Requested by ${requestedBy}`);
   }

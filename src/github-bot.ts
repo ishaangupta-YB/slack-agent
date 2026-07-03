@@ -57,11 +57,11 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 function isMentioned(body: string): boolean {
-  return /(^|\s)@moon[-_]?bot(\b|$)/i.test(body);
+  return /(^|\s)@ishu(\b|$)/i.test(body);
 }
 
 function stripMention(body: string): string {
-  return body.replace(/(^|\s)@moon[-_]?bot(\b|$)/gi, " ").trim();
+  return body.replace(/(^|\s)@ishu(\b|$)/gi, " ").trim();
 }
 
 function isAllowedRepo(repoFullName: string): boolean {
@@ -97,7 +97,7 @@ async function handleIssueComment(
 
   if (payload.action !== "created") return `ignored: issue_comment action is ${payload.action ?? "unknown"}`;
 
-  if (!isMentioned(comment.body)) return "ignored: no @moon-bot mention";
+  if (!isMentioned(comment.body)) return "ignored: no @ishu mention";
 
   if (!isAllowedRepo(repo)) return `ignored: ${repo} is not in the allowlist`;
 
@@ -157,7 +157,7 @@ async function handlePullRequestReviewComment(
 
   if (payload.action !== "created") return `ignored: pull_request_review_comment action is ${payload.action ?? "unknown"}`;
 
-  if (!isMentioned(comment.body)) return "ignored: no @moon-bot mention";
+  if (!isMentioned(comment.body)) return "ignored: no @ishu mention";
   if (!isAllowedRepo(repo)) return `ignored: ${repo} is not in the allowlist`;
 
   const cleaned = stripMention(comment.body);
@@ -272,7 +272,7 @@ export function startGitHubBotServer(): Promise<Server> {
     server.listen(cfg.githubBot.webhookPort, () => {
       const address = server.address();
       const port = address && typeof address !== "string" ? address.port : cfg.githubBot.webhookPort;
-      console.log(`GitHub-only Moon Bot listening for webhooks on port ${port}`);
+      console.log(`GitHub-only Ishu listening for webhooks on port ${port}`);
       resolve(server);
     });
   });

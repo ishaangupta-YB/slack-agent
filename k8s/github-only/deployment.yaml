@@ -1,10 +1,10 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: moon-bot-github-only
-  namespace: moon-bot
+  name: ishu-github-only
+  namespace: ishu
   labels:
-    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/name: ishu
     app.kubernetes.io/component: github-bot
 spec:
   # The GitHub webhook receiver is stateless HTTP, but start with one replica
@@ -14,15 +14,15 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-      app.kubernetes.io/name: moon-bot
+      app.kubernetes.io/name: ishu
       app.kubernetes.io/component: github-bot
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: moon-bot
+        app.kubernetes.io/name: ishu
         app.kubernetes.io/component: github-bot
     spec:
-      serviceAccountName: moon-bot
+      serviceAccountName: ishu
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
@@ -30,7 +30,7 @@ spec:
         fsGroup: 1000
       containers:
         - name: github-bot
-          image: moon-bot:latest
+          image: ishu:latest
           imagePullPolicy: IfNotPresent
           ports:
             - name: webhook
@@ -39,7 +39,7 @@ spec:
               containerPort: 3001
           envFrom:
             - secretRef:
-                name: moon-bot-github-only-env
+                name: ishu-github-only-env
           resources:
             requests:
               memory: "256Mi"

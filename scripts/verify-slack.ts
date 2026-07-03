@@ -218,7 +218,7 @@ export async function verifySlack(clients?: VerifyClients): Promise<VerifyResult
         () =>
           botClient.chat.postMessage({
             channel: testChannel,
-            text: "Moon Bot connectivity check — posting to this channel works.",
+            text: "Ishu connectivity check — posting to this channel works.",
           }),
         "chat_write",
         () => `chat:write scope OK — posted to ${testChannel}`,
@@ -243,7 +243,7 @@ export async function verifySlack(clients?: VerifyClients): Promise<VerifyResult
 }
 
 function formatReport(result: VerifyResult): void {
-  console.log("Moon Bot Slack connectivity verification\n");
+  console.log("Ishu Slack connectivity verification\n");
   for (const check of result.checks) {
     const icon = check.ok ? "✅" : "❌";
     console.log(`${icon} ${check.name}: ${check.message}`);
@@ -258,7 +258,7 @@ function formatReport(result: VerifyResult): void {
 
 async function main(): Promise<void> {
   if (looksLikeTestToken(cfg.slack.botToken) || looksLikeTestToken(cfg.slack.appToken)) {
-    console.log("Moon Bot Slack connectivity verification\n");
+    console.log("Ishu Slack connectivity verification\n");
     console.log(
       "❌ tokens: Slack tokens look like placeholders. Configure real SLACK_BOT_TOKEN and SLACK_APP_TOKEN from your Slack app.",
     );

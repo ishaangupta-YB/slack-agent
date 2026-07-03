@@ -114,7 +114,7 @@ export async function appendMemory(entry: MemoryEntry): Promise<void> {
 
 /**
  * Explicitly remember a fact so it can be recalled in future conversations.
- * Used by the `/moonbot remember` slash command to let users inject durable
+ * Used by the `/ishu remember` slash command to let users inject durable
  * context into the shared memory store.
  */
 export async function rememberFact(

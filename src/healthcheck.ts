@@ -1,5 +1,5 @@
 /**
- * Container-friendly healthcheck for Moon Bot.
+ * Container-friendly healthcheck for Ishu.
  *
  * Polls the bucket server's /health endpoint (or HEALTHCHECK_URL) and exits
  * with code 0 when it returns { status: "ok" }.

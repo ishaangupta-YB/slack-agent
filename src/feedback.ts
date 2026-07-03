@@ -20,7 +20,7 @@ function ensureLogFile(path: string): void {
 }
 
 /**
- * Record a thumbs-up/thumbs-down reaction to a Moon Bot response.
+ * Record a thumbs-up/thumbs-down reaction to a Ishu response.
  *
  * Feedback is appended to a JSONL file under the configured SESSIONS_DIR by
  * default, so it is persisted alongside sessions, memory, and audit logs.

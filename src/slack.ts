@@ -93,7 +93,7 @@ const guestCache = new Map<string, boolean | undefined>();
 let botUserIdCache: string | undefined | null = null;
 
 /**
- * Tracks Moon Bot message timestamps so emoji reactions on those messages can
+ * Tracks Ishu message timestamps so emoji reactions on those messages can
  * trigger actions (feedback, reset, help) without requiring users to tap
  * Block Kit buttons.
  */
@@ -169,7 +169,7 @@ async function assertNotGuest(
   await client.chat.postEphemeral({
     channel,
     user: userId,
-    text: "Sorry, guest accounts are not allowed to use Moon Bot in this workspace.",
+    text: "Sorry, guest accounts are not allowed to use Ishu in this workspace.",
   });
   return false;
 }
@@ -177,7 +177,7 @@ async function assertNotGuest(
 /**
  * Common authorization gate for interactive Slack surfaces (slash commands,
  * message shortcuts, block actions, emoji reactions). Returns true if the user
- * is allowed to interact with Moon Bot, otherwise sends an ephemeral refusal
+ * is allowed to interact with Ishu, otherwise sends an ephemeral refusal
  * and returns false.
  */
 async function assertUserCanInteract(
@@ -187,7 +187,7 @@ async function assertUserCanInteract(
   respond?: (args: { text: string; response_type: "ephemeral" }) => Promise<unknown>,
 ): Promise<boolean> {
   if (!userIsAuthorized(userId)) {
-    const text = "Sorry, you’re not authorized to use Moon Bot in this workspace.";
+    const text = "Sorry, you’re not authorized to use Ishu in this workspace.";
     if (respond) {
       await respond({ text, response_type: "ephemeral" });
     } else {
@@ -196,7 +196,7 @@ async function assertUserCanInteract(
     return false;
   }
   if (!cfg.security.allowGuests && (await isGuestUser(client, userId))) {
-    const text = "Sorry, guest accounts are not allowed to use Moon Bot in this workspace.";
+    const text = "Sorry, guest accounts are not allowed to use Ishu in this workspace.";
     if (respond) {
       await respond({ text, response_type: "ephemeral" });
     } else {
@@ -321,13 +321,13 @@ async function handleIncomingMessage({
   if (!userId || event.bot_id) return;
   // Ignore message edits, deletions, channel joins, and other non-chat message
   // subtypes. The one exception is `file_share`, which carries text-like file
-  // attachments the user wants Moon Bot to read.
+  // attachments the user wants Ishu to read.
   if (event.subtype && event.subtype !== "file_share") return;
   if (!userIsAuthorized(userId)) {
     await client.chat.postEphemeral({
       channel,
       user: userId,
-      text: "Sorry, you’re not authorized to use Moon Bot in this workspace.",
+      text: "Sorry, you’re not authorized to use Ishu in this workspace.",
     });
     return;
   }
@@ -456,17 +456,17 @@ app.event("message", async (args) => {
 /**
  * Slack AI Assistant integration.
  *
- * Registering the Assistant makes Moon Bot available as a Slack AI assistant:
- * users can open the assistant panel in Slack and chat with Moon Bot directly.
+ * Registering the Assistant makes Ishu available as a Slack AI assistant:
+ * users can open the assistant panel in Slack and chat with Ishu directly.
  * This fulfills the hackathon's "Slack AI capabilities" requirement.
  */
-const moonAssistant = new Assistant({
+const ishuAssistant = new Assistant({
   threadStarted: async ({ say, setStatus, setSuggestedPrompts, event, client }) => {
-    await setStatus("Moon Bot is ready.");
+    await setStatus("Ishu is ready.");
 
     const userId = event.assistant_thread?.user_id;
     if (userId && !userIsAuthorized(userId)) {
-      await say("Sorry, you’re not authorized to use Moon Bot in this workspace.");
+      await say("Sorry, you’re not authorized to use Ishu in this workspace.");
       return;
     }
     if (
@@ -474,16 +474,16 @@ const moonAssistant = new Assistant({
       !cfg.security.allowGuests &&
       (await isGuestUser(client, userId))
     ) {
-      await say("Sorry, guest accounts are not allowed to use Moon Bot in this workspace.");
+      await say("Sorry, guest accounts are not allowed to use Ishu in this workspace.");
       return;
     }
 
     await say(
-      "Hi! I’m Moon Bot, your engineering assistant inside Slack. Ask me about code, GitHub, Slack history, metrics, or ops tasks.",
+      "Hi! I’m Ishu, your engineering assistant inside Slack. Ask me about code, GitHub, Slack history, metrics, or ops tasks.",
     );
 
     await setSuggestedPrompts({
-      title: "Try asking Moon Bot",
+      title: "Try asking Ishu",
       prompts: [
         { title: "Search Slack history", message: "Search Slack for recent deployment discussions" },
         { title: "Open a PR", message: "Open a PR in my-org/my-repo that updates the README" },
@@ -495,7 +495,7 @@ const moonAssistant = new Assistant({
     await saveThreadContext();
   },
   userMessage: async ({ say, client, event, setStatus }) => {
-    await setStatus("Moon Bot is thinking...");
+    await setStatus("Ishu is thinking...");
 
     const channel = (event as { channel: string }).channel;
     const user = (event as { user?: string }).user;
@@ -526,8 +526,8 @@ const moonAssistant = new Assistant({
         onToolStatus: (names) =>
           setStatus(
             names.length === 1
-              ? `Moon Bot is using ${names[0]}...`
-              : `Moon Bot is using ${names.join(", ")}...`,
+              ? `Ishu is using ${names[0]}...`
+              : `Ishu is using ${names.join(", ")}...`,
           ),
       });
     } finally {
@@ -536,12 +536,12 @@ const moonAssistant = new Assistant({
   },
 });
 
-app.assistant(moonAssistant);
+app.assistant(ishuAssistant);
 
 /**
  * App Home tab: publishes a helpful landing view when a user opens the bot's
  * Home tab in Slack. This improves discoverability and gives sandbox testers
- * a quick overview of Moon Bot's capabilities and configuration.
+ * a quick overview of Ishu's capabilities and configuration.
  */
 async function handleAppHomeOpened({
   event,
@@ -557,13 +557,13 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact].
+ * Slash command entry point: /ishu [help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, tool inventory, real-time search, session info,
  * skill reload, and live LLM connectivity without starting a threaded conversation.
  */
-export async function handleMoonbotCommand({
+export async function handleIshuCommand({
   command,
   ack,
   respond,
@@ -595,7 +595,7 @@ export async function handleMoonbotCommand({
 
     await respond({
       text:
-        `*Your Moon Bot identity* 🌙\n` +
+        `*Your Ishu identity* 🌙\n` +
         `• Slack user ID: \`${userId}\`\n` +
         `• Email: ${userEmail || "_not available_"}\n` +
         `• Resolved access tier: \`${tier}\`\n` +
@@ -614,7 +614,7 @@ export async function handleMoonbotCommand({
         text:
           "*Thread info* 🧵\n" +
           "Thread details are available for direct-message conversations via this command. " +
-          "In channel threads, tap *View trace* or *Session* on any Moon Bot reply to inspect the session.",
+          "In channel threads, tap *View trace* or *Session* on any Ishu reply to inspect the session.",
         response_type: "ephemeral",
       });
       return;
@@ -623,7 +623,7 @@ export async function handleMoonbotCommand({
     const info = await getThreadInfo(channelId);
     if (!info.exists) {
       await respond({
-        text: "*Thread info* 🧵\nYou don't have an active Moon Bot session in this DM yet. Send me a message to start one!",
+        text: "*Thread info* 🧵\nYou don't have an active Ishu session in this DM yet. Send me a message to start one!",
         response_type: "ephemeral",
       });
       return;
@@ -663,7 +663,7 @@ export async function handleMoonbotCommand({
     const m = getMetrics();
     await respond({
       text:
-        `*Moon Bot runtime metrics* 📊\n` +
+        `*Ishu runtime metrics* 📊\n` +
         `• Uptime: ${formatDuration(m.uptimeSeconds)}\n` +
         `• Messages handled: ${m.messagesHandled.toLocaleString()}\n` +
         `• LLM calls: ${m.llmCalls.toLocaleString()}\n` +
@@ -800,10 +800,10 @@ export async function handleMoonbotCommand({
 
     await respond({
       text:
-        "*Moon Bot reports* 🌙\n" +
+        "*Ishu reports* 🌙\n" +
         "Run scheduled reports on demand:\n" +
-        "• `/moonbot report weekly` — weekly ops report\n" +
-        "• `/moonbot report deploy [timestamp]` — deploy impact check (defaults to 15 minutes ago)",
+        "• `/ishu report weekly` — weekly ops report\n" +
+        "• `/ishu report deploy [timestamp]` — deploy impact check (defaults to 15 minutes ago)",
       response_type: "ephemeral",
     });
     return;
@@ -820,9 +820,9 @@ export async function handleMoonbotCommand({
     if (!url) {
       await respond({
         text:
-          "*Moon Bot status page check* 🌐\n" +
-          "Check a public status page on demand: `/moonbot statuspage <url>`\n" +
-          "Example: `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json`",
+          "*Ishu status page check* 🌐\n" +
+          "Check a public status page on demand: `/ishu statuspage <url>`\n" +
+          "Example: `/ishu statuspage https://status.cloudflare.com/api/v2/status.json`",
         response_type: "ephemeral",
       });
       return;
@@ -845,9 +845,9 @@ export async function handleMoonbotCommand({
     if (!query) {
       await respond({
         text:
-          "*Moon Bot Slack search* 🔍\n" +
-          "Search workspace history with the Real-Time Search API: `/moonbot search <query>`\n" +
-          "Example: `/moonbot search deployment discussions`",
+          "*Ishu Slack search* 🔍\n" +
+          "Search workspace history with the Real-Time Search API: `/ishu search <query>`\n" +
+          "Example: `/ishu search deployment discussions`",
         response_type: "ephemeral",
       });
       return;
@@ -880,8 +880,8 @@ export async function handleMoonbotCommand({
       await respond({
         text:
           "*Remember* 🧠\n" +
-          "Save a fact so I can recall it in future conversations: `/moonbot remember <fact>`\n" +
-          "Example: `/moonbot remember staging DB host is db-staging.example.com`",
+          "Save a fact so I can recall it in future conversations: `/ishu remember <fact>`\n" +
+          "Example: `/ishu remember staging DB host is db-staging.example.com`",
         response_type: "ephemeral",
       });
       return;
@@ -901,7 +901,7 @@ export async function handleMoonbotCommand({
     const entries = await getMemoryRecent(limit);
     if (entries.length === 0) {
       await respond({
-        text: "*Memory* 🧠\nNo memories stored yet. Use `/moonbot remember <fact>` to add one.",
+        text: "*Memory* 🧠\nNo memories stored yet. Use `/ishu remember <fact>` to add one.",
         response_type: "ephemeral",
       });
       return;
@@ -923,8 +923,8 @@ export async function handleMoonbotCommand({
         text:
           "*Forget* 🧹\n" +
           "Remove remembered facts so I won't recall them again.\n" +
-          "• `/moonbot forget <text>` — delete any memory containing this text\n" +
-          "• `/moonbot forget all` — delete every memory I have for you",
+          "• `/ishu forget <text>` — delete any memory containing this text\n" +
+          "• `/ishu forget all` — delete every memory I have for you",
         response_type: "ephemeral",
       });
       return;
@@ -951,44 +951,44 @@ export async function handleMoonbotCommand({
 
   await respond({
     text:
-      "*Moon Bot* 🌙\n" +
+      "*Ishu* 🌙\n" +
       "I’m your engineering assistant inside Slack. Mention me in a channel, DM me, or open the Slack AI Assistant panel.\n\n" +
       "Try:\n" +
-      "• `/moonbot help` — what I can do\n" +
-      "• `/moonbot demo` — curated hackathon demo prompts\n" +
-      "• `/moonbot tools` — tools available to your access tier\n" +
-      "• `/moonbot version` — build and runtime version\n" +
-      "• `/moonbot status` — my current configuration\n" +
-      "• `/moonbot metrics` — runtime usage metrics\n" +
-      "• `/moonbot diagnose` — pre-flight configuration check\n" +
-      "• `/moonbot audit [limit]` — view recent security audit events (privileged only)\n" +
-      "• `/moonbot reload` — reload skill Markdown files without restarting (privileged only)\n" +
-      "• `/moonbot ping` — live LLM connectivity check\n" +
-      "• `/moonbot whoami` — your resolved access tier and guest status\n" +
-      "• `/moonbot thread` — your current DM session info\n" +
-      "• `/moonbot remember <fact>` — save a fact for future conversations\n" +
-      "• `/moonbot memory [limit]` — recall recent remembered facts\n" +
-      "• `/moonbot forget <text|all>` — remove remembered facts\n" +
-      "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
-      "• `/moonbot report weekly` — weekly ops report on demand\n" +
-      "• `/moonbot impact` — public service status monitoring for the Agent for Good track\n" +
-      "• `@Moon Bot search Slack for deploy discussions`",
+      "• `/ishu help` — what I can do\n" +
+      "• `/ishu demo` — curated hackathon demo prompts\n" +
+      "• `/ishu tools` — tools available to your access tier\n" +
+      "• `/ishu version` — build and runtime version\n" +
+      "• `/ishu status` — my current configuration\n" +
+      "• `/ishu metrics` — runtime usage metrics\n" +
+      "• `/ishu diagnose` — pre-flight configuration check\n" +
+      "• `/ishu audit [limit]` — view recent security audit events (privileged only)\n" +
+      "• `/ishu reload` — reload skill Markdown files without restarting (privileged only)\n" +
+      "• `/ishu ping` — live LLM connectivity check\n" +
+      "• `/ishu whoami` — your resolved access tier and guest status\n" +
+      "• `/ishu thread` — your current DM session info\n" +
+      "• `/ishu remember <fact>` — save a fact for future conversations\n" +
+      "• `/ishu memory [limit]` — recall recent remembered facts\n" +
+      "• `/ishu forget <text|all>` — remove remembered facts\n" +
+      "• `/ishu search <query>` — search Slack history with the Real-Time Search API\n" +
+      "• `/ishu report weekly` — weekly ops report on demand\n" +
+      "• `/ishu impact` — public service status monitoring for the Agent for Good track\n" +
+      "• `@ishu search Slack for deploy discussions`",
     response_type: "ephemeral",
   });
 }
 
-app.command("/moonbot", handleMoonbotCommand);
+app.command("/ishu", handleIshuCommand);
 
 /**
- * Message shortcut: Ask Moon Bot.
+ * Message shortcut: Ask Ishu.
  *
- * When a user selects a message and chooses "Ask Moon Bot" from the actions
+ * When a user selects a message and chooses "Ask Ishu" from the actions
  * menu, the bot starts a threaded session keyed to that message, runs the same
  * ReAct agent, and posts the reply in the thread. This gives users a fast,
  * context-aware way to ask about a specific Slack message without leaving the
  * channel.
  */
-export async function handleAskMoonBotShortcut({
+export async function handleAskIshuShortcut({
   ack,
   shortcut,
   client,
@@ -1029,10 +1029,10 @@ export async function handleAskMoonBotShortcut({
   });
 }
 
-app.shortcut("ask_moon_bot", handleAskMoonBotShortcut as never);
+app.shortcut("ask_ishu", handleAskIshuShortcut as never);
 
 /**
- * Feedback block actions: users can tap 👍 / 👎 on any Moon Bot response.
+ * Feedback block actions: users can tap 👍 / 👎 on any Ishu response.
  *
  * Feedback is recorded to a JSONL log (default: under SESSIONS_DIR) and a
  * brief ephemeral confirmation is sent. This gives hackathon judges and
@@ -1097,16 +1097,16 @@ export async function handleFeedbackAction({
   }
 
   // For thumbs-down feedback, offer a one-click regenerate action so the user
-  // can ask Moon Bot to try again with a different approach.
+  // can ask Ishu to try again with a different approach.
   await client.chat.postEphemeral({
     channel,
     user: userId,
     thread_ts: threadTs,
-    text: "Thanks — we’ll use this to improve Moon Bot.",
+    text: "Thanks — we’ll use this to improve Ishu.",
     blocks: [
       {
         type: "section",
-        text: { type: "mrkdwn", text: "Thanks — we’ll use this to improve Moon Bot. Want me to try again?" },
+        text: { type: "mrkdwn", text: "Thanks — we’ll use this to improve Ishu. Want me to try again?" },
       },
       {
         type: "actions",
@@ -1128,7 +1128,7 @@ app.action("feedback_helpful", handleFeedbackAction as never);
 app.action("feedback_not_helpful", handleFeedbackAction as never);
 
 /**
- * Reset action: users can tap "Start over" on any Moon Bot response to clear
+ * Reset action: users can tap "Start over" on any Ishu response to clear
  * the current thread session.
  *
  * This is useful when a conversation drifts, the context window fills up, or a
@@ -1244,9 +1244,9 @@ export async function handleRegenerateResponse({
 app.action("regenerate_response", handleRegenerateResponse as never);
 
 /**
- * Emoji reaction handler: users can react to Moon Bot responses with 👍/👎,
+ * Emoji reaction handler: users can react to Ishu responses with 👍/👎,
  * 🔄, or ❓ to provide feedback, reset the thread, or get help without tapping
- * buttons. This makes Moon Bot feel native in Slack and supports quick mobile
+ * buttons. This makes Ishu feel native in Slack and supports quick mobile
  * interactions.
  */
 export async function handleReactionAdded({
@@ -1268,7 +1268,7 @@ export async function handleReactionAdded({
   if (!(await assertUserCanInteract(client, userId, item.channel))) return;
 
   const threadKey = getTrackedThreadKey(item.channel, item.ts);
-  if (!threadKey) return; // reaction was not on a tracked Moon Bot message
+  if (!threadKey) return; // reaction was not on a tracked Ishu message
 
   if (reaction === "+1") {
     const sessionFilename = await getSessionFilenameByThreadKey(threadKey);
@@ -1303,7 +1303,7 @@ export async function handleReactionAdded({
     await client.chat.postEphemeral({
       channel: item.channel,
       user: userId,
-      text: "Thanks — we’ll use this to improve Moon Bot.",
+      text: "Thanks — we’ll use this to improve Ishu.",
     });
     return;
   }
@@ -1325,7 +1325,7 @@ export async function handleReactionAdded({
     await client.chat.postEphemeral({
       channel: item.channel,
       user: userId,
-      text: `*Moon Bot help* 🌙\n${helpText}`,
+      text: `*Ishu help* 🌙\n${helpText}`,
     });
     return;
   }
@@ -1334,8 +1334,8 @@ export async function handleReactionAdded({
 app.event("reaction_added", handleReactionAdded as never);
 
 /**
- * Welcome users when Moon Bot is invited to a public/private channel.
- * This gives new channels an immediate pointer to /moonbot help and @-mentions
+ * Welcome users when Ishu is invited to a public/private channel.
+ * This gives new channels an immediate pointer to /ishu help and @-mentions
  * without waiting for a first message, which improves the Slack sandbox demo UX.
  */
 export async function handleMemberJoinedChannel({
@@ -1354,8 +1354,8 @@ export async function handleMemberJoinedChannel({
     {
       channel,
       text:
-        "Hi! 🌙 I’m Moon Bot, your engineering assistant inside Slack. " +
-        "Mention me in a thread, send me a DM, type `/moonbot help` for commands, " +
+        "Hi! 🌙 I’m Ishu, your engineering assistant inside Slack. " +
+        "Mention me in a thread, send me a DM, type `/ishu help` for commands, " +
         "or open me from the Slack AI assistant panel.",
     },
     { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },

@@ -31,7 +31,7 @@ function context(text: string): ContextBlock {
 
 function capabilitiesBlock(): SectionBlock {
   const lines = [
-    "*Ask Moon Bot to:*",
+    "*Ask Ishu to:*",
     "• Search code across cloned repos (`search_code`)",
     "• Open GitHub PRs, file issues, and review diffs (`open_pr`, `create_issue`, `get_pr_diff`)",
     "• Search GitHub issues/PRs and look up HuggingFace Hub metadata (`search_issues`, `hf_hub_info`)",
@@ -45,7 +45,7 @@ function capabilitiesBlock(): SectionBlock {
 
 function buildHomeBlocks(statusMarkdown: string): KnownBlock[] {
   const blocks: KnownBlock[] = [
-    header("Moon Bot 🌙"),
+    header("Ishu 🌙"),
     section(
       "Your engineering assistant inside Slack. Ask me about code, GitHub, metrics, ops tasks, or Slack history — right where your team already works.",
     ),

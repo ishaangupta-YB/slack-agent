@@ -20,8 +20,8 @@ const isCheckMode = process.argv.includes("--check");
   if (isCheckMode) {
     console.log(
       cfg.githubBot.enabled
-        ? "Moon Bot startup check passed — ready to start in GitHub-only mode"
-        : "Moon Bot startup check passed — ready to start in Socket Mode",
+        ? "Ishu startup check passed — ready to start in GitHub-only mode"
+        : "Ishu startup check passed — ready to start in Socket Mode",
     );
     await shutdownTools();
     stopEsProxy();
@@ -40,7 +40,7 @@ const isCheckMode = process.argv.includes("--check");
   const { app } = await import("./slack.js");
   await startScheduler(app);
   await app.start();
-  console.log("Moon Bot is running in Socket Mode");
+  console.log("Ishu is running in Socket Mode");
 })();
 
 async function shutdown(signal: string) {

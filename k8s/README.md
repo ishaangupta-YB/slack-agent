@@ -1,24 +1,24 @@
-# Moon Bot — Kubernetes deployment
+# Ishu — Kubernetes deployment
 
-These manifests deploy Moon Bot to a Kubernetes cluster. They match the production architecture described in the project README: a single Socket Mode pod with persistent local data on an `emptyDir` volume (or you can swap it for a `PersistentVolumeClaim`) and an optional Ingress that exposes the artifact bucket HTTP server.
+These manifests deploy Ishu to a Kubernetes cluster. They match the production architecture described in the project README: a single Socket Mode pod with persistent local data on an `emptyDir` volume (or you can swap it for a `PersistentVolumeClaim`) and an optional Ingress that exposes the artifact bucket HTTP server.
 
 ## Quick start
 
 1. Build or pull the image:
 
    ```bash
-   docker build -t moon-bot:latest .
+   docker build -t ishu:latest .
    # or push to a registry reachable by the cluster
-   docker tag moon-bot:latest ghcr.io/YOUR_ORG/moon-bot:latest
-   docker push ghcr.io/YOUR_ORG/moon-bot:latest
+   docker tag ishu:latest ghcr.io/YOUR_ORG/ishu:latest
+   docker push ghcr.io/YOUR_ORG/ishu:latest
    ```
 
 2. Configure the image in `kustomization.yaml`:
 
    ```yaml
    images:
-     - name: moon-bot
-       newName: ghcr.io/YOUR_ORG/moon-bot
+     - name: ishu
+       newName: ghcr.io/YOUR_ORG/ishu
        newTag: "1.0.0"
    ```
 
@@ -38,9 +38,9 @@ These manifests deploy Moon Bot to a Kubernetes cluster. They match the producti
 5. Verify:
 
    ```bash
-   kubectl get pods -n moon-bot
-   kubectl logs -n moon-bot -l app.kubernetes.io/name=moon-bot
-   kubectl port-forward -n moon-bot svc/moon-bot 3001:3001
+   kubectl get pods -n ishu
+   kubectl logs -n ishu -l app.kubernetes.io/name=ishu
+   kubectl port-forward -n ishu svc/ishu 3001:3001
    # open http://localhost:3001/health
    ```
 
@@ -55,15 +55,15 @@ These manifests deploy Moon Bot to a Kubernetes cluster. They match the producti
 
 ## GitHub-only bot deployment
 
-The manifests under `k8s/github-only/` deploy a separate, credential-poor pod that replies to `@moon-bot` mentions on GitHub issues and PRs. This pod does not receive Slack credentials or production database credentials; it only needs Cloudflare Workers AI tokens and GitHub credentials.
+The manifests under `k8s/github-only/` deploy a separate, credential-poor pod that replies to `@ishu` mentions on GitHub issues and PRs. This pod does not receive Slack credentials or production database credentials; it only needs Cloudflare Workers AI tokens and GitHub credentials.
 
 1. Build or pull the image (same image as the Slack pod):
 
    ```bash
-   docker build -t moon-bot:latest .
+   docker build -t ishu:latest .
    # or push to a registry reachable by the cluster
-   docker tag moon-bot:latest ghcr.io/YOUR_ORG/moon-bot:latest
-   docker push ghcr.io/YOUR_ORG/moon-bot:latest
+   docker tag ishu:latest ghcr.io/YOUR_ORG/ishu:latest
+   docker push ghcr.io/YOUR_ORG/ishu:latest
    ```
 
 2. Create the GitHub-only secret from the example file:
@@ -82,7 +82,7 @@ The manifests under `k8s/github-only/` deploy a separate, credential-poor pod th
 4. Configure your GitHub App or repository webhook to POST to the exposed service endpoint, e.g.:
 
    ```
-   http://moon-bot-github-only.moon-bot.svc.cluster.local:3000/
+   http://ishu-github-only.ishu.svc.cluster.local:3000/
    ```
 
    From outside the cluster, expose the service through a LoadBalancer, NodePort, or Ingress.
@@ -90,9 +90,9 @@ The manifests under `k8s/github-only/` deploy a separate, credential-poor pod th
 5. Verify:
 
    ```bash
-   kubectl get pods -n moon-bot -l app.kubernetes.io/component=github-bot
-   kubectl logs -n moon-bot -l app.kubernetes.io/component=github-bot
-   kubectl port-forward -n moon-bot svc/moon-bot-github-only 3000:3000
+   kubectl get pods -n ishu -l app.kubernetes.io/component=github-bot
+   kubectl logs -n ishu -l app.kubernetes.io/component=github-bot
+   kubectl port-forward -n ishu svc/ishu-github-only 3000:3000
    # open http://localhost:3000/health
    ```
 

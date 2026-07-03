@@ -49,7 +49,7 @@ export function renderIndexPage({ metrics, sessions, responses }: IndexPageOptio
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Moon Bot Artifacts</title>
+  <title>Ishu Artifacts</title>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 2rem; background: #f6f8fa; color: #1f2328; }
     h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
@@ -68,7 +68,7 @@ export function renderIndexPage({ metrics, sessions, responses }: IndexPageOptio
   </style>
 </head>
 <body>
-  <h1>🌙 Moon Bot Artifacts</h1>
+  <h1>🌙 Ishu Artifacts</h1>
   <p class="subhead">Session traces, response files, and runtime metrics</p>
 
   <div class="cards">

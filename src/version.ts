@@ -54,7 +54,7 @@ export function getVersionInfo(): VersionInfo {
 
 export function formatVersionInfo(info: VersionInfo = getVersionInfo()): string {
   return (
-    `*Moon Bot* 🌙 v${info.version}\n` +
+    `*Ishu* 🌙 v${info.version}\n` +
     `• Runtime: Node.js ${info.node}\n` +
     `• Uptime: ${formatDuration(info.uptimeSeconds)}\n` +
     `• Mode: ${info.mode}\n` +

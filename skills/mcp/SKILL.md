@@ -1,13 +1,13 @@
 # MCP Skill
 
-Moon Bot can extend its capabilities by connecting to external **Model Context Protocol (MCP)** servers.
+Ishu can extend its capabilities by connecting to external **Model Context Protocol (MCP)** servers.
 MCP is an open standard that exposes tools to the agent over stdio, SSE, or Streamable HTTP. Adding a
-new capability does not require changing Moon Bot's code — only an environment configuration entry.
+new capability does not require changing Ishu's code — only an environment configuration entry.
 
 ## How MCP tools appear in Slack
 
 Every MCP tool is imported with a `mcp_<server_name>_<tool_name>` prefix. For example, if you configure
-a server named `github` that exposes a `search_repositories` tool, Moon Bot can call:
+a server named `github` that exposes a `search_repositories` tool, Ishu can call:
 
 ```
 <tool_call>
@@ -48,13 +48,13 @@ Supported `transport` values:
 
 ## Security notes
 
-- MCP stdio servers run as the same OS user as Moon Bot. Only configure servers you trust.
+- MCP stdio servers run as the same OS user as Ishu. Only configure servers you trust.
 - Prefer URL-based transports for remote servers and gate them with network policies.
 - Each MCP tool runs inside the same ReAct loop as built-in tools and is subject to the same output
   truncation rules.
 
 ## Troubleshooting
 
-If a configured MCP server fails to connect, Moon Bot prints the error to the console and continues
+If a configured MCP server fails to connect, Ishu prints the error to the console and continues
 with built-in tools only. Check the logs for the server alias and failure reason, then verify the
 command/URL, arguments, and environment variables.

@@ -66,7 +66,7 @@ export class HuggingFaceBucket implements Bucket {
       repo: this.repo,
       files: [{ path: path.replace(/^\//, ""), content: new Blob([content]) }],
       accessToken: this.token,
-      commitTitle: "Moon Bot artifact upload",
+      commitTitle: "Ishu artifact upload",
       commitDescription: `Upload ${path}`,
     });
   }

@@ -15,7 +15,7 @@ Examples:
 
 ## Opening PRs
 
-Writes go through dedicated in-process tools, not the sandboxed shell, so any user can ask Moon Bot to open a pull request — no personal write access required. When the user asks to open a PR, call the `open_pr` tool with:
+Writes go through dedicated in-process tools, not the sandboxed shell, so any user can ask Ishu to open a pull request — no personal write access required. When the user asks to open a PR, call the `open_pr` tool with:
 - `repo`: owner/name
 - `branch`: the new branch name to create
 - `base`: the base branch (defaults to `main`)
@@ -44,7 +44,7 @@ Use the `comment_on_issue` tool to post an update on an existing issue or pull r
 - `issue_number`: the issue or PR number
 - `body`: the comment text
 
-The Slack requester and agent trace URL are appended automatically, so every Moon Bot comment is auditable and attributed.
+The Slack requester and agent trace URL are appended automatically, so every Ishu comment is auditable and attributed.
 
 ## Reviewing pull request diffs
 

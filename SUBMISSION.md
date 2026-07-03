@@ -1,22 +1,22 @@
-# Moon Bot — Slack Agent Builder Challenge Submission
+# Ishu — Slack Agent Builder Challenge Submission
 
 **Track:** New Slack Agent / Slack Agent for Good  
-**Team:** Moon Bot  
-**Repo:** `moon-bot-slack-agent`
+**Team:** Ishu  
+**Repo:** `ishu-slack-agent`
 
 ---
 
 ## One-line pitch
 
-Moon Bot is an always-on engineering assistant that lives in Slack, remembers every conversation, and can query code, logs, metrics, and GitHub — all from a single thread.
+Ishu is an always-on engineering assistant that lives in Slack, remembers every conversation, and can query code, logs, metrics, and GitHub — all from a single thread.
 
 ---
 
 ## Text description
 
-Moon Bot collapses the daily context-switching between Elasticsearch, MongoDB, GitHub, the IDE, and analytics dashboards into one Slack conversation. Support can ask about user-facing behavior without touching a terminal. Engineers can ask whether a feature exists, how it works, or whether something is a bug — even in codebases they don't know well. It also queries logs and metrics, opens GitHub PRs and issues, searches Slack history in real time, and posts scheduled ops reports.
+Ishu collapses the daily context-switching between Elasticsearch, MongoDB, GitHub, the IDE, and analytics dashboards into one Slack conversation. Support can ask about user-facing behavior without touching a terminal. Engineers can ask whether a feature exists, how it works, or whether something is a bug — even in codebases they don't know well. It also queries logs and metrics, opens GitHub PRs and issues, searches Slack history in real time, and posts scheduled ops reports.
 
-For the **Slack Agent for Good** track, Moon Bot is aimed at under-resourced nonprofit, civic-tech, and open-source teams that do not have dedicated SREs or 24/7 on-call. A single volunteer can check public status pages, query logs, search Slack history for prior incidents, file GitHub issues, open fixes as PRs, and post plain-language impact updates — all from the same Slack thread. This democratizes platform-engineering skills and helps small teams keep critical public services online.
+For the **Slack Agent for Good** track, Ishu is aimed at under-resourced nonprofit, civic-tech, and open-source teams that do not have dedicated SREs or 24/7 on-call. A single volunteer can check public status pages, query logs, search Slack history for prior incidents, file GitHub issues, open fixes as PRs, and post plain-language impact updates — all from the same Slack thread. This democratizes platform-engineering skills and helps small teams keep critical public services online.
 
 The bot is built for the Slack Agent Builder Challenge and satisfies all three mandatory technology requirements: Slack AI capabilities, MCP server integration, and the Real-Time Search API. It runs in Socket Mode (no public ingress required), uses Cloudflare Workers AI with Kimi K2.7 or Kimi 2.6, persists state to a HuggingFace Bucket or local filesystem, and ships with Docker, docker-compose, and Kubernetes manifests.
 
@@ -26,27 +26,27 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 
 | Feature | What it does |
 |---------|--------------|
-| **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
+| **Slack AI Assistant panel** | Open Ishu directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
 | **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up HuggingFace Hub model/dataset/Space metadata. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
-| **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. Users can also explicitly save facts with `/moonbot remember <fact>`, recall recent memories with `/moonbot memory [limit]`, and remove remembered facts with `/moonbot forget <text|all>`. |
+| **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. Users can also explicitly save facts with `/ishu remember <fact>`, recall recent memories with `/ishu memory [limit]`, and remove remembered facts with `/ishu forget <text|all>`. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
-| **Runtime metrics** | The bucket server exposes a `/metrics` endpoint and `/moonbot metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
-| **Hot skill reload** | Privileged users can run `/moonbot reload` to pick up new or edited skill Markdown files in `skills/` without restarting the bot. |
+| **Runtime metrics** | The bucket server exposes a `/metrics` endpoint and `/ishu metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts. |
+| **Hot skill reload** | Privileged users can run `/ishu reload` to pick up new or edited skill Markdown files in `skills/` without restarting the bot. |
 | **Request correlation IDs** | Every Slack message and GitHub webhook gets a short correlation ID that is persisted into the session JSONL and included in error logs, making it easy to trace a failure back to the originating message. |
-| **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also callable on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands. |
+| **Scheduled tasks** | Weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also callable on demand via `weekly_report`/`deploy_report` tools and `/ishu report` slash commands. |
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
-| **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact` for quick discovery. |
-| **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
-| **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Moon Bot reads them as context (requires the `files:read` scope). |
-| **Channel welcome** | When Moon Bot is invited to a channel, it posts a brief intro pointing to `/moonbot help`, @-mentions, and the Slack AI assistant panel. |
-| **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; after a 👎, a *Regenerate response* button asks Moon Bot to retry with a different approach. Users can also react with emoji 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
+| **App Home + slash command** | Home tab overview and `/ishu help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact` for quick discovery. |
+| **Message shortcut** | Select any Slack message and choose *Ask Ishu* for a threaded, context-aware reply. |
+| **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Ishu reads them as context (requires the `files:read` scope). |
+| **Channel welcome** | When Ishu is invited to a channel, it posts a brief intro pointing to `/ishu help`, @-mentions, and the Slack AI assistant panel. |
+| **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; after a 👎, a *Regenerate response* button asks Ishu to retry with a different approach. Users can also react with emoji 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Resilient GitHub API calls** | GitHub read/write operations retry transient 5xx / 429 errors with exponential backoff and honor GitHub's `Retry-After` header, so PR/issue writes succeed during brief GitHub outages or rate-limit windows. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
-| **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, with no Slack tokens or production database access. |
+| **GitHub-only bot mode** | The same codebase can run as a credential-poor GitHub bot that replies to `@ishu` mentions on issues and PRs, with no Slack tokens or production database access. |
 | **Slack app creation helper** | `npm run slack-manifest-url` outputs a one-click URL that pre-fills `manifest.json` at [api.slack.com/apps](https://api.slack.com/apps), speeding up sandbox provisioning. |
 | **Submission readiness** | `npm run prepare-submission` checks that required deliverable files exist, forbidden files are not tracked by git, and `SUBMISSION.md` has no unchecked checklist items or placeholders. |
 
@@ -60,7 +60,7 @@ flowchart TD
         A[App Home]
         B[Assistant Panel]
         C[@-mentions / DMs]
-        D[Slash /moonbot]
+        D[Slash /ishu]
     end
 
     A --> E[src/slack.ts]
@@ -161,7 +161,7 @@ npm start
 
 Once your Slack sandbox and demo video are ready, set `SLACK_SANDBOX_URL` and `DEMO_VIDEO_URL` in `.env` and run `npm run fill-submission` to fill the checklist placeholders inside `SUBMISSION.md`.
 
-`npm run verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot connects to Slack. `npm run verify-github` validates that a personal access token or GitHub App installation can authenticate to the GitHub API, lists token scopes, and confirms App-token exchange so GitHub tools (PRs, issues, code review) work before the bot starts. Once Slack and Cloudflare credentials are configured, `npm run verify` runs `diagnose`, `verify-cloudflare`, `verify-slack`, and `verify-github` in one step and prints a consolidated report. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
+`npm run verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot connects to Slack. `npm run verify-github` validates that a personal access token or GitHub App installation can authenticate to the GitHub API, lists token scopes, and confirms App-token exchange so GitHub tools (PRs, issues, code review) work before the bot starts. Once Slack and Cloudflare credentials are configured, `npm run verify` runs `diagnose`, `verify-cloudflare`, `verify-slack`, and `verify-github` in one step and prints a consolidated report. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Ishu replies in a real workspace.
 
 Or use Docker:
 
@@ -180,31 +180,31 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 2. **MCP integration:** with an MCP filesystem server configured, ask  
    `List the files in /tmp and tell me which ones were modified today.`
 3. **Code + GitHub + HuggingFace Hub:** in a channel, mention the bot:  
-   `@Moon Bot what is the task for sentence-transformers/all-MiniLM-L6-v2?`  
+   `@ishu what is the task for sentence-transformers/all-MiniLM-L6-v2?`  
    Search existing issues before filing a bug:  
-   `@Moon Bot search issues in my-org/my-repo for "login error"`  
+   `@ishu search issues in my-org/my-repo for "login error"`  
    Then ask it to open a draft PR:  
-   `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
+   `@ishu open a draft PR in my-org/my-repo that adds a hello-world script.`
    Reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
-5. **File attachments:** upload a `.log` or `.txt` file to a thread and ask `@Moon Bot summarize this file` to show Slack file-reading.
-6. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
-7. **Inline feedback + regenerate + emoji reactions:** after any response, click 👍 or 👎; after a 👎, tap *Regenerate response* to ask Moon Bot to retry. You can also react with 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help.
+5. **File attachments:** upload a `.log` or `.txt` file to a thread and ask `@ishu summarize this file` to show Slack file-reading.
+6. **Message shortcut:** select any message, choose *Ask Ishu*, and watch it reply in the thread.
+7. **Inline feedback + regenerate + emoji reactions:** after any response, click 👍 or 👎; after a 👎, tap *Regenerate response* to ask Ishu to retry. You can also react with 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help.
 8. **Scheduled reports on demand:**  
-   `/moonbot report weekly` and `/moonbot report deploy`
+   `/ishu report weekly` and `/ishu report deploy`
 9. **Public status page and impact monitoring on demand:**  
-   `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json` and `/moonbot impact`
+   `/ishu statuspage https://status.cloudflare.com/api/v2/status.json` and `/ishu impact`
 10. **Live diagnostics, demo prompts, LLM ping, identity, audit log, skill reload, thread info, and memory management:**  
-    `/moonbot diagnose`, `/moonbot demo`, `/moonbot tools`, `/moonbot version`, `/moonbot ping`, `/moonbot whoami`, `/moonbot audit` (privileged), `/moonbot reload` (privileged), `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, and `/moonbot forget <text|all>`
+    `/ishu diagnose`, `/ishu demo`, `/ishu tools`, `/ishu version`, `/ishu ping`, `/ishu whoami`, `/ishu audit` (privileged), `/ishu reload` (privileged), `/ishu thread`, `/ishu remember <fact>`, `/ishu memory [limit]`, and `/ishu forget <text|all>`
 11. **Agent for Good — public service monitoring:**  
     `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
-12. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
+12. **Trace viewer:** on any Ishu reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
 13. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-14. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt. Or explicitly save a fact with `/moonbot remember staging DB host is db-staging.example.com` and later ask in another thread: "What was the staging DB host?"
-15. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@moon-bot`, and watch it reply by posting a comment — no Slack workspace needed.
+14. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt. Or explicitly save a fact with `/ishu remember staging DB host is db-staging.example.com` and later ask in another thread: "What was the staging DB host?"
+15. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@ishu`, and watch it reply by posting a comment — no Slack workspace needed.
 16. **Status / help:**
-    `/moonbot status`
+    `/ishu status`
 
 ---
 
@@ -213,13 +213,13 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | Time | Scene | What to show |
 |------|-------|--------------|
 | 0:00–0:20 | Intro | Show the bot in the Slack workspace, App Home tab, and assistant panel. |
-| 0:20–0:50 | Slack AI Assistant | Open Moon Bot from the assistant panel, run the search prompt, and show the response + artifact buttons. Click 👎 and then *Regenerate response* to show self-improvement. |
+| 0:20–0:50 | Slack AI Assistant | Open Ishu from the assistant panel, run the search prompt, and show the response + artifact buttons. Click 👎 and then *Regenerate response* to show self-improvement. |
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
-| 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@Moon Bot` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
-| 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
-| 2:10–2:30 | MCP + data tools + file attachments | Demonstrate an external MCP tool, query Elasticsearch/MongoDB/Plausible, or upload a `.log`/`.txt` file and ask Moon Bot to summarize it. |
-| 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/moonbot impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
-| 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot audit` (privileged), `/moonbot reload` (privileged), `/moonbot ping`, `/moonbot version`, `/moonbot status`, `/moonbot tools`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember`, `/moonbot memory`, `/moonbot forget`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
+| 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@ishu` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
+| 1:50–2:10 | Scheduled reports | Run `/ishu report weekly` to show the ops report and `/ishu report deploy` for the impact check. |
+| 2:10–2:30 | MCP + data tools + file attachments | Demonstrate an external MCP tool, query Elasticsearch/MongoDB/Plausible, or upload a `.log`/`.txt` file and ask Ishu to summarize it. |
+| 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/ishu impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
+| 2:45–2:55 | Security + trace viewer | Show `/ishu diagnose`, `/ishu audit` (privileged), `/ishu reload` (privileged), `/ishu ping`, `/ishu version`, `/ishu status`, `/ishu tools`, `/ishu whoami`, `/ishu thread`, `/ishu remember`, `/ishu memory`, `/ishu forget`, `/ishu demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:55–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |
 
 ---

@@ -3,10 +3,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: moon-bot
-  namespace: moon-bot
+  name: ishu
+  namespace: ishu
   labels:
-    app.kubernetes.io/name: moon-bot
+    app.kubernetes.io/name: ishu
     app.kubernetes.io/component: ingress
   annotations:
     # Uncomment when cert-manager is available:
@@ -15,18 +15,18 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-    - host: moon-bot.example.com
+    - host: ishu.example.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: moon-bot
+                name: ishu
                 port:
                   name: http
   # Uncomment once TLS is configured:
   # tls:
   #   - hosts:
-  #       - moon-bot.example.com
-  #     secretName: moon-bot-tls
+  #       - ishu.example.com
+  #     secretName: ishu-tls

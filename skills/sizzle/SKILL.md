@@ -1,6 +1,6 @@
 # Sizzle — Xet Storage Analytics via DuckDB
 
-Sizzle is Moon Bot's interface to Xet storage statistics stored in DuckLake (Parquet or CSV files). It uses DuckDB's fast analytical SQL engine so you can ask about storage capacity, deduplication ratios, shard counts, and bandwidth directly from a Slack thread.
+Sizzle is Ishu's interface to Xet storage statistics stored in DuckLake (Parquet or CSV files). It uses DuckDB's fast analytical SQL engine so you can ask about storage capacity, deduplication ratios, shard counts, and bandwidth directly from a Slack thread.
 
 ## When to use
 

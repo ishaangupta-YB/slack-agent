@@ -1,8 +1,8 @@
-# Moon Bot — Slack-Native Engineering Agent
+# Ishu — Slack-Native Engineering Agent
 
-**Moon Bot** is an always-on engineering assistant that lives in Slack. It can answer questions about code, query logs and metrics, search Slack history in real time, open GitHub PRs, and run scheduled ops reports — all from a single thread.
+**Ishu** is an always-on engineering assistant that lives in Slack. It can answer questions about code, query logs and metrics, search Slack history in real time, open GitHub PRs, and run scheduled ops reports — all from a single thread.
 
-Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent for Good track), Moon Bot combines three hackathon-mandatory technologies:
+Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent for Good track), Ishu combines three hackathon-mandatory technologies:
 
 - **Slack AI capabilities** — native assistant panel integration with suggested prompts, contextual status, and live progress messages while tools run.
 - **MCP server integration** — dynamically discovers and invokes tools from external Model Context Protocol servers.
@@ -16,19 +16,19 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats.
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
 - **Agent for Good** — designed for under-resourced nonprofit, civic-tech, and open-source teams that need to monitor public services, respond to incidents, and communicate impact without dedicated SREs.
-- **Memory & continuity** — every thread is a resumable session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant truly remembers context. Users can also explicitly save facts with `/moonbot remember <fact>`, recall recent memories with `/moonbot memory [limit]`, and remove remembered facts with `/moonbot forget <text|all>`.
+- **Memory & continuity** — every thread is a resumable session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant truly remembers context. Users can also explicitly save facts with `/ishu remember <fact>`, recall recent memories with `/ishu memory [limit]`, and remove remembered facts with `/ishu forget <text|all>`.
 - **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
-- **Hot skill reload** — privileged users can run `/moonbot reload` to pick up new or edited skill Markdown files in `skills/` without restarting the bot.
-- **Runtime metrics** — the bucket server exposes a `/metrics` endpoint and `/moonbot metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts.
+- **Hot skill reload** — privileged users can run `/ishu reload` to pick up new or edited skill Markdown files in `skills/` without restarting the bot.
+- **Runtime metrics** — the bucket server exposes a `/metrics` endpoint and `/ishu metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts.
 - **Request correlation IDs** — every Slack message and GitHub webhook gets a short correlation ID that is persisted to the session JSONL and included in error logs, so failures are easy to trace back to the originating message.
-- **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
+- **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also available on demand via `weekly_report`/`deploy_report` tools and `/ishu report` slash commands.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
-- **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/moonbot audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
-- **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
-- **File attachments** — share text files, logs, CSVs, JSON, or code snippets in a thread and Moon Bot will read them as context (requires the `files:read` scope).
-- **Channel welcome** — when Moon Bot is invited to a public or private channel, it posts a quick intro explaining how to use `/moonbot help`, @-mentions, and the Slack AI assistant panel.
-- **Inline feedback + reset + regenerate** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. After a 👎, Moon Bot offers a *Regenerate response* button to retry the answer with a different approach. Users can also react to any Moon Bot message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
-- **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
+- **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/ishu audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
+- **Message shortcut** — select any Slack message and choose *Ask Ishu* to get a threaded, context-aware reply.
+- **File attachments** — share text files, logs, CSVs, JSON, or code snippets in a thread and Ishu will read them as context (requires the `files:read` scope).
+- **Channel welcome** — when Ishu is invited to a public or private channel, it posts a quick intro explaining how to use `/ishu help`, @-mentions, and the Slack AI assistant panel.
+- **Inline feedback + reset + regenerate** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. After a 👎, Ishu offers a *Regenerate response* button to retry the answer with a different approach. Users can also react to any Ishu message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
+- **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@ishu` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
 
 ---
 
@@ -40,7 +40,7 @@ flowchart TD
         A[App Home]
         B[Assistant Panel]
         C[@-mentions / DMs]
-        D[Slash /moonbot]
+        D[Slash /ishu]
     end
 
     A --> E[src/slack.ts]
@@ -145,20 +145,20 @@ npm run verify-cloudflare      # ping the configured Cloudflare Workers AI model
 npm run verify-slack           # validate Slack token scopes and connectivity
 npm run verify-github          # validate GitHub token or App credentials and API reachability
 npm run verify                 # run diagnose + verify-cloudflare + verify-slack + verify-github in one command
-npm run slack-e2e              # post a test message and verify Moon Bot replies (requires SLACK_E2E_CHANNEL)
+npm run slack-e2e              # post a test message and verify Ishu replies (requires SLACK_E2E_CHANNEL)
 npm run fill-submission        # fill SUBMISSION.md placeholders when sandbox/video/Marketplace ID are ready
 npm run prepare-submission     # verify deliverables are present and forbidden files are untracked
 ```
 
 `--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot starts. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode. It also compares the installed bot token's actual scopes against the scopes declared in `manifest.json` and generates a Socket Mode connection URL via `apps.connections.open` so stale installs or missing `connections:write` scope are caught early. `verify-github` checks that a personal access token (GITHUB_TOKEN) or GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) can authenticate to the GitHub API, lists granted scopes for token mode, and exchanges an installation token for App mode so GitHub tools work before the bot starts. Once Slack and Cloudflare credentials are configured, `npm run verify` runs all four checks (`diagnose`, `verify-cloudflare`, `verify-slack`, and `verify-github`) in a single command and prints a consolidated report. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a live message and poll for the bot's reply in a real Slack workspace.
 
-### 5. Talk to Moon Bot
+### 5. Talk to Ishu
 
-- In a channel, private group, or MPIM: `@Moon Bot summarize the latest deploy discussion`
-- Reply in any thread Moon Bot has joined without @-mentioning it again.
+- In a channel, private group, or MPIM: `@ishu summarize the latest deploy discussion`
+- Reply in any thread Ishu has joined without @-mentioning it again.
 - In DMs: just send a message — replies stay in the main DM view and the whole DM history shares one continuous session.
-- Open the Slack AI Assistant panel and select **Moon Bot**.
-- Use `/moonbot help`, `/moonbot demo`, `/moonbot tools`, `/moonbot version`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot reload` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, `/moonbot forget <text|all>`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
+- Open the Slack AI Assistant panel and select **Ishu**.
+- Use `/ishu help`, `/ishu demo`, `/ishu tools`, `/ishu version`, `/ishu status`, `/ishu metrics`, `/ishu diagnose`, `/ishu audit [limit]` (privileged), `/ishu reload` (privileged), `/ishu ping`, `/ishu whoami`, `/ishu thread`, `/ishu remember <fact>`, `/ishu memory [limit]`, `/ishu forget <text|all>`, `/ishu search <query>`, `/ishu report weekly`, `/ishu report deploy`, `/ishu statuspage <url>`, or `/ishu impact`.
 
 ---
 
@@ -172,7 +172,7 @@ npm run prepare-submission     # verify deliverables are present and forbidden f
 | `CLOUDFLARE_API_TOKEN` | yes | Cloudflare API token with Workers AI permission |
 | `CLOUDFLARE_MODEL` | no | Workers AI model (default: `@cf/moonshotai/kimi-k2.7-code`) |
 | `CLOUDFLARE_FALLBACK_MODEL` | no | Fallback model used when the primary model is unavailable |
-| `DIAGNOSE_LLM_PING` | no | Set to `true` to enable a live LLM ping in `npm run diagnose` and `/moonbot diagnose` (default: `false`) |
+| `DIAGNOSE_LLM_PING` | no | Set to `true` to enable a live LLM ping in `npm run diagnose` and `/ishu diagnose` (default: `false`) |
 | `SLACK_USER_TOKEN` | no | User token (`xoxp-...`) for Real-Time Search without an action_token |
 | `SLACK_SAY_RETRIES` | no | Retries for transient Slack API errors when posting messages (default: 2) |
 | `SLACK_SAY_RETRY_BASE_MS` | no | Base backoff for Slack message retries in ms (default: 1000) |
@@ -239,7 +239,7 @@ Try these in Slack to show off the core tracks:
 - `Open a draft PR in my-org/my-repo that adds a hello-world script` — demonstrates code + GitHub + AI.
 - `What is my current access tier and which integrations are enabled?` — demonstrates status + tiering.
 - `What skills do you have?` — demonstrates discoverability + help system.
-- Upload a `.log` or `.txt` file and ask `@Moon Bot summarize this file` — demonstrates Slack file attachment reading.
+- Upload a `.log` or `.txt` file and ask `@ishu summarize this file` — demonstrates Slack file attachment reading.
 
 ---
 
@@ -249,7 +249,7 @@ A production-ready Dockerfile and `docker-compose.yml` are included. The contain
 
 ### GitHub-only bot mode
 
-Moon Bot can also run as a separate, credential-poor GitHub bot. Set `GITHUB_ONLY=true`, configure `GITHUB_WEBHOOK_SECRET`, and point a GitHub App or repository webhook at `http://<host>:3000/`. The bot replies to `@moon-bot` mentions on issues and PRs. In this mode Slack tokens and production database credentials are not required, and only GitHub-safe tools are exposed to the agent.
+Ishu can also run as a separate, credential-poor GitHub bot. Set `GITHUB_ONLY=true`, configure `GITHUB_WEBHOOK_SECRET`, and point a GitHub App or repository webhook at `http://<host>:3000/`. The bot replies to `@ishu` mentions on issues and PRs. In this mode Slack tokens and production database credentials are not required, and only GitHub-safe tools are exposed to the agent.
 
 ```bash
 docker compose pull
@@ -272,4 +272,4 @@ The manifests deploy a single-replica Deployment (required by Socket Mode), a Se
 
 ## Project track
 
-Submitted to the **New Slack Agent** track. Moon Bot qualifies for all three mandatory technology criteria: Slack AI capabilities, MCP server integration, and Real-Time Search API.
+Submitted to the **New Slack Agent** track. Ishu qualifies for all three mandatory technology criteria: Slack AI capabilities, MCP server integration, and Real-Time Search API.

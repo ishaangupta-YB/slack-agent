@@ -1,6 +1,6 @@
 {
   "display_information": {
-    "name": "Moon Bot",
+    "name": "Ishu",
     "description": "A Slack-native engineering agent that uses AI, MCP servers, and real-time search to answer questions, write code, open PRs, and monitor ops.",
     "background_color": "#1a1a1a"
   },
@@ -11,25 +11,25 @@
       "messages_tab_read_only_enabled": false
     },
     "assistant_view": {
-      "name": "Moon Bot"
+      "name": "Ishu"
     },
     "bot_user": {
-      "display_name": "Moon Bot",
+      "display_name": "Ishu",
       "always_online": true
     },
     "shortcuts": [
       {
-        "name": "Ask Moon Bot",
+        "name": "Ask Ishu",
         "type": "message",
-        "callback_id": "ask_moon_bot",
-        "description": "Send the selected message to Moon Bot for a threaded reply"
+        "callback_id": "ask_ishu",
+        "description": "Send the selected message to Ishu for a threaded reply"
       }
     ],
     "slash_commands": [
       {
-        "command": "/moonbot",
+        "command": "/ishu",
         "url": "https://example.com/slack/slash",
-        "description": "Open Moon Bot help, status, or start a conversation",
+        "description": "Open Ishu help, status, or start a conversation",
         "usage_hint": "[help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact]",
         "should_escape": false
       }

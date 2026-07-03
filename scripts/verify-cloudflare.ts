@@ -181,7 +181,7 @@ export async function verifyCloudflare(options?: VerifyCloudflareOptions): Promi
 }
 
 function formatReport(result: CloudflareVerifyResult): void {
-  console.log("Moon Bot Cloudflare Workers AI verification\n");
+  console.log("Ishu Cloudflare Workers AI verification\n");
   for (const check of result.checks) {
     const icon = check.ok ? "✅" : "❌";
     console.log(`${icon} ${check.name}: ${check.message}`);
@@ -194,7 +194,7 @@ function formatReport(result: CloudflareVerifyResult): void {
         : `All Cloudflare checks passed. Model ${result.primaryModel} is reachable.`,
     );
   } else {
-    console.log("Some Cloudflare checks failed. Fix the issues above before starting Moon Bot.");
+    console.log("Some Cloudflare checks failed. Fix the issues above before starting Ishu.");
   }
 }
 

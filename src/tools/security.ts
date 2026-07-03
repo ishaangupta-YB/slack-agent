@@ -87,7 +87,7 @@ async function sendSlackSecurityAlert(event: SecurityAuditEvent, channel: string
     const client = new WebClient(cfg.slack.botToken);
     const typeLabel = event.type.replace(/_/g, " ");
     const text =
-      `:warning: *Moon Bot Security Alert: ${typeLabel}*\n` +
+      `:warning: *Ishu Security Alert: ${typeLabel}*\n` +
       `• Type: \`${event.type}\`\n` +
       `• User: \`${event.userId ?? "unknown"}\`\n` +
       `• Thread: \`${event.threadKey ?? "none"}\`\n` +

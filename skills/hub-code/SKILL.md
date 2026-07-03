@@ -4,8 +4,8 @@ This skill lets you navigate and understand a codebase from Slack.
 
 ## Setup
 
-Clone the repositories you want Moon Bot to search into the directory configured
-by `CODE_REPOS_DIR` (default `./repos`). You can ask Moon Bot to clone a repo for you:
+Clone the repositories you want Ishu to search into the directory configured
+by `CODE_REPOS_DIR` (default `./repos`). You can ask Ishu to clone a repo for you:
 
 ```json
 {"tool": "clone_repo", "params": {"repo": "huggingface/huggingface_hub"}}

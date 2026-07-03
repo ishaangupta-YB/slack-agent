@@ -26,8 +26,8 @@ import {
   app,
   isGuestUser,
   stripBotMention,
-  handleMoonbotCommand,
-  handleAskMoonBotShortcut,
+  handleIshuCommand,
+  handleAskIshuShortcut,
   handleFeedbackAction,
   handleRegenerateResponse,
   handleResetThread,
@@ -72,7 +72,7 @@ function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
   if (existsSync(process.env.BUCKET_DIR!)) rmSync(process.env.BUCKET_DIR!, { recursive: true, force: true });
   if (existsSync(process.env.SESSIONS_DIR!)) rmSync(process.env.SESSIONS_DIR!, { recursive: true, force: true });
-  if (existsSync(".moon-bot-smoke-write.txt")) rmSync(".moon-bot-smoke-write.txt", { force: true });
+  if (existsSync(".ishu-smoke-write.txt")) rmSync(".ishu-smoke-write.txt", { force: true });
 }
 
 function httpGetRaw(port: number, path: string): Promise<{ status: number; body: string }> {
@@ -171,13 +171,13 @@ async function main() {
   assert(dotdotRead.result.includes("outside the workspace"));
 
   const writeOutside = await runToolCall(
-    { tool: "write_file", params: { path: "/tmp/moon-bot-smoke-escape.txt", content: "x" } },
+    { tool: "write_file", params: { path: "/tmp/ishu-smoke-escape.txt", content: "x" } },
     8_000,
     "privileged",
   );
   assert(writeOutside.result.includes("outside the workspace"));
 
-  const writeTestPath = ".moon-bot-smoke-write.txt";
+  const writeTestPath = ".ishu-smoke-write.txt";
   const writeInside = await runToolCall(
     { tool: "write_file", params: { path: writeTestPath, content: "hello workspace" } },
     8_000,
@@ -282,7 +282,7 @@ async function main() {
 
   const redirectCommand = await runToolCall({
     tool: "bash",
-    params: { command: "echo x > /tmp/moon-bot-test.txt" },
+    params: { command: "echo x > /tmp/ishu-test.txt" },
   });
   assert(
     redirectCommand.result.includes("redirections") || redirectCommand.result.includes("pipes"),
@@ -382,7 +382,7 @@ async function main() {
   // System status tool reports configuration without exposing secrets.
   const statusResult = await runToolCall({ tool: "system_status", params: {} });
   assert.strictEqual(statusResult.error, undefined);
-  assert(statusResult.result.includes("Moon Bot status"));
+  assert(statusResult.result.includes("Ishu status"));
   assert(statusResult.result.includes(cfg.cloudflare.model));
   assert(statusResult.result.includes("LLM timeout:"));
   assert(statusResult.result.includes("LLM retries:"));
@@ -397,16 +397,16 @@ async function main() {
   console.log("System status tool passed");
 
   // Help tool gives a friendly capabilities overview without exposing secrets.
-  const helpResult = await runToolCall({ tool: "moon_help", params: {} });
+  const helpResult = await runToolCall({ tool: "ishu_help", params: {} });
   assert.strictEqual(helpResult.error, undefined);
-  assert(helpResult.result.includes("Moon Bot"));
+  assert(helpResult.result.includes("Ishu"));
   assert(helpResult.result.includes("code"));
   assert(helpResult.result.includes("data"));
   assert(helpResult.result.includes("slack"));
-  assert(helpResult.result.includes("/moonbot thread"), "general help should mention the thread slash command");
-  assert(helpResult.result.includes("/moonbot impact"), "general help should mention the impact slash command");
+  assert(helpResult.result.includes("/ishu thread"), "general help should mention the thread slash command");
+  assert(helpResult.result.includes("/ishu impact"), "general help should mention the impact slash command");
   assert(!helpResult.result.includes(cfg.cloudflare.apiToken), "help must not expose secrets");
-  const codeHelp = await runToolCall({ tool: "moon_help", params: { topic: "code" } });
+  const codeHelp = await runToolCall({ tool: "ishu_help", params: { topic: "code" } });
   assert(codeHelp.result.includes("open_pr"));
   console.log("Help tool passed");
 
@@ -1299,7 +1299,7 @@ async function main() {
 
   // Sizzle / DuckDB query tool
   const originalSizzleDir = cfg.integrations.sizzleDataDir;
-  cfg.integrations.sizzleDataDir = "/tmp/moon-bot-smoke-sizzle";
+  cfg.integrations.sizzleDataDir = "/tmp/ishu-smoke-sizzle";
 
   setSizzleExecutor(async (_command, args) => {
     const query = args[args.indexOf("-c") + 1] ?? "";
@@ -1948,7 +1948,7 @@ rLQ+epZplw==
       "hf_hub_info",
       "list_files",
       "memory",
-      "moon_help",
+      "ishu_help",
       "open_pr",
       "public_status",
       "read_file",
@@ -2038,13 +2038,13 @@ rLQ+epZplw==
   const noMention = await sendWebhook("issue_comment", noMentionBody, makeSignature(JSON.stringify(noMentionBody)));
   assert.strictEqual(noMention.status, 200);
   const noMentionJson = (await noMention.json()) as { result: string };
-  assert(noMentionJson.result.includes("no @moon-bot mention"));
+  assert(noMentionJson.result.includes("no @ishu mention"));
 
   const editedIssueCommentBody = {
     action: "edited",
     repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
     issue: { number: 42, user: { login: "gh-owner" } },
-    comment: { body: "@moon-bot edited mention", user: { login: "alice" }, id: 1003 },
+    comment: { body: "@ishu edited mention", user: { login: "alice" }, id: 1003 },
     sender: { login: "alice" },
   };
   const editedIssueComment = await sendWebhook(
@@ -2061,7 +2061,7 @@ rLQ+epZplw==
     action: "deleted",
     repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
     issue: { number: 42, user: { login: "gh-owner" } },
-    comment: { body: "@moon-bot deleted mention", user: { login: "alice" }, id: 1004 },
+    comment: { body: "@ishu deleted mention", user: { login: "alice" }, id: 1004 },
     sender: { login: "alice" },
   };
   const deletedIssueComment = await sendWebhook(
@@ -2078,7 +2078,7 @@ rLQ+epZplw==
     action: "edited",
     repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
     pull_request: { number: 7, user: { login: "gh-owner" } },
-    comment: { body: "@moon-bot edited review comment", user: { login: "alice" }, id: 1005 },
+    comment: { body: "@ishu edited review comment", user: { login: "alice" }, id: 1005 },
     sender: { login: "alice" },
   };
   const editedReviewComment = await sendWebhook(
@@ -2111,7 +2111,7 @@ rLQ+epZplw==
     action: "created",
     repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
     issue: { number: 42, user: { login: "gh-owner" } },
-    comment: { body: "@moon-bot explain this issue", user: { login: "alice" }, id: 1002 },
+    comment: { body: "@ishu explain this issue", user: { login: "alice" }, id: 1002 },
     sender: { login: "alice" },
   };
   const mention = await sendWebhook("issue_comment", mentionBody, makeSignature(JSON.stringify(mentionBody)));
@@ -2127,7 +2127,7 @@ rLQ+epZplw==
     action: "created",
     repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
     issue: { number: 43, user: { login: "gh-owner" } },
-    comment: { body: "@moon-bot correlation test", user: { login: "alice" }, id: 1006 },
+    comment: { body: "@ishu correlation test", user: { login: "alice" }, id: 1006 },
     sender: { login: "alice" },
   };
   const corrPayload = JSON.stringify(corrMentionBody);
@@ -2168,7 +2168,7 @@ rLQ+epZplw==
       typeof lastMessage?.content === "string" &&
       lastMessage.content.includes("[tool result] read_file");
     if (isObservation) {
-      return "The project name is moon-bot-slack-agent (from package.json).";
+      return "The project name is ishu-slack-agent (from package.json).";
     }
     return '<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}}\n</tool_call>';
   });
@@ -2183,7 +2183,7 @@ rLQ+epZplw==
     e2eUserId,
   );
   assert(
-    e2eResult.text.includes("moon-bot-slack-agent"),
+    e2eResult.text.includes("ishu-slack-agent"),
     `Expected final answer to mention project name, got: ${e2eResult.text}`,
   );
 
@@ -2196,7 +2196,7 @@ rLQ+epZplw==
   assert(e2eSession.some((m) => m.role === "system"), "Session should contain system prompt");
   assert(e2eSession.some((m) => m.role === "user" && String(m.content).includes("project name")), "Session should contain user message");
   assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("tool_call")), "Session should contain assistant tool call");
-  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("moon-bot-slack-agent")), "Session should contain final answer");
+  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("ishu-slack-agent")), "Session should contain final answer");
 
   const e2eMemory = await searchMemory("project name");
   assert(e2eMemory.length >= 1, "Memory should record the end-to-end interaction");
@@ -2215,8 +2215,8 @@ rLQ+epZplw==
   await handleMessage(counterThreadKey, "counter hello", "100.000", "U_COUNTERS");
   clearChatOverride();
 
-  const counterHelpResult = await runToolCall({ tool: "moon_help", params: { topic: "general" } }, 8_000, "basic");
-  assert(counterHelpResult.result.includes("Moon Bot"), "moon_help should return help text for counter test");
+  const counterHelpResult = await runToolCall({ tool: "ishu_help", params: { topic: "general" } }, 8_000, "basic");
+  assert(counterHelpResult.result.includes("Ishu"), "ishu_help should return help text for counter test");
 
   const counterErrorResult = await runToolCall(
     { tool: "write_file", params: { path: "test.txt", content: "x" } },
@@ -2311,7 +2311,7 @@ rLQ+epZplw==
     timestamp: new Date().toISOString(),
     threadKey: "C-some-other-thread",
     userId: memoryRecallUserId,
-    prompt: "What is the hostname for the moonbot-memory-recall-staging-db?",
+    prompt: "What is the hostname for the ishu-memory-recall-staging-db?",
     outcome: "staging-db.example.com",
   });
   setChatOverride(async (messages) => {
@@ -2322,7 +2322,7 @@ rLQ+epZplw==
       "System prompt should include a memory context section",
     );
     assert(
-      system.content.includes("moonbot-memory-recall-staging-db"),
+      system.content.includes("ishu-memory-recall-staging-db"),
       "System prompt memory context should include the related prior prompt",
     );
     assert(
@@ -2333,7 +2333,7 @@ rLQ+epZplw==
   });
   const memoryRecallResult = await handleMessage(
     memoryRecallThreadKey,
-    "What is the hostname for the moonbot-memory-recall-staging-db?",
+    "What is the hostname for the ishu-memory-recall-staging-db?",
     "1776379256.080001",
     memoryRecallUserId,
   );
@@ -2349,7 +2349,7 @@ rLQ+epZplw==
   // cross-thread memory recall can surface in future conversations.
   const rememberThreadKey = "remember:C-remember:U-remember";
   const rememberUserId = "U-remember";
-  const rememberFactText = "The moon-bot staging DB host is db-staging.example.com";
+  const rememberFactText = "The ishu staging DB host is db-staging.example.com";
   await rememberFact(rememberThreadKey, rememberUserId, rememberFactText);
   const recentMemories = await getMemoryRecent(5);
   assert(
@@ -2625,8 +2625,8 @@ rLQ+epZplw==
       traceWrites.push({ path, content: String(content) });
     };
     bucket.readUrl = (path: string) =>
-      `https://huggingface.co/buckets/huggingface/moon-bot-memory/resolve/main/${path.replace(/^\//, "")}`;
-    cfg.hf.bucketRepo = "huggingface/moon-bot-memory";
+      `https://huggingface.co/buckets/huggingface/ishu-memory/resolve/main/${path.replace(/^\//, "")}`;
+    cfg.hf.bucketRepo = "huggingface/ishu-memory";
     cfg.hf.token = "hf-test-token";
 
     const hfSession = "hf-trace-session.jsonl";
@@ -2638,7 +2638,7 @@ rLQ+epZplw==
     );
     const traceWrite = traceWrites.find((w) => w.path.includes("trace/hf-trace-session.jsonl.html"));
     assert(traceWrite, "Expected HTML trace file to be uploaded to HF bucket");
-    assert(traceWrite.content.includes("Moon Bot Session Trace"), "HTML trace should render viewer");
+    assert(traceWrite.content.includes("Ishu Session Trace"), "HTML trace should render viewer");
   } finally {
     bucket.write = originalWrite;
     bucket.readUrl = originalReadUrl;
@@ -2647,7 +2647,7 @@ rLQ+epZplw==
   }
 
   // Code search tool
-  const codeReposDir = "/tmp/moon-bot-smoke-repos";
+  const codeReposDir = "/tmp/ishu-smoke-repos";
   if (existsSync(codeReposDir)) rmSync(codeReposDir, { recursive: true, force: true });
   mkdirSync(join(codeReposDir, "repo-a"), { recursive: true });
   mkdirSync(join(codeReposDir, "repo-b"), { recursive: true });
@@ -2833,7 +2833,7 @@ rLQ+epZplw==
     commitTitle?: string;
     commitDescription?: string;
   }> = [];
-  const hfBucket = new HuggingFaceBucket("huggingface/moon-bot-memory", "hf-test-token", async (params) => {
+  const hfBucket = new HuggingFaceBucket("huggingface/ishu-memory", "hf-test-token", async (params) => {
     const files = params.files.map((f) => ({
       path: "path" in f ? f.path : "",
       content: f instanceof Blob ? f : (f as { content: Blob }).content,
@@ -2849,12 +2849,12 @@ rLQ+epZplw==
   });
   await hfBucket.write("responses/smoke.md", "HF bucket smoke test content");
   assert.strictEqual(uploaded.length, 1);
-  assert.strictEqual(uploaded[0].repo, "buckets/huggingface/moon-bot-memory");
+  assert.strictEqual(uploaded[0].repo, "buckets/huggingface/ishu-memory");
   assert.strictEqual(uploaded[0].files[0].path, "responses/smoke.md");
-  assert.strictEqual(uploaded[0].commitTitle, "Moon Bot artifact upload");
+  assert.strictEqual(uploaded[0].commitTitle, "Ishu artifact upload");
   assert.strictEqual(uploaded[0].accessToken, "hf-test-token");
   const hfReadUrl = hfBucket.readUrl("responses/smoke.md");
-  assert(hfReadUrl.includes("huggingface.co/buckets/huggingface/moon-bot-memory/resolve/main/responses/smoke.md"));
+  assert(hfReadUrl.includes("huggingface.co/buckets/huggingface/ishu-memory/resolve/main/responses/smoke.md"));
   console.log("HuggingFace Bucket integration passed");
 
   // Bucket server health endpoint
@@ -2905,7 +2905,7 @@ rLQ+epZplw==
       JSON.stringify({ role: "user", content: "hello" }),
       JSON.stringify({ role: "assistant", content: "Hi! How can I help?" }),
       JSON.stringify({ role: "assistant", tool_calls: [toolCall] }),
-      JSON.stringify({ role: "tool", name: "read_file", content: '{"name":"moon-bot"}' }),
+      JSON.stringify({ role: "tool", name: "read_file", content: '{"name":"ishu"}' }),
       "",
     ].join("\n");
     writeFileSync(join(sessionDir, sessionFilename), sampleJsonl);
@@ -2914,10 +2914,10 @@ rLQ+epZplw==
     assert.strictEqual(traceRes.status, 200);
     assert.strictEqual(traceRes.headers.get("content-type"), "text/html; charset=utf-8");
     const traceBody = await traceRes.text();
-    assert(traceBody.includes("Moon Bot Session Trace"), "trace viewer should render title");
+    assert(traceBody.includes("Ishu Session Trace"), "trace viewer should render title");
     assert(traceBody.includes("hello"), "trace viewer should include user content");
     assert(traceBody.includes("read_file"), "trace viewer should include tool call name");
-    assert(traceBody.includes("moon-bot"), "trace viewer should include tool result content");
+    assert(traceBody.includes("ishu"), "trace viewer should include tool result content");
 
     const traceMissingRes = await fetch(`${baseUrl}/trace/does-not-exist.jsonl`);
     assert.strictEqual(traceMissingRes.status, 404);
@@ -2997,7 +2997,7 @@ rLQ+epZplw==
     assert.strictEqual(indexRes.status, 200);
     assert.strictEqual(indexRes.headers.get("content-type"), "text/html; charset=utf-8");
     const indexBody = await indexRes.text();
-    assert(indexBody.includes("Moon Bot Artifacts"), "index page should render title");
+    assert(indexBody.includes("Ishu Artifacts"), "index page should render title");
     assert(indexBody.includes(`/trace/${encodeURIComponent(sessionFilename)}`), "index page should link to trace viewer");
     assert(indexBody.includes("/responses/"), "index page should link to response artifacts");
     assert(indexBody.includes("/metrics"), "index page should link to metrics endpoint");
@@ -3034,7 +3034,7 @@ rLQ+epZplw==
   await deployHandlers[0]({
     message: {
       channel: cfg.scheduler.deployChannel,
-      text: "Deploying moon-bot v1.2.3 to prod",
+      text: "Deploying ishu v1.2.3 to prod",
       ts: "1776379256.075999",
       user: "U1",
     },
@@ -3306,7 +3306,7 @@ rLQ+epZplw==
     return { ok: true };
   }) as never;
 
-  setChatOverride(async () => "Routing reply from Moon Bot.");
+  setChatOverride(async () => "Routing reply from Ishu.");
 
   // 1) Start a public-channel thread with an explicit @-mention.
   await app.processEvent({
@@ -3327,7 +3327,7 @@ rLQ+epZplw==
   const initialCall = routingCalls.find((c) => c.channel === "C1");
   assert(initialCall, "public-channel @-mention should trigger a reply");
   assert(
-    String(initialCall.text ?? "").includes("Routing reply from Moon Bot"),
+    String(initialCall.text ?? "").includes("Routing reply from Ishu"),
     `Unexpected initial reply text: ${initialCall.text}`,
   );
 
@@ -3352,7 +3352,7 @@ rLQ+epZplw==
   const followUpCall = routingCalls.find((c) => c.thread_ts === "1777000000.000000");
   assert(followUpCall, "thread follow-up should trigger a reply in the original thread");
   assert(
-    String(followUpCall.text ?? "").includes("Routing reply from Moon Bot"),
+    String(followUpCall.text ?? "").includes("Routing reply from Ishu"),
     `Unexpected follow-up reply text: ${followUpCall.text}`,
   );
 
@@ -3376,7 +3376,7 @@ rLQ+epZplw==
   const mpimCall = routingCalls.find((c) => c.channel === "G1234567890");
   assert(mpimCall, "MPIM @-mention should trigger a reply");
   assert(
-    String(mpimCall.text ?? "").includes("Routing reply from Moon Bot"),
+    String(mpimCall.text ?? "").includes("Routing reply from Ishu"),
     `Unexpected MPIM reply text: ${mpimCall.text}`,
   );
 
@@ -3613,7 +3613,7 @@ rLQ+epZplw==
   assert(binaryUserMessage, "binary attachment session should contain the user's text message");
   assert(!binaryUserMessage.content.includes("photo.png"), "binary attachment content should not be appended to the prompt");
 
-  // 8b) Slack file uploads emit a `file_share` subtype. Moon Bot should still
+  // 8b) Slack file uploads emit a `file_share` subtype. Ishu should still
   //     process the upload and read text-like attachments instead of treating
   //     it as a non-chat event.
   const fileShareThreadKey = "D_FILE_SHARE";
@@ -3735,7 +3735,7 @@ rLQ+epZplw==
   );
   assert(capturedError.includes("simulated LLM failure"), "error log should surface the underlying error");
 
-  // 11) When Moon Bot is invited to a channel, it posts a brief welcome message
+  // 11) When Ishu is invited to a channel, it posts a brief welcome message
   //     so workspace members immediately know how to interact with it.
   clearBotUserIdCache();
   let welcomeCalls: Array<{ channel?: string; text?: string }> = [];
@@ -3758,8 +3758,8 @@ rLQ+epZplw==
   assert.strictEqual(welcomeCalls.length, 1, "bot joining a channel should post one welcome message");
   assert.strictEqual(welcomeCalls[0]?.channel, "CWELCOME");
   assert(
-    String(welcomeCalls[0]?.text).includes("/moonbot help"),
-    "welcome message should point users to /moonbot help",
+    String(welcomeCalls[0]?.text).includes("/ishu help"),
+    "welcome message should point users to /ishu help",
   );
 
   // Other workspace members joining the same channel should not be welcomed.
@@ -3798,8 +3798,8 @@ rLQ+epZplw==
   assert.strictEqual(homeView?.type, "home", "published view should be a home view");
   assert(homeView?.blocks && homeView.blocks.length > 0, "home view should contain blocks");
   assert(
-    JSON.stringify(homeView.blocks).includes("Moon Bot"),
-    "home view should mention Moon Bot",
+    JSON.stringify(homeView.blocks).includes("Ishu"),
+    "home view should mention Ishu",
   );
   console.log("App Home view published");
 
@@ -3827,7 +3827,7 @@ rLQ+epZplw==
     "github-bot",
     "hf-hub",
     "pr-review",
-    "moon-bot",
+    "ishu",
   ]) {
     assert(
       skillNames.includes(expected),
@@ -3850,12 +3850,12 @@ rLQ+epZplw==
   assert(prReviewSkill.content.includes("get_pr_diff"));
   assert(prReviewSkill.content.includes("comment_on_issue"));
   assert(prReviewSkill.content.includes("missing tests"));
-  const moonBotSkill = skills.find((s) => s.name === "moon-bot")!;
-  assert(moonBotSkill.content.includes("src/slack.ts"));
-  assert(moonBotSkill.content.includes("src/agent.ts"));
-  assert(moonBotSkill.content.includes("src/tools/registry.ts"));
-  assert(moonBotSkill.content.includes("Cloudflare Workers AI"));
-  assert(moonBotSkill.content.includes("HuggingFace Bucket"));
+  const ishuSkill = skills.find((s) => s.name === "ishu")!;
+  assert(ishuSkill.content.includes("src/slack.ts"));
+  assert(ishuSkill.content.includes("src/agent.ts"));
+  assert(ishuSkill.content.includes("src/tools/registry.ts"));
+  assert(ishuSkill.content.includes("Cloudflare Workers AI"));
+  assert(ishuSkill.content.includes("HuggingFace Bucket"));
   console.log("Skill discovery passed");
 
   // Slack app manifest validation
@@ -3882,8 +3882,8 @@ rLQ+epZplw==
   const shortcuts = (manifest as unknown as Record<string, unknown>).features &&
     ((manifest as unknown as { features?: { shortcuts?: Array<{ callback_id: string }> } }).features?.shortcuts || []);
   assert(
-    shortcuts.some((s) => s.callback_id === "ask_moon_bot"),
-    "manifest must register the ask_moon_bot message shortcut",
+    shortcuts.some((s) => s.callback_id === "ask_ishu"),
+    "manifest must register the ask_ishu message shortcut",
   );
   assert(
     (manifest as unknown as { settings?: { interactivity?: { is_enabled?: boolean } } }).settings?.interactivity?.is_enabled === true,
@@ -3897,16 +3897,16 @@ rLQ+epZplw==
   assert(botEvents.includes("assistant_thread_started"), "manifest must subscribe to assistant_thread_started events");
   assert(botEvents.includes("reaction_added"), "manifest must subscribe to reaction_added events");
   assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
-  assert(manifest.features?.assistant_view?.name === "Moon Bot", "manifest must define assistant_view name");
+  assert(manifest.features?.assistant_view?.name === "Ishu", "manifest must define assistant_view name");
 
   const slashCommands = (manifest as unknown as Record<string, unknown>).features &&
     ((manifest as unknown as { features?: { slash_commands?: Array<{ command: string }> } }).features?.slash_commands || []);
   assert(
-    slashCommands.some((c) => c.command === "/moonbot"),
-    "manifest must register /moonbot slash command",
+    slashCommands.some((c) => c.command === "/ishu"),
+    "manifest must register /ishu slash command",
   );
-  const moonbotUsageHint = slashCommands.find((c) => c.command === "/moonbot")?.usage_hint ?? "";
-  assert(moonbotUsageHint.includes("version"), "manifest /moonbot usage hint should mention version subcommand");
+  const ishuUsageHint = slashCommands.find((c) => c.command === "/ishu")?.usage_hint ?? "";
+  assert(ishuUsageHint.includes("version"), "manifest /ishu usage hint should mention version subcommand");
   console.log("Slack app manifest validated");
 
   // Slack manifest URL generator
@@ -3919,7 +3919,7 @@ rLQ+epZplw==
   const manifestUrlPayload = decodeURIComponent(manifestUrl.split("manifest_json=")[1]);
   const manifestFromUrl = JSON.parse(manifestUrlPayload) as Record<string, unknown>;
   assert(
-    (manifestFromUrl.features as { assistant_view?: { name?: string } })?.assistant_view?.name === "Moon Bot",
+    (manifestFromUrl.features as { assistant_view?: { name?: string } })?.assistant_view?.name === "Ishu",
     "encoded manifest payload must preserve the assistant view name",
   );
   assert((manifestFromUrl.oauth_config as { scopes?: { bot?: string[] } })?.scopes?.bot?.includes("chat:write"), "encoded manifest payload must preserve bot scopes");
@@ -3989,14 +3989,14 @@ rLQ+epZplw==
   }
 
   const ghDeploymentRaw = readFileSync("k8s/github-only/deployment.yaml", "utf-8");
-  assert(ghDeploymentRaw.includes("name: moon-bot-github-only"), "GitHub-only deployment must be named moon-bot-github-only");
+  assert(ghDeploymentRaw.includes("name: ishu-github-only"), "GitHub-only deployment must be named ishu-github-only");
   assert(
     ghDeploymentRaw.includes("containerPort: 3000") && ghDeploymentRaw.includes("port: webhook"),
     "GitHub-only deployment must expose port 3000 for the webhook receiver",
   );
   assert(
-    ghDeploymentRaw.includes("name: moon-bot-github-only-env"),
-    "GitHub-only deployment must mount the moon-bot-github-only-env secret",
+    ghDeploymentRaw.includes("name: ishu-github-only-env"),
+    "GitHub-only deployment must mount the ishu-github-only-env secret",
   );
   assert(
     ghDeploymentRaw.includes("app.kubernetes.io/component: github-bot"),
@@ -4124,7 +4124,7 @@ rLQ+epZplw==
 
   // Bot mention stripping from app_mention / DM text
   assert.strictEqual(stripBotMention("<@U123> hello bot", "U123"), "hello bot");
-  assert.strictEqual(stripBotMention("<@U123|moon bot>hello", "U123"), "hello");
+  assert.strictEqual(stripBotMention("<@U123|ishu>hello", "U123"), "hello");
   assert.strictEqual(stripBotMention("hello <@U123>", "U123"), "hello");
   assert.strictEqual(stripBotMention("<@U123> hello <@U456>", "U123"), "hello <@U456>");
   assert.strictEqual(stripBotMention("<@U123> hi"), "hi");
@@ -4250,7 +4250,7 @@ rLQ+epZplw==
   await testSafeSayRetriesExhausted();
   console.log("Slack message delivery retries passed");
 
-  // Slash command /moonbot
+  // Slash command /ishu
   const slashResponses: Array<{ text?: string; response_type?: string }> = [];
   let ackCount = 0;
   async function dispatchSlashCommand(
@@ -4261,9 +4261,9 @@ rLQ+epZplw==
   ): Promise<void> {
     slashResponses.length = 0;
     ackCount = 0;
-    await handleMoonbotCommand({
+    await handleIshuCommand({
       command: {
-        command: "/moonbot",
+        command: "/ishu",
         text,
         user_id: userId,
         channel_id: channelId,
@@ -4290,16 +4290,16 @@ rLQ+epZplw==
   assert.strictEqual(ackCount, 1, "slash command should ack exactly once");
   assert.strictEqual(slashResponses.length, 1);
   assert.strictEqual(slashResponses[0].response_type, "ephemeral");
-  assert(slashResponses[0].text?.includes("Moon Bot"));
-  assert(slashResponses[0].text?.includes("/moonbot help"));
-  assert(slashResponses[0].text?.includes("/moonbot tools"), "welcome fallback should mention /moonbot tools");
-  assert(slashResponses[0].text?.includes("/moonbot version"), "welcome fallback should mention /moonbot version");
-  assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
-  assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
-  assert(slashResponses[0].text?.includes("/moonbot reload"), "welcome fallback should mention /moonbot reload");
-  assert(slashResponses[0].text?.includes("/moonbot remember"), "welcome fallback should mention /moonbot remember");
-  assert(slashResponses[0].text?.includes("/moonbot memory"), "welcome fallback should mention /moonbot memory");
-  assert(slashResponses[0].text?.includes("/moonbot forget"), "welcome fallback should mention /moonbot forget");
+  assert(slashResponses[0].text?.includes("Ishu"));
+  assert(slashResponses[0].text?.includes("/ishu help"));
+  assert(slashResponses[0].text?.includes("/ishu tools"), "welcome fallback should mention /ishu tools");
+  assert(slashResponses[0].text?.includes("/ishu version"), "welcome fallback should mention /ishu version");
+  assert(slashResponses[0].text?.includes("/ishu impact"), "welcome fallback should mention /ishu impact");
+  assert(slashResponses[0].text?.includes("/ishu audit"), "welcome fallback should mention /ishu audit");
+  assert(slashResponses[0].text?.includes("/ishu reload"), "welcome fallback should mention /ishu reload");
+  assert(slashResponses[0].text?.includes("/ishu remember"), "welcome fallback should mention /ishu remember");
+  assert(slashResponses[0].text?.includes("/ishu memory"), "welcome fallback should mention /ishu memory");
+  assert(slashResponses[0].text?.includes("/ishu forget"), "welcome fallback should mention /ishu forget");
 
   await dispatchSlashCommand("help code");
   assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
@@ -4315,21 +4315,21 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("help");
   assert(
-    slashResponses[0].text?.includes("/moonbot remember"),
-    "general help should mention /moonbot remember",
+    slashResponses[0].text?.includes("/ishu remember"),
+    "general help should mention /ishu remember",
   );
   assert(
-    slashResponses[0].text?.includes("/moonbot memory"),
-    "general help should mention /moonbot memory",
+    slashResponses[0].text?.includes("/ishu memory"),
+    "general help should mention /ishu memory",
   );
   assert(
-    slashResponses[0].text?.includes("/moonbot forget"),
-    "general help should mention /moonbot forget",
+    slashResponses[0].text?.includes("/ishu forget"),
+    "general help should mention /ishu forget",
   );
 
   await dispatchSlashCommand("demo");
   assert(
-    slashResponses[0].text?.includes("Moon Bot demo prompts"),
+    slashResponses[0].text?.includes("Ishu demo prompts"),
     "demo command should show demo header",
   );
   assert(
@@ -4345,8 +4345,8 @@ rLQ+epZplw==
     "demo command should mention Agent for Good",
   );
   assert(
-    slashResponses[0].text?.includes("/moonbot impact"),
-    "demo command should mention /moonbot impact",
+    slashResponses[0].text?.includes("/ishu impact"),
+    "demo command should mention /ishu impact",
   );
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "demo command should be ephemeral");
 
@@ -4362,13 +4362,13 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("status");
   const statusText = slashResponses[0].text ?? "";
-  assert(statusText.includes("Moon Bot status"), "status command should include status header");
+  assert(statusText.includes("Ishu status"), "status command should include status header");
   assert(statusText.includes("Socket Mode"), "status command should mention Socket Mode");
   assert(!statusText.includes(cfg.cloudflare.apiToken), "slash status must not expose secrets");
 
   await dispatchSlashCommand("version");
   const versionText = slashResponses[0].text ?? "";
-  assert(versionText.includes("Moon Bot"), "version command should mention Moon Bot");
+  assert(versionText.includes("Ishu"), "version command should mention Ishu");
   assert(/v\d+\.\d+\.\d+/.test(versionText), "version command should include a semver version string");
   assert(versionText.includes("Node.js"), "version command should include Node.js version");
   assert(versionText.includes("Uptime:"), "version command should include uptime");
@@ -4378,7 +4378,7 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("metrics");
   const metricsText = slashResponses[0].text ?? "";
-  assert(metricsText.includes("Moon Bot runtime metrics"), "metrics command should include header");
+  assert(metricsText.includes("Ishu runtime metrics"), "metrics command should include header");
   assert(metricsText.includes("Uptime:"), "metrics command should list uptime");
   assert(metricsText.includes("Messages handled:"), "metrics command should list messagesHandled counter");
   assert(metricsText.includes("LLM calls:"), "metrics command should list llmCalls counter");
@@ -4394,7 +4394,7 @@ rLQ+epZplw==
   await dispatchSlashCommand("diagnose");
   clearChatOverride();
   const diagnoseText = slashResponses[0].text ?? "";
-  assert(diagnoseText.includes("Moon Bot diagnostic"), "diagnose command should include diagnostic header");
+  assert(diagnoseText.includes("Ishu diagnostic"), "diagnose command should include diagnostic header");
   assert(diagnoseText.includes("SLACK_BOT_TOKEN"), "diagnose command should list Slack bot token check");
   assert(diagnoseText.includes("CLOUDFLARE_ACCOUNT_ID"), "diagnose command should list Cloudflare account check");
   assert(
@@ -4435,7 +4435,7 @@ rLQ+epZplw==
   assert(whoamiText.includes("Guest account: no"), "whoami should show guest status");
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "whoami command should be ephemeral");
 
-  // /moonbot thread — show current DM session info; in channels it explains how
+  // /ishu thread — show current DM session info; in channels it explains how
   // to find thread details via response buttons.
   await dispatchSlashCommand("thread", {} as WebClient, "U_THREAD", "C1");
   assert(
@@ -4446,7 +4446,7 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("thread", {} as WebClient, "U_THREAD", "DTHREAD");
   assert(
-    slashResponses[0].text?.includes("You don't have an active Moon Bot session"),
+    slashResponses[0].text?.includes("You don't have an active Ishu session"),
     "thread command in DM without session should prompt the user",
   );
 
@@ -4462,8 +4462,8 @@ rLQ+epZplw==
   assert(threadInfoText.includes("Visible messages:"), "thread command should list message count");
   assert(threadInfoText.includes("1"), "thread command should count one visible user/assistant pair");
 
-  // /moonbot remember and /moonbot memory slash commands.
-  const rememberSlashFact = "The moon-bot slash-remember test fact is alpha-42";
+  // /ishu remember and /ishu memory slash commands.
+  const rememberSlashFact = "The ishu slash-remember test fact is alpha-42";
 
   await dispatchSlashCommand("remember");
   assert(
@@ -4509,17 +4509,17 @@ rLQ+epZplw==
     "memory command with limit should still show the header",
   );
 
-  // /moonbot forget — remove remembered facts owned by the requesting user.
+  // /ishu forget — remove remembered facts owned by the requesting user.
   await dispatchSlashCommand("forget");
   const forgetUsageText = slashResponses[0].text ?? "";
   assert(forgetUsageText.includes("Remove remembered facts"), "bare forget command should show usage");
-  assert(forgetUsageText.includes("/moonbot forget <text>"), "forget usage should mention text matching");
-  assert(forgetUsageText.includes("/moonbot forget all"), "forget usage should mention clear-all");
+  assert(forgetUsageText.includes("/ishu forget <text>"), "forget usage should mention text matching");
+  assert(forgetUsageText.includes("/ishu forget all"), "forget usage should mention clear-all");
 
   // Seed a user-scoped memory entry for the forget smoke user.
   const forgetUserId = `U_FORGET_${Date.now()}`;
   const forgetThreadKey = `remember:${forgetUserId}:D_FORGET`;
-  const forgetFact = "moon-bot forget smoke test fact beta-99";
+  const forgetFact = "ishu forget smoke test fact beta-99";
   await rememberFact(forgetThreadKey, forgetUserId, forgetFact);
 
   // The owner can delete their own remembered fact via the slash command.
@@ -4552,11 +4552,11 @@ rLQ+epZplw==
   assert.strictEqual(cleared, 2, "clearAllMemory should remove both user entries");
 
   await dispatchSlashCommand("report");
-  assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");
-  assert(slashResponses[0].text?.includes("/moonbot report deploy"), "bare report command should show deploy usage");
+  assert(slashResponses[0].text?.includes("/ishu report weekly"), "bare report command should show usage");
+  assert(slashResponses[0].text?.includes("/ishu report deploy"), "bare report command should show deploy usage");
 
   await dispatchSlashCommand("report unknown");
-  assert(slashResponses[0].text?.includes("/moonbot report weekly"), "unknown report type should show usage");
+  assert(slashResponses[0].text?.includes("/ishu report weekly"), "unknown report type should show usage");
 
   await dispatchSlashCommand("report weekly");
   assert(slashResponses[0].text?.includes("Weekly Ops Report"), "weekly report command should return the report header");
@@ -4572,7 +4572,7 @@ rLQ+epZplw==
     "deploy report should show fallback text when ES is unconfigured",
   );
 
-  // /moonbot statuspage — on-demand public status page check.
+  // /ishu statuspage — on-demand public status page check.
   const originalFetchForStatuspage = globalThis.fetch;
   (globalThis as unknown as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -4590,7 +4590,7 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("statuspage");
   assert(
-    slashResponses[0].text?.includes("/moonbot statuspage <url>"),
+    slashResponses[0].text?.includes("/ishu statuspage <url>"),
     "bare statuspage command should show usage",
   );
 
@@ -4606,7 +4606,7 @@ rLQ+epZplw==
 
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForStatuspage;
 
-  // /moonbot impact — public service status monitoring for the Agent for Good track.
+  // /ishu impact — public service status monitoring for the Agent for Good track.
   const originalStatusMonitorChannel = cfg.scheduler.statusMonitorChannel;
   const originalStatusMonitorPages = cfg.scheduler.statusMonitorPages;
   cfg.scheduler.statusMonitorChannel = "";
@@ -4627,10 +4627,10 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("impact");
   const impactConfiguredText = slashResponses[0].text ?? "";
-  assert(impactConfiguredText.includes("Moon Bot public service impact"), "impact command should show configured header");
+  assert(impactConfiguredText.includes("Ishu public service impact"), "impact command should show configured header");
   assert(impactConfiguredText.includes(impactPageUrl), "impact command should list monitored page URL");
   assert(impactConfiguredText.includes("unknown"), "impact command should show unknown indicator when no state exists");
-  assert(impactConfiguredText.includes("/moonbot statuspage"), "impact command should reference on-demand statuspage command");
+  assert(impactConfiguredText.includes("/ishu statuspage"), "impact command should reference on-demand statuspage command");
 
   // Operational status renders with a checkmark emoji.
   await saveStatusMonitorState(
@@ -4654,7 +4654,7 @@ rLQ+epZplw==
   cfg.scheduler.statusMonitorPages = originalStatusMonitorPages;
   await saveStatusMonitorState(new Map());
 
-  // /moonbot search — on-demand Real-Time Search API query.
+  // /ishu search — on-demand Real-Time Search API query.
   const originalUserToken = cfg.slack.userToken;
   cfg.slack.userToken = "xoxp-smoke-test";
   const originalFetchForSearch = globalThis.fetch;
@@ -4686,7 +4686,7 @@ rLQ+epZplw==
 
   await dispatchSlashCommand("search");
   assert(
-    slashResponses[0].text?.includes("/moonbot search <query>"),
+    slashResponses[0].text?.includes("/ishu search <query>"),
     "bare search command should show usage",
   );
 
@@ -4700,7 +4700,7 @@ rLQ+epZplw==
   (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForSearch;
   cfg.slack.userToken = originalUserToken;
 
-  // /moonbot audit — privileged-only security audit log viewer.
+  // /ishu audit — privileged-only security audit log viewer.
   const originalAuditUserTiers = cfg.okta.userTiers;
   try {
     // Basic-tier user should be refused.
@@ -4708,7 +4708,7 @@ rLQ+epZplw==
     await dispatchSlashCommand("audit", {} as WebClient, "U_AUDIT");
     assert(
       slashResponses[0].text?.includes("Only privileged-tier users can view"),
-      "basic-tier user should be refused access to /moonbot audit",
+      "basic-tier user should be refused access to /ishu audit",
     );
     assert.strictEqual(slashResponses[0].response_type, "ephemeral", "audit refusal should be ephemeral");
 
@@ -4758,7 +4758,7 @@ rLQ+epZplw==
     cfg.okta.userTiers = originalAuditUserTiers;
   }
 
-  // /moonbot reload — privileged-only runtime skill reload.
+  // /ishu reload — privileged-only runtime skill reload.
   const originalReloadUserTiers = cfg.okta.userTiers;
   const reloadSkillName = `smoke-reload-${Date.now()}`;
   const reloadSkillDir = join("./skills", reloadSkillName);
@@ -4769,7 +4769,7 @@ rLQ+epZplw==
     await dispatchSlashCommand("reload", {} as WebClient, "U_RELOAD");
     assert(
       slashResponses[0].text?.includes("Only privileged-tier users can reload"),
-      "basic-tier user should be refused access to /moonbot reload",
+      "basic-tier user should be refused access to /ishu reload",
     );
     assert.strictEqual(slashResponses[0].response_type, "ephemeral", "reload refusal should be ephemeral");
 
@@ -4796,7 +4796,7 @@ rLQ+epZplw==
     reloadSkills();
   }
 
-  // /moonbot ping — live LLM connectivity check.
+  // /ishu ping — live LLM connectivity check.
   clearChatOverride();
   setChatOverride(async () => "PONG");
   await dispatchSlashCommand("ping");
@@ -4819,10 +4819,10 @@ rLQ+epZplw==
   );
 
   await dispatchSlashCommand("invalid_subcommand");
-  assert(slashResponses[0].text?.includes("/moonbot help"), "unknown subcommand should fall back to welcome");
-  console.log("Slash command /moonbot passed");
+  assert(slashResponses[0].text?.includes("/ishu help"), "unknown subcommand should fall back to welcome");
+  console.log("Slash command /ishu passed");
 
-  // Ask Moon Bot message shortcut: selecting a message should spawn a threaded reply.
+  // Ask Ishu message shortcut: selecting a message should spawn a threaded reply.
   clearChatOverride();
   setChatOverride(async () => "I can help with that selected message.");
 
@@ -4845,13 +4845,13 @@ rLQ+epZplw==
   } as unknown as WebClient;
 
   let shortcutAckCount = 0;
-  await handleAskMoonBotShortcut({
+  await handleAskIshuShortcut({
     ack: async () => {
       shortcutAckCount++;
     },
     shortcut: {
       type: "message_action",
-      callback_id: "ask_moon_bot",
+      callback_id: "ask_ishu",
       trigger_id: "T123",
       message_ts: "1777777777.000000",
       response_url: "https://example.com/response",
@@ -4878,7 +4878,7 @@ rLQ+epZplw==
   assert(shortcutText.includes("I can help with that selected message"), `Expected shortcut reply text, got: ${shortcutText}`);
   assert(Array.isArray(shortcutPost.blocks) && shortcutPost.blocks.length > 0, "shortcut reply should include Block Kit blocks");
   clearChatOverride();
-  console.log("Ask Moon Bot message shortcut passed");
+  console.log("Ask Ishu message shortcut passed");
 
   // Feedback buttons: every response should expose helpful / not-helpful actions,
   // and feedback should be persisted to a JSONL log.
@@ -5145,9 +5145,9 @@ rLQ+epZplw==
 
   console.log("Response feedback buttons passed");
 
-  // Emoji reactions on tracked Moon Bot messages: +1/-1 feedback, reset, help.
+  // Emoji reactions on tracked Ishu messages: +1/-1 feedback, reset, help.
   const reactionThreadKey = "C_REACT:100.000";
-  setChatOverride(async () => "Here is a tracked Moon Bot response.");
+  setChatOverride(async () => "Here is a tracked Ishu response.");
   await handleMessage(reactionThreadKey, "hello", "100.000", "U_REACT");
   clearChatOverride();
   const reactionSession = await getSessionFilenameByThreadKey(reactionThreadKey);
@@ -5236,7 +5236,7 @@ rLQ+epZplw==
     ...makeReactionArgs({ reaction: "question", channel: "C_REACT", ts: "200.000" }),
     client: helpReaction.client,
   } as never);
-  assert(helpReaction.getTexts().some((t) => t.includes("Moon Bot help")), "? reaction should post help");
+  assert(helpReaction.getTexts().some((t) => t.includes("Ishu help")), "? reaction should post help");
 
   // Reaction on untracked message should be ignored.
   const untrackedReaction = makeReactionClient();
@@ -5318,11 +5318,11 @@ rLQ+epZplw==
       } as unknown as WebClient;
     }
     async function dispatchAuthShortcut(client: WebClient, userId: string) {
-      await handleAskMoonBotShortcut({
+      await handleAskIshuShortcut({
         ack: async () => {},
         shortcut: {
           type: "message_action",
-          callback_id: "ask_moon_bot",
+          callback_id: "ask_ishu",
           trigger_id: "T123",
           message_ts: "1888888888.000000",
           response_url: "https://example.com/response",
@@ -5481,7 +5481,7 @@ rLQ+epZplw==
     auth: {
       test: async () => ({
         ok: true,
-        user: "moonbot",
+        user: "ishu",
         user_id: "U123",
         team: "demo",
         scopes: manifestBotScopes,
@@ -5543,7 +5543,7 @@ rLQ+epZplw==
     auth: {
       test: async () => ({
         ok: true,
-        user: "moonbot",
+        user: "ishu",
         user_id: "U123",
         team: "demo",
         scopes: manifestBotScopes.filter((s) => s !== "chat:write"),
@@ -5676,7 +5676,7 @@ rLQ+epZplw==
       );
     }
     return new Response(
-      JSON.stringify({ login: "moonbot", name: "Moon Bot" }),
+      JSON.stringify({ login: "ishu", name: "Ishu" }),
       {
         status: 200,
         headers: {
@@ -5695,7 +5695,7 @@ rLQ+epZplw==
   assert(goodGhResult.checks.some((c) => c.name === "env_credentials" && c.ok));
   assert(
     goodGhResult.checks.some(
-      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Moon Bot"),
+      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Ishu"),
     ),
   );
   assert(
@@ -5729,7 +5729,7 @@ rLQ+epZplw==
       });
     }
     if (u.includes("/app")) {
-      return new Response(JSON.stringify({ slug: "moon-bot", name: "Moon Bot App" }), {
+      return new Response(JSON.stringify({ slug: "ishu", name: "Ishu App" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
@@ -5755,7 +5755,7 @@ rLQ+epZplw==
   assert(goodGhAppResult.checks.some((c) => c.name === "app_installation_token" && c.ok));
   assert(
     goodGhAppResult.checks.some(
-      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Moon Bot App"),
+      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Ishu App"),
     ),
   );
 
@@ -5815,15 +5815,15 @@ rLQ+epZplw==
           return {
             ok: true,
             messages: [
-              { ts: "123.100", user: "UUSER", text: "Moon Bot Slack end-to-end test 1" },
+              { ts: "123.100", user: "UUSER", text: "Ishu Slack end-to-end test 1" },
             ],
           };
         }
         return {
           ok: true,
           messages: [
-            { ts: "123.100", user: "UUSER", text: "Moon Bot Slack end-to-end test 1" },
-            { ts: "123.101", user: "UBOT", text: "_Hello from Moon Bot_" },
+            { ts: "123.100", user: "UUSER", text: "Ishu Slack end-to-end test 1" },
+            { ts: "123.101", user: "UBOT", text: "_Hello from Ishu_" },
           ],
         };
       },
@@ -5838,21 +5838,21 @@ rLQ+epZplw==
   assert.strictEqual(slackE2eResult.botUserId, "UBOT");
   assert.strictEqual(slackE2eResult.postedTs, "123.100");
   assert(
-    slackE2eResult.replyText?.includes("Moon Bot"),
+    slackE2eResult.replyText?.includes("Ishu"),
     `unexpected reply: ${slackE2eResult.replyText}`,
   );
   console.log("Slack end-to-end message test passed");
 
   // One-shot local ask CLI: lets developers run a single agent turn without Slack credentials.
   clearChatOverride();
-  setChatOverride(async () => "I am Moon Bot, ready to help from the CLI.");
+  setChatOverride(async () => "I am Ishu, ready to help from the CLI.");
   const { ask } = await import("./ask.js");
   const askThreadKey = `cli-ask-smoke-${randomUUID()}`;
   const askResult = await ask("What is your name?", {
     threadKey: askThreadKey,
     userId: "U_ASK_SMOKE",
   });
-  assert(askResult.includes("Moon Bot"), `Expected ask CLI to return greeting, got: ${askResult}`);
+  assert(askResult.includes("Ishu"), `Expected ask CLI to return greeting, got: ${askResult}`);
   assert(existsSync(join(process.env.SESSIONS_DIR!, "thread-map.json")), "ask CLI should persist thread-map");
   clearChatOverride();
   console.log("Local ask CLI passed");
@@ -5861,8 +5861,8 @@ rLQ+epZplw==
   // runnable immediately after `npm run build`, before the user has filled in
   // real Slack/Cloudflare credentials. We intentionally omit the required
   // tokens and assert the check still exits cleanly.
-  const noTokenSessionsDir = "/tmp/moon-bot-smoke-check-no-token-sessions";
-  const noTokenBucketDir = "/tmp/moon-bot-smoke-check-no-token-bucket";
+  const noTokenSessionsDir = "/tmp/ishu-smoke-check-no-token-sessions";
+  const noTokenBucketDir = "/tmp/ishu-smoke-check-no-token-bucket";
   if (existsSync(noTokenSessionsDir)) rmSync(noTokenSessionsDir, { recursive: true, force: true });
   if (existsSync(noTokenBucketDir)) rmSync(noTokenBucketDir, { recursive: true, force: true });
 
@@ -5904,8 +5904,8 @@ rLQ+epZplw==
   console.log("Production bundle startup check without tokens passed");
 
   // Production bundle startup check: verify the compiled dist/app.js initializes cleanly.
-  const checkSessionsDir = "/tmp/moon-bot-smoke-check-sessions";
-  const checkBucketDir = "/tmp/moon-bot-smoke-check-bucket";
+  const checkSessionsDir = "/tmp/ishu-smoke-check-sessions";
+  const checkBucketDir = "/tmp/ishu-smoke-check-bucket";
   if (existsSync(checkSessionsDir)) rmSync(checkSessionsDir, { recursive: true, force: true });
   if (existsSync(checkBucketDir)) rmSync(checkBucketDir, { recursive: true, force: true });
 

@@ -83,7 +83,7 @@ function checkOptionalUrl(checks: DiagnosticCheck[], name: string): void {
  *
  * Returns a structured result that can be formatted for the CLI, Slack, or
  * other callers without printing to stdout. This keeps the diagnostic logic
- * reusable for both `npm run diagnose` and `/moonbot diagnose`.
+ * reusable for both `npm run diagnose` and `/ishu diagnose`.
  */
 export async function runDiagnostics(): Promise<DiagnosticResult> {
   const checks: DiagnosticCheck[] = [];
@@ -448,8 +448,8 @@ export function formatDiagnosticResultForSlack(result: DiagnosticResult): string
   const failCount = result.checks.filter((c) => c.status === "fail").length;
 
   const header = result.ok
-    ? `*Moon Bot diagnostic* ✅ ${okCount} ok, ${warnCount} warn\nConfiguration looks good. Moon Bot is ready to start.`
-    : `*Moon Bot diagnostic* ❌ ${okCount} ok, ${warnCount} warn, ${failCount} fail\nCritical issues must be fixed before Slack testing.`;
+    ? `*Ishu diagnostic* ✅ ${okCount} ok, ${warnCount} warn\nConfiguration looks good. Ishu is ready to start.`
+    : `*Ishu diagnostic* ❌ ${okCount} ok, ${warnCount} warn, ${failCount} fail\nCritical issues must be fixed before Slack testing.`;
 
   const lines = result.checks.map((c) => {
     const icon = c.status === "ok" ? "✅" : c.status === "warn" ? "⚠️" : "❌";
@@ -468,7 +468,7 @@ export function formatDiagnosticResultForConsole(result: DiagnosticResult): stri
   const warns = result.checks.filter((c) => c.status === "warn").length;
   const fails = result.checks.filter((c) => c.status === "fail").length;
 
-  const lines: string[] = ["Moon Bot configuration diagnostic\n", `Checks: ${ok} ok, ${warns} warn, ${fails} fail\n`];
+  const lines: string[] = ["Ishu configuration diagnostic\n", `Checks: ${ok} ok, ${warns} warn, ${fails} fail\n`];
   for (const c of result.checks) {
     const icon = c.status === "ok" ? "✅" : c.status === "warn" ? "⚠️" : "❌";
     lines.push(`${icon} ${c.name}: ${c.message}`);
@@ -476,11 +476,11 @@ export function formatDiagnosticResultForConsole(result: DiagnosticResult): stri
   lines.push("");
 
   if (fails > 0) {
-    lines.push(`Diagnostic failed: ${fails} critical issue(s) must be fixed before starting Moon Bot.`);
+    lines.push(`Diagnostic failed: ${fails} critical issue(s) must be fixed before starting Ishu.`);
   } else if (warns > 0) {
     lines.push("Configuration is usable, but review the warnings above before Slack testing.");
   } else {
-    lines.push("Configuration looks good. Moon Bot is ready to start.");
+    lines.push("Configuration looks good. Ishu is ready to start.");
   }
 
   return lines.join("\n");

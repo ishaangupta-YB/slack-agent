@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Unified pre-flight verifier for Moon Bot.
+ * Unified pre-flight verifier for Ishu.
  *
  * Runs the diagnostic, Slack, Cloudflare Workers AI, and GitHub checks in one
  * command so operators can confirm everything is ready before starting the bot
@@ -137,7 +137,7 @@ export async function runAllPreflightChecks(options?: PreflightOptions): Promise
 }
 
 function formatReport(result: PreflightResult): void {
-  console.log("Moon Bot unified pre-flight verification\n");
+  console.log("Ishu unified pre-flight verification\n");
   for (const section of result.sections) {
     const sectionIcon = section.ok ? "✅" : "❌";
     console.log(`${sectionIcon} ${section.name}`);
@@ -149,9 +149,9 @@ function formatReport(result: PreflightResult): void {
   }
 
   if (result.ok) {
-    console.log("All pre-flight checks passed. Moon Bot is ready to start.");
+    console.log("All pre-flight checks passed. Ishu is ready to start.");
   } else {
-    console.log("Some pre-flight checks failed. Fix the issues above before starting Moon Bot.");
+    console.log("Some pre-flight checks failed. Fix the issues above before starting Ishu.");
   }
 }
 

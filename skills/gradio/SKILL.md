@@ -4,7 +4,7 @@ This skill helps you build, debug, and navigate Gradio applications and the Grad
 
 ## Repositories
 
-Clone the following repositories into `CODE_REPOS_DIR` (default `./repos`). You can ask Moon Bot to clone a repo for you at any time:
+Clone the following repositories into `CODE_REPOS_DIR` (default `./repos`). You can ask Ishu to clone a repo for you at any time:
 
 ```json
 {"tool": "clone_repo", "params": {"repo": "gradio-app/gradio"}}
