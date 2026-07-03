@@ -64,6 +64,12 @@ const searchIssuesParams = z.object({
   page: z.number().int().min(1).optional().default(1),
 });
 
+const getPrDiffParams = z.object({
+  repo: z.string().describe("Repository in owner/name format."),
+  pull_number: z.number().int().describe("Pull request number."),
+  max_files: z.number().int().min(1).max(100).optional().default(10),
+});
+
 interface GitRef {
   object: { sha: string };
 }
@@ -107,6 +113,17 @@ interface SearchIssuesResponse {
   total_count: number;
   incomplete_results: boolean;
   items: SearchIssueItem[];
+}
+
+interface PrDiffFile {
+  sha: string;
+  filename: string;
+  status: "added" | "removed" | "modified" | "renamed" | "copied" | "changed" | "unchanged";
+  additions: number;
+  deletions: number;
+  changes: number;
+  patch?: string;
+  previous_filename?: string;
 }
 
 async function applyContextDefaults<T extends { requestedBy?: string; traceUrl?: string }>(
@@ -332,6 +349,39 @@ async function searchGitHubIssues(input: z.infer<typeof searchIssuesParams>): Pr
   }
 }
 
+async function getPrDiff(input: z.infer<typeof getPrDiffParams>): Promise<string> {
+  parseRepo(input.repo);
+  try {
+    const files = await githubApi<PrDiffFile[]>(
+      `/repos/${input.repo}/pulls/${input.pull_number}/files?per_page=${input.max_files}`,
+    );
+
+    if (!files || files.length === 0) {
+      return `No files found for PR #${input.pull_number} in ${input.repo}.`;
+    }
+
+    const totalAdditions = files.reduce((sum, f) => sum + f.additions, 0);
+    const totalDeletions = files.reduce((sum, f) => sum + f.deletions, 0);
+
+    const lines = [
+      `PR #${input.pull_number} in ${input.repo}: ${files.length} file(s), +${totalAdditions}/-${totalDeletions}`,
+      "",
+    ];
+
+    for (const file of files) {
+      const patchPreview = file.patch ? `\n\`\`\`diff\n${file.patch.slice(0, 800)}${file.patch.length > 800 ? "\n... (truncated)" : ""}\n\`\`\`` : "";
+      const renameInfo = file.previous_filename && file.status === "renamed" ? ` (from ${file.previous_filename})` : "";
+      lines.push(
+        `• *${file.filename}* — ${file.status}${renameInfo} (+${file.additions}/-${file.deletions})${patchPreview}`,
+      );
+    }
+
+    return lines.join("\n");
+  } catch (err) {
+    return `Error fetching PR diff: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
 export const openPrTool: Tool = {
   name: "open_pr",
   description:
@@ -380,4 +430,14 @@ export const searchIssuesTool: Tool = {
   tier: "basic",
   githubBot: true,
   run: searchGitHubIssues,
+};
+
+export const getPrDiffTool: Tool = {
+  name: "get_pr_diff",
+  description:
+    "Fetch the changed files and diff patch for a GitHub pull request. Provide repo (owner/name) and pull_number. Optionally limit the number of files returned with max_files (default 10). Useful for reviewing PRs, summarizing changes, or deciding whether to comment.",
+  params: getPrDiffParams,
+  tier: "basic",
+  githubBot: true,
+  run: getPrDiff,
 };

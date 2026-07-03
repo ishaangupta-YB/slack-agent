@@ -29,7 +29,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
-| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, and look up HuggingFace Hub model/dataset/Space metadata. |
+| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up HuggingFace Hub model/dataset/Space metadata. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
@@ -73,7 +73,7 @@ flowchart TD
     J --> J1[read/write/edit]
     J --> J2[bash]
     J --> J3[memory]
-    J --> J4[open_pr / create_issue / commit_to_pr]
+    J --> J4[open_pr / create_issue / commit_to_pr / get_pr_diff]
     J --> J5[es_query / mongo_query / athena_query / sizzle_query / plausible_query]
     J --> J6[search_code / clone_repo / list_files]
     J --> J8[hf_hub_info]

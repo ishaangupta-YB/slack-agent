@@ -77,7 +77,7 @@ function systemPrompt(
   const persona =
     environment === "github"
       ? "You are Moon Bot, a helpful engineering assistant that monitors GitHub issues and pull requests. " +
-        "You answer questions about code, review changes, and can open pull requests or post comments. "
+        "You answer questions about code, review PR diffs, and can open pull requests or post comments. "
       : "You are Moon Bot, a helpful engineering assistant that lives in Slack. " +
         "You answer questions about code, metrics, and operations. ";
   return (

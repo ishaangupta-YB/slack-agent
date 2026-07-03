@@ -5,7 +5,7 @@ import { readFileTool, writeFileTool, editFileTool, listFilesTool } from "./file
 import { searchCodeTool } from "./code.js";
 import { cloneRepoTool } from "./git.js";
 import { memoryTool } from "./memory.js";
-import { openPrTool, commitToPrTool, createIssueTool, commentOnIssueTool, searchIssuesTool } from "./github.js";
+import { openPrTool, commitToPrTool, createIssueTool, commentOnIssueTool, searchIssuesTool, getPrDiffTool } from "./github.js";
 import { plausibleQueryTool } from "./plausible.js";
 import { esQueryTool } from "./es.js";
 import { searchSlackTool } from "./slack-search.js";
@@ -37,6 +37,7 @@ const staticTools: Tool[] = [
   createIssueTool,
   commentOnIssueTool,
   searchIssuesTool,
+  getPrDiffTool,
   plausibleQueryTool,
   esQueryTool,
   searchSlackTool,

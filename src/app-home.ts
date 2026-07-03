@@ -33,9 +33,9 @@ function capabilitiesBlock(): SectionBlock {
   const lines = [
     "*Ask Moon Bot to:*",
     "• Search code across cloned repos (`search_code`)",
-    "• Open GitHub PRs and file issues (`open_pr`, `create_issue`)",
+    "• Open GitHub PRs, file issues, and review diffs (`open_pr`, `create_issue`, `get_pr_diff`)",
+    "• Search GitHub issues/PRs and look up HuggingFace Hub metadata (`search_issues`, `hf_hub_info`)",
     "• Query Elasticsearch logs, MongoDB, AWS Athena, and Plausible analytics",
-    "• Look up HuggingFace Hub model/dataset/Space metadata (`hf_hub_info`)",
     "• Search Slack history in real time (`search_slack`)",
     "• Run safe shell commands and manage memory across threads",
     "• Discover tools from connected MCP servers",

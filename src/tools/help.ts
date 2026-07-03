@@ -67,10 +67,12 @@ export const helpTool: Tool = {
         `• \`clone_repo\` — clone a GitHub repo into the workspace\n` +
         `• \`open_pr\` / \`commit_to_pr\` / \`create_issue\` / \`comment_on_issue\` — open PRs/issues, push follow-up commits, and post comments\n` +
         `• \`search_issues\` — search GitHub issues/PRs to avoid duplicates and find related work\n` +
+        `• \`get_pr_diff\` — fetch changed files and diff patches for a pull request review\n` +
         `• \`hf_hub_info\` — look up metadata for a HuggingFace Hub model, dataset, or Space\n\n` +
         `**Example prompts**\n` +
         `• “Search the Hub repo for how Gitaly timeouts are handled.”\n` +
         `• “Clone huggingface/hub and find the function that validates repo IDs.”\n` +
+        `• “Review the diff for huggingface/hub#1234.”\n` +
         `• “What is the task for sentence-transformers/all-MiniLM-L6-v2?”\n` +
         `• “Open a PR in my-org/my-repo that updates the README title.”\n\n` +
         `PRs include a standard footer with the requester and a link back to this Slack thread.`,

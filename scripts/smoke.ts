@@ -1471,6 +1471,59 @@ async function main() {
   assert(searchIssuesSuccessResult.result.includes("octocat"));
   console.log("GitHub issue search passed");
 
+  // Fetch a GitHub PR diff with changed files and patch previews.
+  const originalGhTokenCfgForPrDiff = cfg.integrations.githubToken;
+  cfg.integrations.githubToken = "test-token";
+  const originalGhFetchForPrDiff = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("/repos/test-owner/test-repo/pulls/42/files")) {
+      return new Response(
+        JSON.stringify([
+          {
+            sha: "abc123",
+            filename: "src/main.ts",
+            status: "modified",
+            additions: 5,
+            deletions: 2,
+            changes: 7,
+            patch: "@@ -1,5 +1,8 @@\n export function greet(name: string) {\n-  return `Hello ${name}`;\n+  if (!name) {\n+    throw new Error('name is required');\n+  }\n+  return `Hello ${name}`;\n }\n",
+          },
+          {
+            sha: "def456",
+            filename: "src/main.test.ts",
+            status: "added",
+            additions: 10,
+            deletions: 0,
+            changes: 10,
+            patch: "@@ -0,0 +1,10 @@\n+import { greet } from './main';\n+\n+test('greet requires name', () => {\n+  expect(() => greet('')).toThrow();\n+});\n",
+          },
+        ]),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    return originalGhFetchForPrDiff(input, init);
+  };
+
+  const getPrDiffResult = await runToolCall(
+    {
+      tool: "get_pr_diff",
+      params: { repo: "test-owner/test-repo", pull_number: 42, max_files: 5 },
+    },
+    8_000,
+    "basic",
+  );
+  cfg.integrations.githubToken = originalGhTokenCfgForPrDiff;
+  globalThis.fetch = originalGhFetchForPrDiff;
+
+  assert.strictEqual(getPrDiffResult.error, undefined, `get_pr_diff failed: ${getPrDiffResult.result}`);
+  assert(getPrDiffResult.result.includes("PR #42 in test-owner/test-repo"));
+  assert(getPrDiffResult.result.includes("2 file(s), +15/-2"));
+  assert(getPrDiffResult.result.includes("src/main.ts"));
+  assert(getPrDiffResult.result.includes("src/main.test.ts"));
+  assert(getPrDiffResult.result.includes("name is required"));
+  console.log("GitHub PR diff review passed");
+
   // GitHub App token path + commit_to_pr tool: mint a short-lived installation token and use it to push a commit.
   const testPrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIBUwIBADANBgkqhkiG9w0BAQEFAASCAT0wggE5AgEAAkEAuf8t6hc0e+eu+XgR
@@ -1563,6 +1616,7 @@ rLQ+epZplw==
       "comment_on_issue",
       "commit_to_pr",
       "create_issue",
+      "get_pr_diff",
       "hf_hub_info",
       "list_files",
       "memory",
@@ -3114,6 +3168,7 @@ rLQ+epZplw==
     "social-impact",
     "github-bot",
     "hf-hub",
+    "pr-review",
   ]) {
     assert(
       skillNames.includes(expected),
@@ -3132,6 +3187,10 @@ rLQ+epZplw==
   assert(hfHubSkill.content.includes("hf_hub_info"));
   assert(hfHubSkill.content.includes("repo_type"));
   assert(hfHubSkill.content.includes("HuggingFace Hub"));
+  const prReviewSkill = skills.find((s) => s.name === "pr-review")!;
+  assert(prReviewSkill.content.includes("get_pr_diff"));
+  assert(prReviewSkill.content.includes("comment_on_issue"));
+  assert(prReviewSkill.content.includes("missing tests"));
   console.log("Skill discovery passed");
 
   // Slack app manifest validation

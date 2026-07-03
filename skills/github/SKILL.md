@@ -1,6 +1,6 @@
 # github
 
-Use this skill to inspect GitHub repositories, open pull requests, add commits to PRs, and create issues, all from a Slack thread.
+Use this skill to inspect GitHub repositories, review pull request diffs, open PRs, add commits to PRs, and create issues, all from a Slack thread. For a full PR review workflow (diff fetch, context check, and commenting), see `skills/pr-review/SKILL.md`.
 
 All GitHub write tools use short-lived, narrowly-scoped GitHub App tokens when configured; otherwise they fall back to a static `GITHUB_TOKEN`. In either case the actual credential never enters the sandboxed shell.
 
@@ -45,6 +45,18 @@ Use the `comment_on_issue` tool to post an update on an existing issue or pull r
 - `body`: the comment text
 
 The Slack requester and agent trace URL are appended automatically, so every Moon Bot comment is auditable and attributed.
+
+## Reviewing pull request diffs
+
+Use the `get_pr_diff` tool to fetch the changed files and patch previews for a pull request. Provide:
+- `repo`: owner/name
+- `pull_number`: the PR number
+- `max_files`: optional limit (default 10)
+
+This is useful for summarizing changes, checking for missing tests or security issues, and deciding whether to post a review comment. Combine it with `search_code` / `read_file` to inspect related code and `comment_on_issue` to leave feedback.
+
+Example:
+- `get_pr_diff` with `repo: "huggingface/hub"`, `pull_number: 1234`, `max_files: 5`
 
 ## Searching issues and PRs
 
