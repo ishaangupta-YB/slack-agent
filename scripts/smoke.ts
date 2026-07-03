@@ -60,6 +60,7 @@ import { startGitHubBotServer, stopGitHubBotServer } from "../src/github-bot.js"
 import { logSecurityEvent } from "../src/tools/security.js";
 import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
+import { verifyCloudflare } from "./verify-cloudflare.js";
 import { runSlackE2E } from "./slack-e2e.js";
 import { checkSubmission } from "./prepare-submission.js";
 
@@ -5265,6 +5266,79 @@ rLQ+epZplw==
     ),
   );
   console.log("Slack connectivity verification passed");
+
+  // Cloudflare Workers AI verification: confirm the verification script can detect
+  // missing credentials, invalid account IDs, and successful model reachability.
+  const goodCfFetch: typeof fetch = async (_url, _init) => {
+    return new Response(JSON.stringify({ result: { response: "pong" } }), {
+      status: 200,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const missingCfResult = await verifyCloudflare({
+    accountId: "",
+    apiToken: "",
+    model: "@cf/moonshotai/kimi-k2.7-code",
+    fetchImpl: goodCfFetch,
+  });
+  assert.strictEqual(missingCfResult.ok, false);
+  assert(missingCfResult.checks.some((c) => c.name === "env_account_id" && !c.ok));
+  assert(missingCfResult.checks.some((c) => c.name === "env_api_token" && !c.ok));
+
+  const badAccountResult = await verifyCloudflare({
+    accountId: "not-a-valid-id",
+    apiToken: "test-token",
+    model: "@cf/moonshotai/kimi-k2.7-code",
+    fetchImpl: goodCfFetch,
+  });
+  assert.strictEqual(badAccountResult.ok, false);
+  assert(badAccountResult.checks.some((c) => c.name === "env_account_id" && !c.ok));
+
+  const goodCfResult = await verifyCloudflare({
+    accountId: "1234567890abcdef1234567890abcdef",
+    apiToken: "test-token",
+    model: "@cf/moonshotai/kimi-k2.7-code",
+    fallbackModel: "@cf/moonshotai/kimi-k2.6",
+    fetchImpl: goodCfFetch,
+  });
+  assert.strictEqual(goodCfResult.ok, true);
+  assert(goodCfResult.checks.some((c) => c.name === "env_account_id" && c.ok));
+  assert(goodCfResult.checks.some((c) => c.name === "env_api_token" && c.ok));
+  assert(
+    goodCfResult.checks.some(
+      (c) => c.name === "primary_model" && c.ok && c.message.includes("@cf/moonshotai/kimi-k2.7-code"),
+    ),
+  );
+  assert(
+    goodCfResult.checks.some(
+      (c) => c.name === "fallback_model" && c.ok && c.message.includes("@cf/moonshotai/kimi-k2.6"),
+    ),
+  );
+
+  const failingPrimaryFetch: typeof fetch = async (url) => {
+    if (String(url).includes("kimi-k2.6")) {
+      return new Response(JSON.stringify({ result: { response: "pong fallback" } }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(JSON.stringify({ message: "model not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const fallbackCfResult = await verifyCloudflare({
+    accountId: "1234567890abcdef1234567890abcdef",
+    apiToken: "test-token",
+    model: "@cf/moonshotai/kimi-k2.7-code",
+    fallbackModel: "@cf/moonshotai/kimi-k2.6",
+    fetchImpl: failingPrimaryFetch,
+  });
+  assert.strictEqual(fallbackCfResult.ok, false);
+  assert(fallbackCfResult.checks.some((c) => c.name === "primary_model" && !c.ok && c.message.includes("404")));
+  assert(fallbackCfResult.checks.some((c) => c.name === "fallback_model" && c.ok));
+
+  console.log("Cloudflare Workers AI verification passed");
 
   // End-to-end Slack message test: post a message and poll for the bot's reply.
   // The first poll has not seen the bot reply yet; the second poll returns it.
