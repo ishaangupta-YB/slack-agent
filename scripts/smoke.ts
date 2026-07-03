@@ -3521,6 +3521,7 @@ rLQ+epZplw==
     "github-bot",
     "hf-hub",
     "pr-review",
+    "moon-bot",
   ]) {
     assert(
       skillNames.includes(expected),
@@ -3543,6 +3544,12 @@ rLQ+epZplw==
   assert(prReviewSkill.content.includes("get_pr_diff"));
   assert(prReviewSkill.content.includes("comment_on_issue"));
   assert(prReviewSkill.content.includes("missing tests"));
+  const moonBotSkill = skills.find((s) => s.name === "moon-bot")!;
+  assert(moonBotSkill.content.includes("src/slack.ts"));
+  assert(moonBotSkill.content.includes("src/agent.ts"));
+  assert(moonBotSkill.content.includes("src/tools/registry.ts"));
+  assert(moonBotSkill.content.includes("Cloudflare Workers AI"));
+  assert(moonBotSkill.content.includes("HuggingFace Bucket"));
   console.log("Skill discovery passed");
 
   // Slack app manifest validation
