@@ -92,6 +92,8 @@ async function handleIssueComment(payload: GitHubWebhookPayload): Promise<string
 
   if (!repo || !issue || !comment || !sender) return "ignored: missing payload fields";
 
+  if (payload.action !== "created") return `ignored: issue_comment action is ${payload.action ?? "unknown"}`;
+
   if (!isMentioned(comment.body)) return "ignored: no @moon-bot mention";
 
   if (!isAllowedRepo(repo)) return `ignored: ${repo} is not in the allowlist`;
@@ -142,6 +144,8 @@ async function handlePullRequestReviewComment(
   const sender = payload.sender?.login;
 
   if (!repo || !pr || !comment || !sender) return "ignored: missing payload fields";
+
+  if (payload.action !== "created") return `ignored: pull_request_review_comment action is ${payload.action ?? "unknown"}`;
 
   if (!isMentioned(comment.body)) return "ignored: no @moon-bot mention";
   if (!isAllowedRepo(repo)) return `ignored: ${repo} is not in the allowlist`;

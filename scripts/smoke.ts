@@ -1864,6 +1864,57 @@ rLQ+epZplw==
   const noMentionJson = (await noMention.json()) as { result: string };
   assert(noMentionJson.result.includes("no @moon-bot mention"));
 
+  const editedIssueCommentBody = {
+    action: "edited",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    issue: { number: 42, user: { login: "gh-owner" } },
+    comment: { body: "@moon-bot edited mention", user: { login: "alice" }, id: 1003 },
+    sender: { login: "alice" },
+  };
+  const editedIssueComment = await sendWebhook(
+    "issue_comment",
+    editedIssueCommentBody,
+    makeSignature(JSON.stringify(editedIssueCommentBody)),
+  );
+  assert.strictEqual(editedIssueComment.status, 200);
+  const editedIssueCommentJson = (await editedIssueComment.json()) as { result: string };
+  assert(editedIssueCommentJson.result.includes("ignored"), "Expected edited issue_comment to be ignored");
+  assert(editedIssueCommentJson.result.includes("edited"), "Expected ignored reason to mention edited action");
+
+  const deletedIssueCommentBody = {
+    action: "deleted",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    issue: { number: 42, user: { login: "gh-owner" } },
+    comment: { body: "@moon-bot deleted mention", user: { login: "alice" }, id: 1004 },
+    sender: { login: "alice" },
+  };
+  const deletedIssueComment = await sendWebhook(
+    "issue_comment",
+    deletedIssueCommentBody,
+    makeSignature(JSON.stringify(deletedIssueCommentBody)),
+  );
+  assert.strictEqual(deletedIssueComment.status, 200);
+  const deletedIssueCommentJson = (await deletedIssueComment.json()) as { result: string };
+  assert(deletedIssueCommentJson.result.includes("ignored"), "Expected deleted issue_comment to be ignored");
+  assert(deletedIssueCommentJson.result.includes("deleted"), "Expected ignored reason to mention deleted action");
+
+  const editedReviewCommentBody = {
+    action: "edited",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    pull_request: { number: 7, user: { login: "gh-owner" } },
+    comment: { body: "@moon-bot edited review comment", user: { login: "alice" }, id: 1005 },
+    sender: { login: "alice" },
+  };
+  const editedReviewComment = await sendWebhook(
+    "pull_request_review_comment",
+    editedReviewCommentBody,
+    makeSignature(JSON.stringify(editedReviewCommentBody)),
+  );
+  assert.strictEqual(editedReviewComment.status, 200);
+  const editedReviewCommentJson = (await editedReviewComment.json()) as { result: string };
+  assert(editedReviewCommentJson.result.includes("ignored"), "Expected edited pull_request_review_comment to be ignored");
+  assert(editedReviewCommentJson.result.includes("edited"), "Expected ignored reason to mention edited action");
+
   let ghBotCommentBody = "";
   const originalFetchForGhBot = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
