@@ -145,6 +145,8 @@ npm run verify-slack
 npm start
 ```
 
+`npm run verify-slack` also compares the installed bot token's actual scopes with the scopes declared in `manifest.json`, catching stale app installs before the bot starts Socket Mode.
+
 Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
 
 Or use Docker:

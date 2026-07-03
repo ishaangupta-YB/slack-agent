@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { readFileSync } from "node:fs";
 import { WebClient } from "@slack/web-api";
 import { cfg } from "../src/config.js";
 
@@ -15,6 +16,75 @@ export interface VerifyResult {
 
 function looksLikeTestToken(token: string): boolean {
   return token.includes("-test") || token.startsWith("xoxb-0000000") || token.startsWith("xapp-0000000");
+}
+
+/**
+ * Load the bot OAuth scopes declared in the local manifest.json. These are the
+ * scopes the app should have installed in the workspace.
+ */
+function loadManifestBotScopes(): string[] {
+  try {
+    const raw = readFileSync("manifest.json", "utf-8");
+    const manifest = JSON.parse(raw) as {
+      oauth_config?: { scopes?: { bot?: string[] } };
+    };
+    return manifest.oauth_config?.scopes?.bot ?? [];
+  } catch {
+    return [];
+  }
+}
+
+function compareScopes(actual: string[], expected: string[]): { missing: string[]; extra: string[] } {
+  const missing = expected.filter((s) => !actual.includes(s));
+  const extra = actual.filter((s) => !expected.includes(s));
+  return { missing, extra };
+}
+
+/**
+ * Compare the bot token's actual granted scopes with the scopes required by
+ * manifest.json. This catches stale app installs after the manifest has been
+ * updated, which is a common source of Slack runtime failures.
+ */
+async function verifyManifestScopes(client: WebClient): Promise<VerifyCheck> {
+  const expected = loadManifestBotScopes();
+  if (expected.length === 0) {
+    return { name: "manifest_scopes", ok: false, message: "Could not read bot scopes from manifest.json" };
+  }
+
+  let result: Awaited<ReturnType<typeof client.auth.test>>;
+  try {
+    result = await client.auth.test();
+  } catch (err) {
+    return {
+      name: "manifest_scopes",
+      ok: false,
+      message: err instanceof Error ? err.message : String(err),
+    };
+  }
+
+  const anyResult = result as { ok?: boolean; error?: string; scopes?: string[] };
+  if (anyResult.ok === false) {
+    return { name: "manifest_scopes", ok: false, message: anyResult.error ?? "auth.test returned ok=false" };
+  }
+
+  const actual = anyResult.scopes ?? [];
+  const { missing, extra } = compareScopes(actual, expected);
+  if (missing.length > 0 || extra.length > 0) {
+    const parts: string[] = [];
+    if (missing.length > 0) parts.push(`missing: ${missing.join(", ")}`);
+    if (extra.length > 0) parts.push(`extra: ${extra.join(", ")}`);
+    return {
+      name: "manifest_scopes",
+      ok: false,
+      message: `Installed scopes do not match manifest.json (${parts.join("; ")}) — reinstall the app from manifest.json`,
+    };
+  }
+
+  return {
+    name: "manifest_scopes",
+    ok: true,
+    message: `Installed bot scopes match manifest.json (${actual.length} scope(s))`,
+  };
 }
 
 async function callSlack<T>(
@@ -95,6 +165,10 @@ export async function verifySlack(clients?: VerifyClients): Promise<VerifyResult
       },
     ),
   );
+
+  // Verify the installed bot token grants exactly the scopes declared in
+  // manifest.json. This catches stale installs after the manifest is updated.
+  checks.push(await verifyManifestScopes(botClient));
 
   // chat.postMessage to a known channel validates chat:write. We only do this
   // when TEST_CHANNEL is set so the check is opt-in and non-spammy.

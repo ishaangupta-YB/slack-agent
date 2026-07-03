@@ -4155,9 +4155,17 @@ rLQ+epZplw==
   console.log("Emoji reactions passed");
 
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.
+  const manifestBotScopes: string[] = JSON.parse(readFileSync("manifest.json", "utf-8"))?.oauth_config
+    ?.scopes?.bot ?? [];
   const goodMockClient = {
     auth: {
-      test: async () => ({ ok: true, user: "moonbot", user_id: "U123", team: "demo" }),
+      test: async () => ({
+        ok: true,
+        user: "moonbot",
+        user_id: "U123",
+        team: "demo",
+        scopes: manifestBotScopes,
+      }),
     },
     conversations: {
       list: async () => ({ ok: true, channels: [{ id: "C1", name: "general" }] }),
@@ -4176,6 +4184,7 @@ rLQ+epZplw==
   assert(goodResult.checks.some((c) => c.name === "bot_auth" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "app_auth" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "channels_read" && c.ok));
+  assert(goodResult.checks.some((c) => c.name === "manifest_scopes" && c.ok));
 
   // With a failed bot auth check, the verification reports the failure but the independent
   // Socket Mode app-token check still runs and can pass.
@@ -4196,6 +4205,32 @@ rLQ+epZplw==
   assert.strictEqual(badResult.ok, false);
   assert(badResult.checks.some((c) => c.name === "bot_auth" && !c.ok));
   assert(badResult.checks.some((c) => c.name === "app_auth" && c.ok));
+
+  // A token installed with missing scopes should fail the manifest scope check.
+  const missingScopeClient = {
+    auth: {
+      test: async () => ({
+        ok: true,
+        user: "moonbot",
+        user_id: "U123",
+        team: "demo",
+        scopes: manifestBotScopes.filter((s) => s !== "chat:write"),
+      }),
+    },
+    conversations: {
+      list: async () => ({ ok: true, channels: [{ id: "C1", name: "general" }] }),
+    },
+    chat: {
+      postMessage: async () => ({ ok: true }),
+    },
+  } as unknown as WebClient;
+  const missingScopeResult = await verifySlack({ bot: missingScopeClient, app: goodAppClient });
+  assert.strictEqual(missingScopeResult.ok, false);
+  assert(
+    missingScopeResult.checks.some(
+      (c) => c.name === "manifest_scopes" && !c.ok && c.message.includes("chat:write"),
+    ),
+  );
   console.log("Slack connectivity verification passed");
 
   // End-to-end Slack message test: post a message and poll for the bot's reply.
