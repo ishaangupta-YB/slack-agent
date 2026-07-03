@@ -543,6 +543,10 @@ export async function handleMoonbotCommand({
       text:
         `*Moon Bot runtime metrics* 📊\n` +
         `• Uptime: ${formatDuration(m.uptimeSeconds)}\n` +
+        `• Messages handled: ${m.messagesHandled.toLocaleString()}\n` +
+        `• LLM calls: ${m.llmCalls.toLocaleString()}\n` +
+        `• Tool calls: ${m.toolCalls.toLocaleString()}\n` +
+        `• Tool errors: ${m.toolErrors.toLocaleString()}\n` +
         `• Sessions: ${m.sessions}\n` +
         `• Thread map entries: ${m.threadMapEntries}\n` +
         `• Memory entries: ${m.memoryEntries}\n` +

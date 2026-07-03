@@ -72,6 +72,10 @@ export function renderIndexPage({ metrics, sessions, responses }: IndexPageOptio
   <p class="subhead">Session traces, response files, and runtime metrics</p>
 
   <div class="cards">
+    <div class="card"><div class="value">${metrics.messagesHandled}</div><div class="label">Messages</div></div>
+    <div class="card"><div class="value">${metrics.llmCalls}</div><div class="label">LLM Calls</div></div>
+    <div class="card"><div class="value">${metrics.toolCalls}</div><div class="label">Tool Calls</div></div>
+    <div class="card"><div class="value">${metrics.toolErrors}</div><div class="label">Tool Errors</div></div>
     <div class="card"><div class="value">${metrics.sessions}</div><div class="label">Sessions</div></div>
     <div class="card"><div class="value">${metrics.responseArtifacts}</div><div class="label">Responses</div></div>
     <div class="card"><div class="value">${metrics.threadMapEntries}</div><div class="label">Thread Maps</div></div>

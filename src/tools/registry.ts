@@ -21,6 +21,7 @@ import { hfHubInfoTool } from "./hf-hub.js";
 import { truncateOutput } from "./types.js";
 import { closeMcpClients, initializeMcpClients, parseMcpServersConfig } from "../mcp/client.js";
 import { cfg } from "../config.js";
+import { incrementMetrics } from "../storage/metrics.js";
 
 const staticTools: Tool[] = [
   bashTool,
@@ -107,6 +108,7 @@ export async function runToolCall(
 ): Promise<ToolResult> {
   const tool = getTool(call.tool, tier, environment);
   if (!tool) {
+    incrementMetrics("toolErrors");
     return {
       tool: call.tool,
       params: call.params,
@@ -117,6 +119,7 @@ export async function runToolCall(
 
   const parse = tool.params.safeParse(call.params);
   if (!parse.success) {
+    incrementMetrics("toolErrors");
     return {
       tool: call.tool,
       params: call.params,
@@ -125,6 +128,7 @@ export async function runToolCall(
     };
   }
 
+  incrementMetrics("toolCalls");
   try {
     const raw = await tool.run(parse.data);
     return {
@@ -133,6 +137,7 @@ export async function runToolCall(
       result: truncateOutput(raw, maxOutputChars),
     };
   } catch (err) {
+    incrementMetrics("toolErrors");
     return {
       tool: call.tool,
       params: call.params,

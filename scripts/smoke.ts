@@ -36,6 +36,7 @@ import {
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
 import { feedbackLogPath } from "../src/feedback.js";
 import { startBucketServer, stopBucketServer, getActiveBucketServer } from "../src/storage/server.js";
+import { getCounter } from "../src/storage/metrics.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { getSessionFilenameByThreadKey, handleMessage, prepareLlmMessages, readSessionMessages } from "../src/agent.js";
@@ -1677,6 +1678,33 @@ rLQ+epZplw==
   clearChatOverride();
   console.log("End-to-end ReAct agent loop passed");
 
+  // Live operational counters: handleMessage and tool execution update in-memory counters.
+  const counterThreadKey = `C_COUNTERS:${randomUUID().slice(0, 8)}`;
+  const beforeMessages = getCounter("messagesHandled");
+  const beforeLlm = getCounter("llmCalls");
+  const beforeToolCalls = getCounter("toolCalls");
+  const beforeToolErrors = getCounter("toolErrors");
+
+  setChatOverride(async () => "Counter test reply.");
+  await handleMessage(counterThreadKey, "counter hello", "100.000", "U_COUNTERS");
+  clearChatOverride();
+
+  const counterHelpResult = await runToolCall({ tool: "moon_help", params: { topic: "general" } }, 8_000, "basic");
+  assert(counterHelpResult.result.includes("Moon Bot"), "moon_help should return help text for counter test");
+
+  const counterErrorResult = await runToolCall(
+    { tool: "write_file", params: { path: "test.txt", content: "x" } },
+    8_000,
+    "basic",
+  );
+  assert(counterErrorResult.error === true, "write_file should be unavailable for basic tier in counter test");
+
+  assert.strictEqual(getCounter("messagesHandled"), beforeMessages + 1, "messagesHandled counter should increment");
+  assert.strictEqual(getCounter("llmCalls"), beforeLlm + 1, "llmCalls counter should increment");
+  assert.strictEqual(getCounter("toolCalls"), beforeToolCalls + 1, "toolCalls counter should increment");
+  assert.strictEqual(getCounter("toolErrors"), beforeToolErrors + 1, "toolErrors counter should increment");
+  console.log("Live operational counters passed");
+
   // Live assistant status updates: the ReAct loop should report which tools are
   // being executed so the Slack AI Assistant panel can surface progress.
   setChatOverride(async (messages) => {
@@ -2316,7 +2344,15 @@ rLQ+epZplw==
       feedbackEntries: number;
       auditEntries: number;
       responseArtifacts: number;
+      messagesHandled: number;
+      llmCalls: number;
+      toolCalls: number;
+      toolErrors: number;
     };
+    assert(typeof initialMetrics.messagesHandled === "number", "metrics should include messagesHandled counter");
+    assert(typeof initialMetrics.llmCalls === "number", "metrics should include llmCalls counter");
+    assert(typeof initialMetrics.toolCalls === "number", "metrics should include toolCalls counter");
+    assert(typeof initialMetrics.toolErrors === "number", "metrics should include toolErrors counter");
     assert(typeof initialMetrics.uptimeSeconds === "number" && initialMetrics.uptimeSeconds >= 0);
     assert(typeof initialMetrics.sessions === "number");
 
@@ -2348,6 +2384,8 @@ rLQ+epZplw==
     assert(indexBody.includes(`/trace/${encodeURIComponent(sessionFilename)}`), "index page should link to trace viewer");
     assert(indexBody.includes("/responses/"), "index page should link to response artifacts");
     assert(indexBody.includes("/metrics"), "index page should link to metrics endpoint");
+    assert(indexBody.includes("LLM Calls"), "index page should display live LLM call counter");
+    assert(indexBody.includes("Tool Calls"), "index page should display live tool call counter");
     console.log("Bucket server index page passed");
   } finally {
     stopBucketServer();
@@ -3278,6 +3316,10 @@ rLQ+epZplw==
   const metricsText = slashResponses[0].text ?? "";
   assert(metricsText.includes("Moon Bot runtime metrics"), "metrics command should include header");
   assert(metricsText.includes("Uptime:"), "metrics command should list uptime");
+  assert(metricsText.includes("Messages handled:"), "metrics command should list messagesHandled counter");
+  assert(metricsText.includes("LLM calls:"), "metrics command should list llmCalls counter");
+  assert(metricsText.includes("Tool calls:"), "metrics command should list toolCalls counter");
+  assert(metricsText.includes("Tool errors:"), "metrics command should list toolErrors counter");
   assert(metricsText.includes("Sessions:"), "metrics command should list sessions");
   assert(metricsText.includes("Thread map entries:"), "metrics command should list thread map entries");
   assert(metricsText.includes("Memory entries:"), "metrics command should list memory entries");

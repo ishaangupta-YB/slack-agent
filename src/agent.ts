@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, appendFileSync, rmS
 import { join } from "node:path";
 import { cfg } from "./config.js";
 import { bucket } from "./storage/bucket.js";
+import { incrementMetrics } from "./storage/metrics.js";
 import { chat, type Message as LlmMessage } from "./llm/cloudflare.js";
 import { loadSkills, buildSkillPrompt } from "./skills/loader.js";
 import {
@@ -278,6 +279,7 @@ async function runToolLoop(
   const maxIterations = 10;
 
   for (let i = 0; i < maxIterations; i++) {
+    incrementMetrics("llmCalls");
     const reply = await chat(messages);
     const { calls, errors } = parseToolCallsWithErrors(reply);
 
@@ -453,6 +455,8 @@ export async function handleMessage(
     if (entry && messageTs <= entry.lastProcessedMessageTs) {
       return { text: "", sessionFilename: entry.sessionFilename, skipped: true };
     }
+
+    incrementMetrics("messagesHandled");
 
     if (!entry) {
       entry = {

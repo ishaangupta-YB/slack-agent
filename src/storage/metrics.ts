@@ -10,6 +10,34 @@ export interface Metrics {
   feedbackEntries: number;
   auditEntries: number;
   responseArtifacts: number;
+  messagesHandled: number;
+  llmCalls: number;
+  toolCalls: number;
+  toolErrors: number;
+}
+
+export type CounterName = "messagesHandled" | "llmCalls" | "toolCalls" | "toolErrors";
+
+const counters: Record<CounterName, number> = {
+  messagesHandled: 0,
+  llmCalls: 0,
+  toolCalls: 0,
+  toolErrors: 0,
+};
+
+export function incrementMetrics(name: CounterName, delta = 1): void {
+  counters[name] += delta;
+}
+
+export function getCounter(name: CounterName): number {
+  return counters[name];
+}
+
+export function resetMetricsCounters(): void {
+  counters.messagesHandled = 0;
+  counters.llmCalls = 0;
+  counters.toolCalls = 0;
+  counters.toolErrors = 0;
 }
 
 function countFiles(dir: string, ext: string): number {
@@ -62,5 +90,9 @@ export function getMetrics(): Metrics {
     feedbackEntries: countJsonlLines(cfg.feedback.logFile),
     auditEntries: countJsonlLines(cfg.security.auditLogFile),
     responseArtifacts: countFiles(join(cfg.storage.bucketDir, "responses"), ".md"),
+    messagesHandled: counters.messagesHandled,
+    llmCalls: counters.llmCalls,
+    toolCalls: counters.toolCalls,
+    toolErrors: counters.toolErrors,
   };
 }
