@@ -48,6 +48,26 @@ function containsShellControlCharacters(command: string): boolean {
   );
 }
 
+/**
+ * Detect shell metacharacters that appear outside of single or double quotes.
+ * This prevents command chaining (|, ;), redirections (> <), and backgrounding
+ * (&) while still allowing characters like | inside quoted arguments.
+ */
+function hasUnquotedShellMeta(command: string, metas: string[]): boolean {
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+  for (const ch of command) {
+    if (ch === "'" && !inDoubleQuote) {
+      inSingleQuote = !inSingleQuote;
+    } else if (ch === '"' && !inSingleQuote) {
+      inDoubleQuote = !inDoubleQuote;
+    } else if (!inSingleQuote && !inDoubleQuote && metas.includes(ch)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export type BashExecutor = (
   command: string,
   args: string[],
@@ -107,7 +127,7 @@ function runCommand(command: string, args: string[], options: { cwd: string; tim
 export const bashTool: Tool = {
   name: "bash",
   description:
-    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single simple commands only; compound operators, command substitution (`...` or $(...)), and newlines are rejected. Suspicious commands are blocked and logged. When BASH_TIER_USERS is configured, commands run under the Linux user assigned to the caller's access tier via su -l.",
+    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single simple commands only; compound operators, pipes, redirections, backgrounding, command substitution (`...` or $(...)), and newlines are rejected. Suspicious commands are blocked and logged. When BASH_TIER_USERS is configured, commands run under the Linux user assigned to the caller's access tier via su -l.",
   params,
   tier: "basic",
   run(input) {
@@ -118,6 +138,9 @@ export const bashTool: Tool = {
     const command = input.command.trim();
     if (containsShellControlCharacters(command)) {
       return "Error: compound commands, command substitution, or multiline input are not allowed. Run one simple command at a time.";
+    }
+    if (hasUnquotedShellMeta(command, ["|", ">", "<", "&"])) {
+      return "Error: pipes, redirections, and background operators are not allowed unless quoted. Run one simple command at a time.";
     }
     if (BLOCKED_COMMANDS.some((re) => re.test(command))) {
       logSecurityEvent({
