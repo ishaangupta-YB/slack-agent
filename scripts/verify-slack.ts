@@ -108,6 +108,40 @@ async function callSlack<T>(
   }
 }
 
+/**
+ * Verify that the app-level token can open a Socket Mode connection.
+ *
+ * This calls `apps.connections.open`, which is exactly what Bolt does under the
+ * hood to obtain a WebSocket URL. If the call succeeds, both the app token's
+ * `connections:write` scope and the app's Socket Mode setting are confirmed.
+ */
+async function verifySocketModeConnection(client: WebClient): Promise<VerifyCheck> {
+  try {
+    const result = await client.apps.connections.open();
+    const anyResult = result as { ok?: boolean; error?: string; url?: string };
+    if (anyResult.ok === false) {
+      const error = anyResult.error ?? "apps.connections.open returned ok=false";
+      let hint = "";
+      if (error === "missing_scope") {
+        hint = " — the app-level token must be granted the connections:write scope";
+      } else if (error === "not_allowed") {
+        hint = " — Socket Mode must be enabled for this Slack app";
+      }
+      return { name: "socket_mode", ok: false, message: `${error}${hint}` };
+    }
+    return {
+      name: "socket_mode",
+      ok: true,
+      message: anyResult.url
+        ? "Socket Mode connection URL generated successfully"
+        : "Socket Mode connection check succeeded",
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { name: "socket_mode", ok: false, message };
+  }
+}
+
 export interface VerifyClients {
   bot?: WebClient;
   app?: WebClient;
@@ -152,6 +186,11 @@ export async function verifySlack(clients?: VerifyClients): Promise<VerifyResult
         ` in workspace ${r.team ?? "unknown"}`,
     ),
   );
+
+  // Verify the app token can actually open a Socket Mode connection. This is
+  // the same call Bolt makes at startup, so success here means Socket Mode
+  // will connect successfully.
+  checks.push(await verifySocketModeConnection(appClient));
 
   // conversations.list validates the channels:read scope, which is required
   // for search and for the deploy monitor to resolve channel IDs.

@@ -4178,11 +4178,17 @@ rLQ+epZplw==
     auth: {
       test: async () => ({ ok: true, app_id: "A123", team: "demo" }),
     },
+    apps: {
+      connections: {
+        open: async () => ({ ok: true, url: "wss://example.com/socket-mode-fake-url" }),
+      },
+    },
   } as unknown as WebClient;
   const goodResult = await verifySlack({ bot: goodMockClient, app: goodAppClient });
   assert.strictEqual(goodResult.ok, true);
   assert(goodResult.checks.some((c) => c.name === "bot_auth" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "app_auth" && c.ok));
+  assert(goodResult.checks.some((c) => c.name === "socket_mode" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "channels_read" && c.ok));
   assert(goodResult.checks.some((c) => c.name === "manifest_scopes" && c.ok));
 
@@ -4200,11 +4206,17 @@ rLQ+epZplw==
     auth: {
       test: async () => ({ ok: true, app_id: "A123", team: "demo" }),
     },
+    apps: {
+      connections: {
+        open: async () => ({ ok: true, url: "wss://example.com/socket-mode-fake-url" }),
+      },
+    },
   } as unknown as WebClient;
   const badResult = await verifySlack({ bot: badMockClient, app: badAppClient });
   assert.strictEqual(badResult.ok, false);
   assert(badResult.checks.some((c) => c.name === "bot_auth" && !c.ok));
   assert(badResult.checks.some((c) => c.name === "app_auth" && c.ok));
+  assert(badResult.checks.some((c) => c.name === "socket_mode" && c.ok));
 
   // A token installed with missing scopes should fail the manifest scope check.
   const missingScopeClient = {
@@ -4229,6 +4241,28 @@ rLQ+epZplw==
   assert(
     missingScopeResult.checks.some(
       (c) => c.name === "manifest_scopes" && !c.ok && c.message.includes("chat:write"),
+    ),
+  );
+
+  // An app token without the connections:write scope cannot open Socket Mode.
+  const missingSocketModeAppClient = {
+    auth: {
+      test: async () => ({ ok: true, app_id: "A123", team: "demo" }),
+    },
+    apps: {
+      connections: {
+        open: async () => ({ ok: false, error: "missing_scope" }),
+      },
+    },
+  } as unknown as WebClient;
+  const missingSocketModeResult = await verifySlack({
+    bot: goodMockClient,
+    app: missingSocketModeAppClient,
+  });
+  assert.strictEqual(missingSocketModeResult.ok, false);
+  assert(
+    missingSocketModeResult.checks.some(
+      (c) => c.name === "socket_mode" && !c.ok && c.message.includes("connections:write"),
     ),
   );
   console.log("Slack connectivity verification passed");
