@@ -2,7 +2,7 @@ import { createServer, type Server, type IncomingMessage, type ServerResponse } 
 
 let activeServer: Server | undefined;
 import { readFileSync, existsSync, readdirSync } from "node:fs";
-import { join, normalize, resolve } from "node:path";
+import { join, normalize, resolve, sep } from "node:path";
 import { cfg } from "../config.js";
 import { renderSessionTrace, renderTraceError } from "./trace-viewer.js";
 import { getMetrics } from "./metrics.js";
@@ -67,6 +67,11 @@ function healthCheck(): { status: string; bucketDir: string; bucketReady: boolea
   };
 }
 
+function insideBaseDir(safePath: string, base: string): boolean {
+  const baseWithSep = base.endsWith(sep) ? base : base + sep;
+  return safePath === base || safePath.startsWith(baseWithSep);
+}
+
 function listArtifacts(dir: string, ext: string): string[] {
   if (!existsSync(dir)) return [];
   try {
@@ -127,7 +132,7 @@ export function startBucketServer(): Promise<Server> {
           }
           const sessionPath = join(sessionsDir, filename);
           const safePath = normalize(sessionPath);
-          if (!safePath.startsWith(sessionsDir)) {
+          if (!insideBaseDir(safePath, sessionsDir)) {
             serveError(res, 403, "Forbidden");
             return;
           }
@@ -143,7 +148,7 @@ export function startBucketServer(): Promise<Server> {
         }
 
         const safePath = normalize(join(baseDir, rawPath));
-        if (!safePath.startsWith(baseDir)) {
+        if (!insideBaseDir(safePath, baseDir)) {
           serveError(res, 403, "Forbidden");
           return;
         }

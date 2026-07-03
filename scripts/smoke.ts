@@ -1,6 +1,6 @@
 import assert from "node:assert";
 import { createHmac, generateKeyPairSync, randomUUID } from "node:crypto";
-import { createServer } from "node:http";
+import { createServer, request } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
@@ -71,6 +71,26 @@ function clean() {
   if (existsSync(process.env.BUCKET_DIR!)) rmSync(process.env.BUCKET_DIR!, { recursive: true, force: true });
   if (existsSync(process.env.SESSIONS_DIR!)) rmSync(process.env.SESSIONS_DIR!, { recursive: true, force: true });
   if (existsSync(".moon-bot-smoke-write.txt")) rmSync(".moon-bot-smoke-write.txt", { force: true });
+}
+
+function httpGetRaw(port: number, path: string): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      { host: "localhost", port, path, method: "GET" },
+      (res) => {
+        let data = "";
+        res.setEncoding("utf8");
+        res.on("data", (chunk) => {
+          data += chunk;
+        });
+        res.on("end", () => {
+          resolve({ status: res.statusCode ?? 0, body: data });
+        });
+      },
+    );
+    req.on("error", reject);
+    req.end();
+  });
 }
 
 async function main() {
@@ -2871,6 +2891,16 @@ rLQ+epZplw==
       !traceTraversalBody.includes("root:"),
       "trace traversal should not leak arbitrary files",
     );
+
+    // Static file route must reject requests that normalize outside the bucket.
+    // fetch() and friends collapse dot-segments before sending, so use a raw HTTP request.
+    const staticTraversalRes = await httpGetRaw(cfg.storage.bucketHttpPort, "/../bucket-smoke-escape.txt");
+    assert.strictEqual(staticTraversalRes.status, 403, "static file traversal should return 403");
+    assert(
+      !staticTraversalRes.body.includes("bucket-smoke-escape"),
+      "static file traversal should not echo the requested filename",
+    );
+    console.log("Bucket server traversal guard passed");
 
     const optionsRes = await fetch(`${baseUrl}/responses/smoke.md`, { method: "OPTIONS" });
     assert.strictEqual(optionsRes.status, 204);
