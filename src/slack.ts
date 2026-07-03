@@ -33,6 +33,7 @@ import { searchSlackTool } from "./tools/slack-search.js";
 import { safeSay } from "./slack-delivery.js";
 import { getDemoMessage } from "./demo.js";
 import { getMetrics } from "./storage/metrics.js";
+import { downloadSlackFiles, formatSlackFiles, type SlackFile } from "./slack-files.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
@@ -61,6 +62,8 @@ interface MessageEventShape {
   action_token?: string;
   /** Slack message subtype (e.g. message_changed, message_deleted). Non-chat subtypes are ignored. */
   subtype?: string;
+  /** File attachments shared with the message (requires the files:read scope). */
+  files?: SlackFile[];
 }
 
 function getThreadKey(event: MessageEventShape): string {
@@ -217,14 +220,25 @@ async function handleIncomingMessage({
   const botUserId = await ensureBotUserId(client);
   const cleanText = stripBotMention(text, botUserId);
 
+  // Download any text-like file attachments and append their contents as context
+  // so users can ask questions about logs, CSVs, code snippets, etc. shared in Slack.
+  let fileContext = "";
+  if (event.files && event.files.length > 0) {
+    const files = await downloadSlackFiles(client, event.files);
+    fileContext = formatSlackFiles(files);
+  }
+
+  const prompt = cleanText.trim() + fileContext;
+
   // Ignore messages that contain no usable text after stripping the bot mention
-  // (e.g. a bare @-mention, an emoji-only message, or a file share).
-  if (!cleanText.trim()) return;
+  // and no readable file attachments (e.g. a bare @-mention, an emoji-only message,
+  // or a binary-only file share).
+  if (!prompt.trim()) return;
 
   try {
     const { text: reply, sessionFilename, skipped } = await runWithToolContext(
       { actionToken, channelId: channel, threadKey, userId },
-      () => handleMessage(threadKey, cleanText.trim(), ts, userId, userEmail, "slack", onToolStatus),
+      () => handleMessage(threadKey, prompt.trim(), ts, userId, userEmail, "slack", onToolStatus),
     );
     if (skipped) return;
     const { responseUrl, sessionUrl, traceUrl } = await uploadArtifacts(
@@ -290,6 +304,7 @@ async function routeEvent({
   const channelType = (event as { channel_type?: string }).channel_type;
   const actionToken = (event as { action_token?: string }).action_token;
   const subtype = (event as { subtype?: string }).subtype;
+  const files = (event as { files?: SlackFile[] }).files;
 
   await handleIncomingMessage({
     event: {
@@ -302,6 +317,7 @@ async function routeEvent({
       channel_type: channelType,
       action_token: actionToken,
       subtype,
+      files,
     },
     say,
     client,
@@ -396,6 +412,7 @@ const moonAssistant = new Assistant({
     const botId = (event as { bot_id?: string }).bot_id;
     const actionToken = (event as { action_token?: string }).action_token;
     const subtype = (event as { subtype?: string }).subtype;
+    const files = (event as { files?: SlackFile[] }).files;
 
     try {
       await handleIncomingMessage({
@@ -409,6 +426,7 @@ const moonAssistant = new Assistant({
           channel_type: "im",
           action_token: actionToken,
           subtype,
+          files,
         },
         say,
         client,

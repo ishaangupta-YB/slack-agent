@@ -23,6 +23,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/moonbot audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
+- **File attachments** — share text files, logs, CSVs, JSON, or code snippets in a thread and Moon Bot will read them as context (requires the `files:read` scope).
 - **Inline feedback + reset** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. Users can also react to any Moon Bot message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
 - **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
 
@@ -167,6 +168,8 @@ npm run slack-e2e              # post a test message and verify Moon Bot replies
 | `SLACK_USER_TOKEN` | no | User token (`xoxp-...`) for Real-Time Search without an action_token |
 | `SLACK_SAY_RETRIES` | no | Retries for transient Slack API errors when posting messages (default: 2) |
 | `SLACK_SAY_RETRY_BASE_MS` | no | Base backoff for Slack message retries in ms (default: 1000) |
+| `SLACK_MAX_FILE_ATTACHMENTS` | no | Number of text-like file attachments to read per Slack message (default: 3, requires `files:read` scope) |
+| `SLACK_MAX_FILE_BYTES` | no | Maximum size in bytes of a Slack file attachment to include in the prompt (default: 1048576) |
 | `AGENT_MAX_CONTEXT_MESSAGES` | no | Max messages sent to the LLM per turn (default: `0` = unlimited); system prompt is always preserved and tool-call/observation pairs are never split |
 | `GITHUB_TOKEN` / `GITHUB_APP_*` | no | GitHub read/write; App auth recommended for PRs |
 | `PLAUSIBLE_API_KEY` | no | Plausible analytics |
@@ -222,6 +225,7 @@ Try these in Slack to show off the core tracks:
 - `Open a draft PR in my-org/my-repo that adds a hello-world script` — demonstrates code + GitHub + AI.
 - `What is my current access tier and which integrations are enabled?` — demonstrates status + tiering.
 - `What skills do you have?` — demonstrates discoverability + help system.
+- Upload a `.log` or `.txt` file and ask `@Moon Bot summarize this file` — demonstrates Slack file attachment reading.
 
 ---
 

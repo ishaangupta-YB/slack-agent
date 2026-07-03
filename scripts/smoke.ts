@@ -2958,6 +2958,106 @@ rLQ+epZplw==
   });
   assert.strictEqual(routingCalls.length, 0, "bare @-mention without text should not trigger a reply");
 
+  // 8) Text-like Slack file attachments are downloaded and appended to the user
+  //    prompt so users can ask about logs, CSVs, or code shared in a thread. We
+  //    use a one-on-one DM so no @-mention is required.
+  const fileThreadKey = "DFILE";
+  const fileContent = "ERROR: connection timeout at 2026-07-01T12:00:00Z";
+  const originalFetchForFiles = globalThis.fetch;
+  app.client.files.info = async ({ file }: { file: string }) => {
+    assert.strictEqual(file, "F12345", "files.info should be called with the attached file ID");
+    return {
+      ok: true,
+      file: {
+        id: "F12345",
+        name: "app.log",
+        title: "Application log",
+        mimetype: "text/plain",
+        size: fileContent.length,
+        url_private: "https://files.slack.com/files-pri/T1-F12345/app.log",
+      },
+    } as never;
+  };
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("files.slack.com/files-pri/T1-F12345/app.log")) {
+      return new Response(fileContent, { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+    return originalFetchForFiles(input);
+  }) as typeof fetch;
+
+  setChatOverride(async () => "I see the attached log file.");
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: fileThreadKey,
+        ts: "1777000014.000000",
+        user: "U1",
+        text: "What does this log say?",
+        files: [
+          {
+            id: "F12345",
+            name: "app.log",
+            mimetype: "text/plain",
+            size: fileContent.length,
+          },
+        ],
+      },
+      event_ts: "1234567890.000007",
+    },
+    ack: async () => {},
+  });
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForFiles;
+  const fileSession = await getSessionFilenameByThreadKey(fileThreadKey);
+  assert(fileSession, "message with file attachment should create an active session");
+  const fileSessionMessages = await readSessionMessages(fileSession);
+  const userFileMessage = fileSessionMessages.find((m) => m.role === "user" && m.content.includes("What does this log say?"));
+  assert(userFileMessage, "file session should contain the user's text message");
+  assert(userFileMessage.content.includes("[attached file: app.log]"), "prompt should reference the attached file by name");
+  assert(userFileMessage.content.includes(fileContent), "prompt should include the downloaded file content");
+
+  // Binary/non-text file attachments are skipped; a text-only message still works.
+  app.client.files.info = async () =>
+    ({
+      ok: true,
+      file: {
+        id: "F99999",
+        name: "photo.png",
+        mimetype: "image/png",
+        size: 1024,
+        url_private: "https://files.slack.com/files-pri/T1-F99999/photo.png",
+      },
+    }) as never;
+  const binaryThreadKey = "D_BINARY";
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: binaryThreadKey,
+        ts: "1777000015.000000",
+        user: "U1",
+        text: "Describe this image",
+        files: [{ id: "F99999", name: "photo.png", mimetype: "image/png", size: 1024 }],
+      },
+      event_ts: "1234567890.000008",
+    },
+    ack: async () => {},
+  });
+  const binarySession = await getSessionFilenameByThreadKey(binaryThreadKey);
+  assert(binarySession, "message with binary attachment should still create an active session");
+  const binarySessionMessages = await readSessionMessages(binarySession);
+  const binaryUserMessage = binarySessionMessages.find((m) => m.role === "user" && m.content.includes("Describe this image"));
+  assert(binaryUserMessage, "binary attachment session should contain the user's text message");
+  assert(!binaryUserMessage.content.includes("photo.png"), "binary attachment content should not be appended to the prompt");
+
   clearChatOverride();
   console.log("Channel / MPIM / DM message routing passed");
 
@@ -3051,6 +3151,7 @@ rLQ+epZplw==
   assert(botScopes.includes("im:history"), "manifest must include im:history scope");
   assert(botScopes.includes("users:read"), "manifest must include users:read scope");
   assert(botScopes.includes("users:read.email"), "manifest must include users:read.email scope");
+  assert(botScopes.includes("files:read"), "manifest must include files:read scope for file attachment handling");
 
   const shortcuts = (manifest as unknown as Record<string, unknown>).features &&
     ((manifest as unknown as { features?: { shortcuts?: Array<{ callback_id: string }> } }).features?.shortcuts || []);

@@ -38,6 +38,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Tiered access control** | Basic / elastic / privileged tiers, guest refusal, tiered Linux-user sandboxed bash, and local credential proxies. |
 | **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | search | report | statuspage | impact` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
+| **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Moon Bot reads them as context (requires the `files:read` scope). |
 | **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; they can also use emoji reactions 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
@@ -171,21 +172,22 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    Reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
 4. **Data query (Elasticsearch / MongoDB / Athena / Plausible):**  
    `How many 5xx errors did we see in the last hour?`
-5. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
-6. **Inline feedback + emoji reactions:** after any response, click 👍 or 👎, or react to the message with 👍 / 👎 / 🔄 / ❓ and confirm the ephemeral action.
-7. **Scheduled reports on demand:**  
+5. **File attachments:** upload a `.log` or `.txt` file to a thread and ask `@Moon Bot summarize this file` to show Slack file-reading.
+6. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
+7. **Inline feedback + emoji reactions:** after any response, click 👍 or 👎, or react to the message with 👍 / 👎 / 🔄 / ❓ and confirm the ephemeral action.
+8. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
-8. **Public status page and impact monitoring on demand:**  
+9. **Public status page and impact monitoring on demand:**  
    `/moonbot statuspage https://status.cloudflare.com/api/v2/status.json` and `/moonbot impact`
-9. **Live diagnostics, demo prompts, LLM ping, identity, audit log, and thread info:**  
+10. **Live diagnostics, demo prompts, LLM ping, identity, audit log, and thread info:**  
     `/moonbot diagnose`, `/moonbot demo`, `/moonbot tools`, `/moonbot ping`, `/moonbot whoami`, `/moonbot audit` (privileged), and `/moonbot thread`
-10. **Agent for Good — public service monitoring:**  
+11. **Agent for Good — public service monitoring:**  
     `Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.`
-11. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
-12. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
-13. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
-14. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@moon-bot`, and watch it reply by posting a comment — no Slack workspace needed.
-15. **Status / help:**
+12. **Trace viewer:** on any Moon Bot reply, click *View trace* and show the HTML timeline of every turn, tool call, and result.
+13. **Start over:** after a few turns, click *Start over* and continue with a fresh session.
+14. **Cross-thread memory recall:** ask a question in one channel, then in a different channel ask something related (e.g., "What was that staging DB hostname again?") and watch the prior answer surface automatically in the system prompt.
+15. **GitHub-only bot mode:** open a GitHub issue/PR, mention `@moon-bot`, and watch it reply by posting a comment — no Slack workspace needed.
+16. **Status / help:**
     `/moonbot status`
 
 ---
@@ -199,7 +201,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
 | 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@Moon Bot` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |
-| 2:10–2:30 | MCP + data tools | Demonstrate an external MCP tool or query Elasticsearch/MongoDB/Plausible from a Slack thread. |
+| 2:10–2:30 | MCP + data tools + file attachments | Demonstrate an external MCP tool, query Elasticsearch/MongoDB/Plausible, or upload a `.log`/`.txt` file and ask Moon Bot to summarize it. |
 | 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/moonbot impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
 | 2:45–2:55 | Security + trace viewer | Show `/moonbot diagnose`, `/moonbot audit` (privileged), `/moonbot ping`, `/moonbot status`, `/moonbot tools`, `/moonbot whoami`, `/moonbot thread`, `/moonbot demo`, tiered access explanation, and the HTML trace viewer stepping through a session. |
 | 2:55–3:00 | Outro | Recap the three mandatory technologies and the value proposition. |

@@ -16,6 +16,8 @@ export const cfg = {
     userToken: process.env.SLACK_USER_TOKEN || "",
     sayRetries: parseInt(process.env.SLACK_SAY_RETRIES || "2", 10),
     sayRetryBaseMs: parseInt(process.env.SLACK_SAY_RETRY_BASE_MS || "1000", 10),
+    maxFileAttachments: parseInt(process.env.SLACK_MAX_FILE_ATTACHMENTS || "3", 10),
+    maxFileBytes: parseInt(process.env.SLACK_MAX_FILE_BYTES || "1048576", 10),
   },
   cloudflare: {
     accountId: requireEnv("CLOUDFLARE_ACCOUNT_ID"),

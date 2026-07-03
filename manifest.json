@@ -44,6 +44,7 @@
         "chat:write",
         "chat:write.public",
         "commands",
+        "files:read",
         "groups:read",
         "im:history",
         "im:read",
