@@ -27,6 +27,7 @@ import { publishHomeView } from "./app-home.js";
 import { pingLLM } from "./llm/cloudflare.js";
 import { helpTool } from "./tools/help.js";
 import { statusTool } from "./tools/status.js";
+import { formatToolList } from "./tools/registry.js";
 import { publicStatusTool } from "./tools/public-status.js";
 import { searchSlackTool } from "./tools/slack-search.js";
 import { safeSay } from "./slack-delivery.js";
@@ -445,11 +446,11 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | status | diagnose | ping | whoami | thread | search | report | statuspage | impact].
+ * Slash command entry point: /moonbot [help | demo | tools | status | diagnose | ping | whoami | thread | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
- * configuration diagnostics, real-time search, session info, and live LLM
- * connectivity without starting a threaded conversation.
+ * configuration diagnostics, tool inventory, real-time search, session info,
+ * and live LLM connectivity without starting a threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -721,6 +722,14 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "tools") {
+    const userId = command.user_id;
+    const userEmail = await getUserEmail(client, userId);
+    const tier = await resolveAccessTier(userId, userEmail);
+    await respond({ text: formatToolList(tier, "slack"), response_type: "ephemeral" });
+    return;
+  }
+
   await respond({
     text:
       "*Moon Bot* 🌙\n" +
@@ -728,6 +737,7 @@ export async function handleMoonbotCommand({
       "Try:\n" +
       "• `/moonbot help` — what I can do\n" +
       "• `/moonbot demo` — curated hackathon demo prompts\n" +
+      "• `/moonbot tools` — tools available to your access tier\n" +
       "• `/moonbot status` — my current configuration\n" +
       "• `/moonbot metrics` — runtime usage metrics\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +

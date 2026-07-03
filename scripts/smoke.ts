@@ -3333,6 +3333,7 @@ rLQ+epZplw==
   assert.strictEqual(slashResponses[0].response_type, "ephemeral");
   assert(slashResponses[0].text?.includes("Moon Bot"));
   assert(slashResponses[0].text?.includes("/moonbot help"));
+  assert(slashResponses[0].text?.includes("/moonbot tools"), "welcome fallback should mention /moonbot tools");
   assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
   assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
 
@@ -3370,6 +3371,16 @@ rLQ+epZplw==
     "demo command should mention /moonbot impact",
   );
   assert.strictEqual(slashResponses[0].response_type, "ephemeral", "demo command should be ephemeral");
+
+  await dispatchSlashCommand("tools");
+  const toolsText = slashResponses[0].text ?? "";
+  assert(toolsText.includes("Tools available to you"), "tools command should list tools");
+  assert(toolsText.includes("Built-in tools"), "tools command should list built-in tools");
+  assert(toolsText.includes("`search_code`"), "tools command should include search_code");
+  assert(toolsText.includes("`open_pr`"), "tools command should include open_pr");
+  assert(toolsText.includes("Resolved access tier"), "tools command should show resolved access tier");
+  assert(!toolsText.includes(cfg.cloudflare.apiToken), "tools command must not expose secrets");
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "tools command should be ephemeral");
 
   await dispatchSlashCommand("status");
   const statusText = slashResponses[0].text ?? "";

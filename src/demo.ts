@@ -44,6 +44,7 @@ export function getDemoMessage(): string {
 
     `*Workflow polish*\n` +
     `• Select any message → “Ask Moon Bot” for a threaded reply.\n` +
+    `• \`/moonbot tools\` — see which tools are available to your access tier.\n` +
     `• On any reply, click *View trace* to see the full agent reasoning timeline.\n` +
     `• Click *Start over* to clear the thread session and begin fresh.\n` +
     `• Click 👍 / 👎 or react with 👍 / 👎 / 🔄 / ❓ to record feedback, reset, or get help.`

@@ -89,6 +89,42 @@ export function listTools(
   );
 }
 
+function formatToolLine(tool: Tool): string {
+  const firstSentence = tool.description.split(/\n/)[0] ?? "";
+  const short = firstSentence.length > 90 ? `${firstSentence.slice(0, 90)}…` : firstSentence;
+  const tierTag = tool.tier && tool.tier !== "basic" ? ` *(tier: ${tool.tier})*` : "";
+  return `• \`${tool.name}\` — ${short}${tierTag}`;
+}
+
+/**
+ * Build a Slack-markdown summary of all tools available to a user at their
+ * access tier. Built-in tools and dynamically-discovered MCP server tools are
+ * grouped separately so judges and sandbox users can see the full capability
+ * surface at a glance.
+ */
+export function formatToolList(
+  tier: AccessTier = "basic",
+  environment: ToolEnvironment = "slack",
+): string {
+  const tools = listTools(tier, environment).sort((a, b) => a.name.localeCompare(b.name));
+  const builtIn = tools.filter((t) => !t.name.startsWith("mcp_"));
+  const mcp = tools.filter((t) => t.name.startsWith("mcp_"));
+
+  const lines: string[] = [
+    `*Tools available to you* 🛠️`,
+    `Resolved access tier: \`${tier}\``,
+    ``,
+    `*Built-in tools (${builtIn.length})*`,
+    ...builtIn.map(formatToolLine),
+  ];
+
+  if (mcp.length > 0) {
+    lines.push("", `*MCP server tools (${mcp.length})*`, ...mcp.map(formatToolLine));
+  }
+
+  return lines.join("\n");
+}
+
 export function getTool(
   name: string,
   tier: AccessTier = "basic",
