@@ -8,14 +8,14 @@ Clone the repositories you want Ishu to search into the directory configured
 by `CODE_REPOS_DIR` (default `./repos`). You can ask Ishu to clone a repo for you:
 
 ```json
-{"tool": "clone_repo", "params": {"repo": "huggingface/huggingface_hub"}}
+{"tool": "clone_repo", "params": {"repo": "your-org/your-repo"}}
 ```
 
 Or do it manually:
 
 ```bash
 mkdir -p repos
-git clone https://github.com/huggingface/huggingface_hub repos/huggingface_hub
+git clone https://github.com/your-org/your-repo repos/your-repo
 ```
 
 ## Tools
@@ -37,19 +37,19 @@ Find a file by path or name:
 Grep source contents:
 
 ```json
-{"tool": "search_code", "params": {"query": "class Dataset", "mode": "content", "glob": "*.py", "max_results": 10}}
+{"tool": "search_code", "params": {"query": "class UserService", "mode": "content", "glob": "*.ts", "max_results": 10}}
 ```
 
 Search within a single repo:
 
 ```json
-{"tool": "search_code", "params": {"repo": "huggingface_hub", "query": "create_repo", "mode": "both"}}
+{"tool": "search_code", "params": {"repo": "your-repo", "query": "create_repo", "mode": "both"}}
 ```
 
 Browse the top-level directories of a cloned repo:
 
 ```json
-{"tool": "list_files", "params": {"path": "repos/huggingface_hub", "recursive": false}}
+{"tool": "list_files", "params": {"path": "repos/your-repo", "recursive": false}}
 ```
 
 ## Workflow tips

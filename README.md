@@ -12,7 +12,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 
 ## What it does
 
-- **Code Q&A** — clone repos, search files by name or content, browse directories, read and edit code, open PRs, file issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up HuggingFace Hub model/dataset/Space metadata.
+- **Code Q&A** — clone repos, search files by name or content, browse directories, read and edit code, open PRs, file issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up public model registry metadata (e.g. HuggingFace Hub models/datasets/Spaces).
 - **Data & ops** — query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats.
 - **Slack-aware search** — ask about past conversations or decisions without leaving the thread.
 - **Agent for Good** — designed for under-resourced nonprofit, civic-tech, and open-source teams that need to monitor public services, respond to incidents, and communicate impact without dedicated SREs.
@@ -28,7 +28,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **File attachments** — share text files, logs, CSVs, JSON, or code snippets in a thread and Ishu will read them as context (requires the `files:read` scope).
 - **Channel welcome** — when Ishu is invited to a public or private channel, it posts a quick intro explaining how to use `/ishu help`, @-mentions, and the Slack AI assistant panel.
 - **Inline feedback + reset + regenerate** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. After a 👎, Ishu offers a *Regenerate response* button to retry the answer with a different approach. Users can also react to any Ishu message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
-- **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@ishu` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
+- **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@ishu` mentions on issues and PRs, without any Slack tokens. This second deployment surface keeps Slack tokens and production database credentials out of the GitHub-facing pod: only code and GitHub write tools are exposed.
 
 ---
 
@@ -98,7 +98,7 @@ Runtime flow:
 - **@slack/bolt** v4 for Socket Mode + Slack AI Assistant
 - **Cloudflare Workers AI** for Kimi K2.7 (default) or Kimi 2.6
 - **@modelcontextprotocol/sdk** for MCP client support
-- **HuggingFace Hub buckets** (or local filesystem) for persistent artifacts
+- **Object storage buckets** (e.g. HuggingFace Hub buckets or local filesystem) for persistent artifacts
 - **Docker + docker-compose + Kubernetes** for deployment
 
 ---
@@ -258,7 +258,7 @@ docker compose up -d
 
 ### Kubernetes
 
-For production deployments that match the architecture described in the write-up, use the manifests under `k8s/`:
+For production deployments that match the project architecture, use the manifests under `k8s/`:
 
 ```bash
 cp k8s/secret.example.yaml k8s/secret.yaml

@@ -1,10 +1,10 @@
-# Sizzle — Xet Storage Analytics via DuckDB
+# Sizzle — Object Storage Analytics via DuckDB
 
-Sizzle is Ishu's interface to Xet storage statistics stored in DuckLake (Parquet or CSV files). It uses DuckDB's fast analytical SQL engine so you can ask about storage capacity, deduplication ratios, shard counts, and bandwidth directly from a Slack thread.
+Sizzle is Ishu's interface to storage statistics stored in DuckLake (Parquet or CSV files). It uses DuckDB's fast analytical SQL engine so you can ask about storage capacity, deduplication ratios, shard counts, and bandwidth directly from a Slack thread.
 
 ## When to use
 
-- You need to inspect Xet storage metadata, shard distribution, or capacity trends.
+- You need to inspect storage metadata, shard distribution, or capacity trends.
 - You want aggregated metrics (total deduplicated bytes, hot shards, bandwidth by day) without exporting CSVs.
 - The data lives in DuckLake/Parquet/CSV files rather than Elasticsearch or MongoDB.
 
@@ -21,7 +21,7 @@ Parameters:
 
 Requires `SIZZLE_DATA_DIR` to point at the directory containing DuckLake files. No other credentials are needed for local files.
 
-When querying remote DuckLake files hosted on HuggingFace, a local credential proxy can be enabled with `HF_TOKEN`, `HF_PROXY_PORT`, and `HF_PROXY_TOKEN`. The proxy only forwards `GET` requests under the configured dataset repository (default `huggingface/storage-visualization-data`) and injects the HF token server-side so the runner never sees it.
+When querying remote DuckLake files hosted on an object store such as HuggingFace Hub, a local credential proxy can be enabled with `HF_TOKEN`, `HF_PROXY_PORT`, and `HF_PROXY_TOKEN`. The proxy only forwards `GET` requests under the configured dataset repository (set via `HF_PROXY_REPO`) and injects the token server-side so the runner never sees it.
 
 ## Examples
 

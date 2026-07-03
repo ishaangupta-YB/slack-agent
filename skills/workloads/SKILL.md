@@ -1,27 +1,27 @@
 # workloads
 
-This skill helps you navigate and operate the workspaces that run user-facing HuggingFace workloads: Spaces, Endpoints, Inference Endpoints, and training Jobs.
+This skill helps you navigate and operate the workspaces that run user-facing deployment workloads: hosted app spaces, inference endpoints, and training jobs.
 
 ## Repositories
 
 Clone the following repositories (or your organization's equivalents) into `CODE_REPOS_DIR` (default `./repos`). You can ask Ishu to clone a repo for you at any time:
 
 ```json
-{"tool": "clone_repo", "params": {"repo": "huggingface/spaces"}}
+{"tool": "clone_repo", "params": {"repo": "your-org/spaces"}}
 ```
 
 Or do it manually:
 
 ```bash
 mkdir -p repos
-git clone https://github.com/huggingface/spaces repos/spaces
-git clone https://github.com/huggingface/endpoints repos/endpoints
-git clone https://github.com/huggingface/jobs repos/jobs
+git clone https://github.com/your-org/spaces repos/spaces
+git clone https://github.com/your-org/endpoints repos/endpoints
+git clone https://github.com/your-org/jobs repos/jobs
 ```
 
-- `spaces` – Hugging Face Spaces web application code, templates, and build pipeline
-- `endpoints` – Inference Endpoints provisioning, routing, and scaling logic
-- `jobs` – Training Jobs scheduler, runner, and lifecycle management
+- `spaces` – hosted app spaces web application code, templates, and build pipeline
+- `endpoints` – inference endpoint provisioning, routing, and scaling logic
+- `jobs` – training job scheduler, runner, and lifecycle management
 
 ## Tools
 
@@ -35,8 +35,8 @@ Use the same code-navigation tools as `hub-code`:
 
 ## Common patterns
 
-- Spaces are defined by a `README.md` with a `---` YAML frontmatter block (`title`, `emoji`, `color`, `sdk`, `app_file`, etc.).
-- Endpoints configs are usually under `endpoints/` or `src/config/` and reference Docker images, instance types, and scaling policies.
+- Hosted app spaces are often defined by a `README.md` with a `---` YAML frontmatter block (`title`, `emoji`, `color`, `sdk`, `app_file`, etc.).
+- Endpoint configs are usually under `endpoints/` or `src/config/` and reference Docker images, instance types, and scaling policies.
 - Jobs are typically defined by YAML/JSON specs with fields like `image`, `command`, `dataset`, `instance`, and `timeout`.
 
 ## Example queries

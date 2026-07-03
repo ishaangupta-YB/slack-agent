@@ -18,7 +18,7 @@ Ishu collapses the daily context-switching between Elasticsearch, MongoDB, GitHu
 
 For the **Slack Agent for Good** track, Ishu is aimed at under-resourced nonprofit, civic-tech, and open-source teams that do not have dedicated SREs or 24/7 on-call. A single volunteer can check public status pages, query logs, search Slack history for prior incidents, file GitHub issues, open fixes as PRs, and post plain-language impact updates — all from the same Slack thread. This democratizes platform-engineering skills and helps small teams keep critical public services online.
 
-The bot is built for the Slack Agent Builder Challenge and satisfies all three mandatory technology requirements: Slack AI capabilities, MCP server integration, and the Real-Time Search API. It runs in Socket Mode (no public ingress required), uses Cloudflare Workers AI with Kimi K2.7 or Kimi 2.6, persists state to a HuggingFace Bucket or local filesystem, and ships with Docker, docker-compose, and Kubernetes manifests.
+The bot is built for the Slack Agent Builder Challenge and satisfies all three mandatory technology requirements: Slack AI capabilities, MCP server integration, and the Real-Time Search API. It runs in Socket Mode (no public ingress required), uses Cloudflare Workers AI with Kimi K2.7 or Kimi 2.6, persists state to an object-storage bucket (e.g. HuggingFace Hub buckets or local filesystem), and ships with Docker, docker-compose, and Kubernetes manifests.
 
 ---
 
@@ -29,7 +29,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Slack AI Assistant panel** | Open Ishu directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
-| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up HuggingFace Hub model/dataset/Space metadata. |
+| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, fetch PR diffs for review, and look up public model registry metadata (e.g. HuggingFace Hub models/datasets/Spaces). |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. Users can also explicitly save facts with `/ishu remember <fact>`, recall recent memories with `/ishu memory [limit]`, and remove remembered facts with `/ishu forget <text|all>`. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
@@ -117,7 +117,7 @@ Runtime flow:
 - **@slack/bolt** v4 for Socket Mode + Slack AI Assistant
 - **Cloudflare Workers AI** for Kimi K2.7 (default) or Kimi 2.6
 - **@modelcontextprotocol/sdk** for MCP client support
-- **HuggingFace Hub buckets** (or local filesystem) for persistent artifacts
+- **Object storage buckets** (e.g. HuggingFace Hub buckets or local filesystem) for persistent artifacts
 - **Docker + docker-compose** and **Kubernetes** for deployment
 
 ---
@@ -179,8 +179,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `Search Slack for recent deployment discussions and summarize what changed.`
 2. **MCP integration:** with an MCP filesystem server configured, ask  
    `List the files in /tmp and tell me which ones were modified today.`
-3. **Code + GitHub + HuggingFace Hub:** in a channel, mention the bot:  
-   `@ishu what is the task for sentence-transformers/all-MiniLM-L6-v2?`  
+3. **Code + GitHub + public model registry:** in a channel, mention the bot:  
+   `@ishu look up the task for sentence-transformers/all-MiniLM-L6-v2 on HuggingFace Hub.`  
    Search existing issues before filing a bug:  
    `@ishu search issues in my-org/my-repo for "login error"`  
    Then ask it to open a draft PR:  
@@ -215,7 +215,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | 0:00–0:20 | Intro | Show the bot in the Slack workspace, App Home tab, and assistant panel. |
 | 0:20–0:50 | Slack AI Assistant | Open Ishu from the assistant panel, run the search prompt, and show the response + artifact buttons. Click 👎 and then *Regenerate response* to show self-improvement. |
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
-| 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@ishu` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
+| 1:20–1:50 | Code Q&A + GitHub + model registry | Mention `@ishu` and ask it to look up a public model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/ishu report weekly` to show the ops report and `/ishu report deploy` for the impact check. |
 | 2:10–2:30 | MCP + data tools + file attachments | Demonstrate an external MCP tool, query Elasticsearch/MongoDB/Plausible, or upload a `.log`/`.txt` file and ask Ishu to summarize it. |
 | 2:30–2:45 | Agent for Good | Show how a nonprofit/civic-tech volunteer uses `/ishu impact` to see monitored services, checks a public status page, and files a GitHub issue from a single thread. |
