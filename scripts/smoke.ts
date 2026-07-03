@@ -32,6 +32,8 @@ import {
   handleRegenerateResponse,
   handleResetThread,
   handleReactionAdded,
+  handleMemberJoinedChannel,
+  clearBotUserIdCache,
   trackBotMessage,
 } from "../src/slack.js";
 import type { SlackCommandMiddlewareArgs, SlackShortcutMiddlewareArgs, AllMiddlewareArgs } from "@slack/bolt";
@@ -3580,6 +3582,41 @@ rLQ+epZplw==
     `error log should include channel context: ${capturedError}`,
   );
   assert(capturedError.includes("simulated LLM failure"), "error log should surface the underlying error");
+
+  // 11) When Moon Bot is invited to a channel, it posts a brief welcome message
+  //     so workspace members immediately know how to interact with it.
+  clearBotUserIdCache();
+  let welcomeCalls: Array<{ channel?: string; text?: string }> = [];
+  const welcomeClient = {
+    auth: {
+      test: async () => ({ ok: true, user_id: "UBOT" }),
+    },
+    chat: {
+      postMessage: async (args: unknown) => {
+        welcomeCalls.push(args as { channel?: string; text?: string });
+        return { ok: true };
+      },
+    },
+  } as unknown as WebClient;
+
+  await handleMemberJoinedChannel({
+    event: { user: "UBOT", channel: "CWELCOME" },
+    client: welcomeClient,
+  } as never);
+  assert.strictEqual(welcomeCalls.length, 1, "bot joining a channel should post one welcome message");
+  assert.strictEqual(welcomeCalls[0]?.channel, "CWELCOME");
+  assert(
+    String(welcomeCalls[0]?.text).includes("/moonbot help"),
+    "welcome message should point users to /moonbot help",
+  );
+
+  // Other workspace members joining the same channel should not be welcomed.
+  welcomeCalls = [];
+  await handleMemberJoinedChannel({
+    event: { user: "U_OTHER", channel: "CWELCOME" },
+    client: welcomeClient,
+  } as never);
+  assert.strictEqual(welcomeCalls.length, 0, "non-bot member joining should not trigger a welcome message");
 
   clearChatOverride();
   console.log("Channel / MPIM / DM message routing passed");

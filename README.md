@@ -25,6 +25,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/moonbot audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.
 - **File attachments** — share text files, logs, CSVs, JSON, or code snippets in a thread and Moon Bot will read them as context (requires the `files:read` scope).
+- **Channel welcome** — when Moon Bot is invited to a public or private channel, it posts a quick intro explaining how to use `/moonbot help`, @-mentions, and the Slack AI assistant panel.
 - **Inline feedback + reset + regenerate** — every response includes 👍 / 👎 buttons and a *Start over* button; feedback is logged and reset clears the thread session. After a 👎, Moon Bot offers a *Regenerate response* button to retry the answer with a different approach. Users can also react to any Moon Bot message with 👍 / 👎, 🔄, or ❓ to give feedback, reset, or get help.
 - **GitHub-only bot mode** — the same codebase can run as a credential-poor GitHub bot that replies to `@moon-bot` mentions on issues and PRs, without any Slack tokens. This is the second pod described in the write-up: no Slack, no production databases, only code and GitHub write tools.
 

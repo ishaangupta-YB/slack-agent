@@ -134,6 +134,10 @@ async function ensureBotUserId(client: WebClient): Promise<string | undefined> {
   }
 }
 
+export function clearBotUserIdCache(): void {
+  botUserIdCache = null;
+}
+
 export async function isGuestUser(client: WebClient, userId: string): Promise<boolean> {
   const cached = guestCache.get(userId);
   if (cached !== undefined || guestCache.has(userId)) return cached ?? false;
@@ -1256,6 +1260,37 @@ export async function handleReactionAdded({
 }
 
 app.event("reaction_added", handleReactionAdded as never);
+
+/**
+ * Welcome users when Moon Bot is invited to a public/private channel.
+ * This gives new channels an immediate pointer to /moonbot help and @-mentions
+ * without waiting for a first message, which improves the Slack sandbox demo UX.
+ */
+export async function handleMemberJoinedChannel({
+  event,
+  client,
+}: SlackEventMiddlewareArgs<"member_joined_channel"> & AllMiddlewareArgs): Promise<void> {
+  const userId = (event as { user?: string }).user;
+  const channel = (event as { channel?: string }).channel;
+  if (!userId || !channel) return;
+
+  const botUserId = await ensureBotUserId(client);
+  if (!botUserId || userId !== botUserId) return;
+
+  await safePostMessage(
+    client,
+    {
+      channel,
+      text:
+        "Hi! 🌙 I’m Moon Bot, your engineering assistant inside Slack. " +
+        "Mention me in a thread, send me a DM, type `/moonbot help` for commands, " +
+        "or open me from the Slack AI assistant panel.",
+    },
+    { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
+  );
+}
+
+app.event("member_joined_channel", handleMemberJoinedChannel as never);
 
 app.error(async (error) => {
   console.error("Slack app error:", error);

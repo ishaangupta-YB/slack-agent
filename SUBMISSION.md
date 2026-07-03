@@ -40,6 +40,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | remember | memory | search | report | statuspage | impact` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Moon Bot reads them as context (requires the `files:read` scope). |
+| **Channel welcome** | When Moon Bot is invited to a channel, it posts a brief intro pointing to `/moonbot help`, @-mentions, and the Slack AI assistant panel. |
 | **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; after a 👎, a *Regenerate response* button asks Moon Bot to retry with a different approach. Users can also react with emoji 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Resilient GitHub API calls** | GitHub read/write operations retry transient 5xx / 429 errors with exponential backoff and honor GitHub's `Retry-After` header, so PR/issue writes succeed during brief GitHub outages or rate-limit windows. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |

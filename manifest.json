@@ -74,6 +74,7 @@
         "message.mpim",
         "assistant_thread_started",
         "assistant_thread_context_changed",
+        "member_joined_channel",
         "reaction_added",
         "app_home_opened"
       ]
