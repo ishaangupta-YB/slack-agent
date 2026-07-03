@@ -2426,6 +2426,61 @@ rLQ+epZplw==
   assert(blockedForBasic.result.includes("not available for your access tier"));
 
   cfg.okta.userTiers = originalUserTiers;
+
+  // Okta group matching must be exact, not substring, to avoid privilege escalation.
+  const originalOktaDomain = cfg.okta.domain;
+  const originalOktaApiToken = cfg.okta.apiToken;
+  const originalPrivilegedGroups = cfg.okta.privilegedGroups;
+  const originalElasticGroups = cfg.okta.elasticGroups;
+  cfg.okta.domain = "example.okta.com";
+  cfg.okta.apiToken = "okta-test-token";
+  cfg.okta.privilegedGroups = ["admin"];
+  cfg.okta.elasticGroups = ["elastic"];
+
+  const originalOktaFetch = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("example.okta.com/api/v1/users/") && url.endsWith("/groups")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => [
+          { profile: { name: "administrators" } },
+          { profile: { name: "elastic-readonly" } },
+        ],
+      } as Response;
+    }
+    return originalOktaFetch(input, init);
+  };
+
+  const substringUserTier = await resolveAccessTier("U_SUBSTRING", "substring-user@example.com");
+  assert.strictEqual(
+    substringUserTier,
+    "basic",
+    "A user in 'administrators' must not be treated as privileged when the configured group is 'admin'",
+  );
+
+  // Exact Okta matches should still grant the right tier.
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("example.okta.com/api/v1/users/") && url.endsWith("/groups")) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => [{ profile: { name: "elastic" } }],
+      } as Response;
+    }
+    return originalOktaFetch(input, init);
+  };
+  const exactMatchTier = await resolveAccessTier("U_EXACT", "exact-user@example.com");
+  assert.strictEqual(exactMatchTier, "elastic", "An exact Okta group match must resolve to the corresponding tier");
+
+  globalThis.fetch = originalOktaFetch;
+  cfg.okta.domain = originalOktaDomain;
+  cfg.okta.apiToken = originalOktaApiToken;
+  cfg.okta.privilegedGroups = originalPrivilegedGroups;
+  cfg.okta.elasticGroups = originalElasticGroups;
+
   console.log("Access tier gating passed");
 
   // HuggingFace Bucket integration

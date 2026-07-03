@@ -51,10 +51,12 @@ async function resolveFromOkta(email: string): Promise<AccessTier | undefined> {
       .map((g) => g.profile?.name?.toLowerCase() ?? "")
       .filter(Boolean);
 
-    const matches = (groupsRaw: string[]) =>
-      groupsRaw.some((g) =>
-        names.some((n) => n.includes(g.toLowerCase().trim())),
+    const matches = (groupsRaw: string[]) => {
+      const configured = new Set(
+        groupsRaw.map((g) => g.toLowerCase().trim()).filter(Boolean),
       );
+      return names.some((n) => configured.has(n));
+    };
 
     if (matches(cfg.okta.privilegedGroups)) return "privileged";
     if (matches(cfg.okta.elasticGroups)) return "elastic";
