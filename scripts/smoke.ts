@@ -1289,6 +1289,15 @@ async function main() {
     "privileged",
   );
   assert(commentResult.result.includes("GitHub is not configured"));
+  const searchIssuesResult = await runToolCall(
+    {
+      tool: "search_issues",
+      params: { q: "is:issue repo:owner/repo" },
+    },
+    8_000,
+    "privileged",
+  );
+  assert(searchIssuesResult.result.includes("GitHub is not configured"));
   if (originalGhToken !== undefined) process.env.GITHUB_TOKEN = originalGhToken;
 
   // GitHub PR/issue context is auto-filled from the Slack conversation.
@@ -1410,6 +1419,57 @@ async function main() {
   );
   console.log("GitHub context injection passed");
 
+  // Search GitHub issues via the GitHub Search API.
+  const originalGhTokenCfgForIssueSearch = cfg.integrations.githubToken;
+  cfg.integrations.githubToken = "test-token";
+  const originalGhFetchForIssueSearch = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.includes("/search/issues")) {
+      const u = new URL(url);
+      const query = u.searchParams.get("q") ?? "";
+      return new Response(
+        JSON.stringify({
+          total_count: 1,
+          incomplete_results: false,
+          items: [
+            {
+              html_url: "https://github.com/test-owner/test-repo/issues/7",
+              number: 7,
+              title: `Found result for ${query}`,
+              state: "open",
+              state_reason: null,
+              user: { login: "octocat" },
+              labels: [{ name: "bug" }],
+              comments: 3,
+              created_at: "2024-01-15T10:00:00Z",
+              updated_at: "2024-02-01T12:00:00Z",
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    return originalGhFetchForIssueSearch(input, init);
+  };
+
+  const searchIssuesSuccessResult = await runToolCall(
+    {
+      tool: "search_issues",
+      params: { q: "is:issue repo:test-owner/test-repo bug", per_page: 5 },
+    },
+    8_000,
+    "basic",
+  );
+  cfg.integrations.githubToken = originalGhTokenCfgForIssueSearch;
+  globalThis.fetch = originalGhFetchForIssueSearch;
+
+  assert.strictEqual(searchIssuesSuccessResult.error, undefined, `search_issues failed: ${searchIssuesSuccessResult.result}`);
+  assert(searchIssuesSuccessResult.result.includes("Found 1 result(s)"));
+  assert(searchIssuesSuccessResult.result.includes("#7"));
+  assert(searchIssuesSuccessResult.result.includes("octocat"));
+  console.log("GitHub issue search passed");
+
   // GitHub App token path + commit_to_pr tool: mint a short-lived installation token and use it to push a commit.
   const testPrivateKey = `-----BEGIN PRIVATE KEY-----
 MIIBUwIBADANBgkqhkiG9w0BAQEFAASCAT0wggE5AgEAAkEAuf8t6hc0e+eu+XgR
@@ -1509,6 +1569,7 @@ rLQ+epZplw==
       "open_pr",
       "read_file",
       "search_code",
+      "search_issues",
       "system_status",
     ].sort(),
   );
@@ -3281,6 +3342,10 @@ rLQ+epZplw==
   assert(
     slashResponses[0].text?.includes("comment_on_issue"),
     "code help should mention comment_on_issue",
+  );
+  assert(
+    slashResponses[0].text?.includes("search_issues"),
+    "code help should mention search_issues",
   );
 
   await dispatchSlashCommand("demo");

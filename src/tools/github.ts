@@ -56,6 +56,14 @@ const commentOnIssueParams = z.object({
   traceUrl: z.string().optional(),
 });
 
+const searchIssuesParams = z.object({
+  q: z.string().describe("GitHub search query, e.g. is:issue repo:owner/name label:bug"),
+  sort: z.enum(["created", "updated", "comments"]).optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+  per_page: z.number().int().min(1).max(100).optional().default(10),
+  page: z.number().int().min(1).optional().default(1),
+});
+
 interface GitRef {
   object: { sha: string };
 }
@@ -80,6 +88,25 @@ interface PullRequest {
 interface Issue {
   html_url: string;
   number: number;
+}
+
+interface SearchIssueItem {
+  html_url: string;
+  number: number;
+  title: string;
+  state: string;
+  state_reason?: string | null;
+  user: { login: string };
+  labels: Array<{ name: string }>;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface SearchIssuesResponse {
+  total_count: number;
+  incomplete_results: boolean;
+  items: SearchIssueItem[];
 }
 
 async function applyContextDefaults<T extends { requestedBy?: string; traceUrl?: string }>(
@@ -270,6 +297,41 @@ async function commentOnGitHubIssue(input: z.infer<typeof commentOnIssueParams>)
   }
 }
 
+async function searchGitHubIssues(input: z.infer<typeof searchIssuesParams>): Promise<string> {
+  try {
+    const params = new URLSearchParams();
+    params.set("q", input.q);
+    if (input.sort) params.set("sort", input.sort);
+    if (input.order) params.set("order", input.order);
+    params.set("per_page", String(input.per_page));
+    params.set("page", String(input.page));
+
+    const result = await githubApi<SearchIssuesResponse>(`/search/issues?${params.toString()}`);
+
+    if (!result.items || result.items.length === 0) {
+      return `No issues found for query "${input.q}".`;
+    }
+
+    const lines = [`Found ${result.total_count} result(s) for "${input.q}":\n`];
+    for (const item of result.items) {
+      const labels = item.labels.map((l) => l.name).join(", ") || "none";
+      lines.push(
+        `• #${item.number} [${item.state}] ${item.title}`,
+        `  ${item.html_url}`,
+        `  by ${item.user.login} · ${item.comments} comment(s) · labels: ${labels} · updated ${item.updated_at.slice(0, 10)}`,
+      );
+    }
+
+    if (result.incomplete_results) {
+      lines.push("\n_Results may be incomplete (GitHub rate-limit/time-out). Try narrowing the query._");
+    }
+
+    return lines.join("\n");
+  } catch (err) {
+    return `Error searching issues: ${err instanceof Error ? err.message : String(err)}`;
+  }
+}
+
 export const openPrTool: Tool = {
   name: "open_pr",
   description:
@@ -308,4 +370,14 @@ export const commentOnIssueTool: Tool = {
   tier: "basic",
   githubBot: true,
   run: commentOnGitHubIssue,
+};
+
+export const searchIssuesTool: Tool = {
+  name: "search_issues",
+  description:
+    "Search GitHub issues and pull requests using the GitHub Search API. Provide a query (e.g. is:issue repo:owner/name label:bug) and optional sort, order, per_page, and page. Useful for avoiding duplicate reports and finding related work before creating a new issue or PR.",
+  params: searchIssuesParams,
+  tier: "basic",
+  githubBot: true,
+  run: searchGitHubIssues,
 };

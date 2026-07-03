@@ -65,6 +65,7 @@ export const helpTool: Tool = {
         `• \`list_files\` — browse directories in a cloned repo\n` +
         `• \`clone_repo\` — clone a GitHub repo into the workspace\n` +
         `• \`open_pr\` / \`commit_to_pr\` / \`create_issue\` / \`comment_on_issue\` — open PRs/issues, push follow-up commits, and post comments\n` +
+        `• \`search_issues\` — search GitHub issues/PRs to avoid duplicates and find related work\n` +
         `• \`hf_hub_info\` — look up metadata for a HuggingFace Hub model, dataset, or Space\n\n` +
         `**Example prompts**\n` +
         `• “Search the Hub repo for how Gitaly timeouts are handled.”\n` +

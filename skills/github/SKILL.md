@@ -45,3 +45,11 @@ Use the `comment_on_issue` tool to post an update on an existing issue or pull r
 - `body`: the comment text
 
 The Slack requester and agent trace URL are appended automatically, so every Moon Bot comment is auditable and attributed.
+
+## Searching issues and PRs
+
+Use the `search_issues` tool to find related issues or PRs before opening a new one. Provide a GitHub search query such as `is:issue repo:owner/name label:bug keyword` and optionally `sort`, `order`, and `per_page`. This helps volunteers and engineers avoid duplicates and find existing workarounds quickly.
+
+Examples:
+- `search_issues` with `q: "is:issue repo:huggingface/hub login error"`
+- `search_issues` with `q: "is:pr repo:my-org/my-repo label:documentation"`

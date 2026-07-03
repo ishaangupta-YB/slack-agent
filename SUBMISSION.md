@@ -29,7 +29,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **Slack AI Assistant panel** | Open Moon Bot directly from Slack's native assistant UI with suggested prompts, status updates, and live progress messages while tools run. |
 | **Real-Time Search API** | Answer questions about Slack history using `assistant.search.context`. |
 | **MCP server integration** | Dynamically discover and invoke tools from external Model Context Protocol servers. |
-| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, and look up HuggingFace Hub model/dataset/Space metadata. |
+| **Code Q&A** | Clone repos, search files by name or content, browse directories, read/edit code, open PRs/issues, comment on existing issues/PRs, search GitHub issues/PRs, and look up HuggingFace Hub model/dataset/Space metadata. |
 | **Data & ops queries** | Query Elasticsearch, MongoDB, AWS Athena, Plausible analytics, public status pages, and DuckDB/Sizzle storage stats. |
 | **Resumable sessions + memory recall** | Every Slack thread is an independent, persistent session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant remembers context across conversations. |
 | **Auditable artifacts** | Every response uploads a markdown response, a JSONL session trace, and a rendered HTML trace viewer for step-by-step auditing. |
@@ -162,6 +162,8 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `List the files in /tmp and tell me which ones were modified today.`
 3. **Code + GitHub + HuggingFace Hub:** in a channel, mention the bot:  
    `@Moon Bot what is the task for sentence-transformers/all-MiniLM-L6-v2?`  
+   Search existing issues before filing a bug:  
+   `@Moon Bot search issues in my-org/my-repo for "login error"`  
    Then ask it to open a draft PR:  
    `@Moon Bot open a draft PR in my-org/my-repo that adds a hello-world script.`
    Reply in the same thread without another @-mention to refine the PR, or ask it to comment on an existing issue/PR.
