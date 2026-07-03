@@ -319,8 +319,10 @@ async function handleIncomingMessage({
   const actionToken = event.action_token;
 
   if (!userId || event.bot_id) return;
-  // Ignore message edits, deletions, channel joins, and other non-chat message subtypes.
-  if (event.subtype) return;
+  // Ignore message edits, deletions, channel joins, and other non-chat message
+  // subtypes. The one exception is `file_share`, which carries text-like file
+  // attachments the user wants Moon Bot to read.
+  if (event.subtype && event.subtype !== "file_share") return;
   if (!userIsAuthorized(userId)) {
     await client.chat.postEphemeral({
       channel,

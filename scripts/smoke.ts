@@ -3574,6 +3574,65 @@ rLQ+epZplw==
   assert(binaryUserMessage, "binary attachment session should contain the user's text message");
   assert(!binaryUserMessage.content.includes("photo.png"), "binary attachment content should not be appended to the prompt");
 
+  // 8b) Slack file uploads emit a `file_share` subtype. Moon Bot should still
+  //     process the upload and read text-like attachments instead of treating
+  //     it as a non-chat event.
+  const fileShareThreadKey = "D_FILE_SHARE";
+  const fileShareContent = "WARN: disk usage above 90%";
+  app.client.files.info = async ({ file }: { file: string }) => {
+    assert.strictEqual(file, "F54321", "files.info should be called for the file_share upload");
+    return {
+      ok: true,
+      file: {
+        id: "F54321",
+        name: "disk.log",
+        mimetype: "text/plain",
+        size: fileShareContent.length,
+        url_private: "https://files.slack.com/files-pri/T1-F54321/disk.log",
+      },
+    } as never;
+  };
+  const originalFetchForFileShare = globalThis.fetch;
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = (async (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    if (url.includes("files.slack.com/files-pri/T1-F54321/disk.log")) {
+      return new Response(fileShareContent, { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+    return originalFetchForFileShare(input);
+  }) as typeof fetch;
+
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        subtype: "file_share",
+        channel_type: "im",
+        channel: fileShareThreadKey,
+        ts: "1777000016.000000",
+        user: "U1",
+        text: "",
+        files: [{ id: "F54321", name: "disk.log", mimetype: "text/plain", size: fileShareContent.length }],
+      },
+      event_ts: "1234567890.000009",
+    },
+    ack: async () => {},
+  });
+
+  (globalThis as unknown as { fetch: typeof fetch }).fetch = originalFetchForFileShare;
+  const fileShareSession = await getSessionFilenameByThreadKey(fileShareThreadKey);
+  assert(fileShareSession, "file_share subtype should create an active session");
+  const fileShareMessages = await readSessionMessages(fileShareSession);
+  const fileShareUserMessage = fileShareMessages.find((m) => m.role === "user");
+  assert(
+    fileShareUserMessage && fileShareUserMessage.content.includes("[attached file: disk.log]"),
+    "file_share prompt should reference the attached file",
+  );
+  assert(
+    fileShareUserMessage.content.includes(fileShareContent),
+    "file_share prompt should include the downloaded file content",
+  );
+
   // 9) Correlation IDs are generated per Slack request and persisted to the
   //    session JSONL so operators can trace a message through logs and artifacts.
   const corrThreadKey = `D_CORR_${randomUUID().slice(0, 8)}`;
