@@ -7,7 +7,7 @@ import { spawn } from "node:child_process";
 import { parseToolCalls, parseToolCallsWithErrors, formatToolResult, formatParseErrors } from "../src/tools/parser.js";
 import { prepareSlackMessage } from "../src/slack-blocks.js";
 import { safeSay } from "../src/slack-delivery.js";
-import { appendMemory, getMemoryRecent, rememberFact, searchMemory, formatMemoryEntry } from "../src/tools/memory.js";
+import { appendMemory, getMemoryRecent, rememberFact, clearAllMemory, searchMemory, formatMemoryEntry } from "../src/tools/memory.js";
 import { getTool, initializeTools, listTools, runToolCall, shutdownTools } from "../src/tools/registry.js";
 import { uploadArtifacts } from "../src/artifacts.js";
 import { bucket } from "../src/storage/bucket.js";
@@ -4076,6 +4076,7 @@ rLQ+epZplw==
   assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
   assert(slashResponses[0].text?.includes("/moonbot remember"), "welcome fallback should mention /moonbot remember");
   assert(slashResponses[0].text?.includes("/moonbot memory"), "welcome fallback should mention /moonbot memory");
+  assert(slashResponses[0].text?.includes("/moonbot forget"), "welcome fallback should mention /moonbot forget");
 
   await dispatchSlashCommand("help code");
   assert(slashResponses[0].text?.includes("search_code"), "code help should mention search_code");
@@ -4097,6 +4098,10 @@ rLQ+epZplw==
   assert(
     slashResponses[0].text?.includes("/moonbot memory"),
     "general help should mention /moonbot memory",
+  );
+  assert(
+    slashResponses[0].text?.includes("/moonbot forget"),
+    "general help should mention /moonbot forget",
   );
 
   await dispatchSlashCommand("demo");
@@ -4270,6 +4275,48 @@ rLQ+epZplw==
     slashResponses[0].text?.includes("Recent memories"),
     "memory command with limit should still show the header",
   );
+
+  // /moonbot forget — remove remembered facts owned by the requesting user.
+  await dispatchSlashCommand("forget");
+  const forgetUsageText = slashResponses[0].text ?? "";
+  assert(forgetUsageText.includes("Remove remembered facts"), "bare forget command should show usage");
+  assert(forgetUsageText.includes("/moonbot forget <text>"), "forget usage should mention text matching");
+  assert(forgetUsageText.includes("/moonbot forget all"), "forget usage should mention clear-all");
+
+  // Seed a user-scoped memory entry for the forget smoke user.
+  const forgetUserId = `U_FORGET_${Date.now()}`;
+  const forgetThreadKey = `remember:${forgetUserId}:D_FORGET`;
+  const forgetFact = "moon-bot forget smoke test fact beta-99";
+  await rememberFact(forgetThreadKey, forgetUserId, forgetFact);
+
+  // The owner can delete their own remembered fact via the slash command.
+  await dispatchSlashCommand(`forget ${forgetFact}`, {} as WebClient, forgetUserId, "D_FORGET");
+  assert(
+    slashResponses[0].text?.includes("Forgot"),
+    "forget command should confirm deletion",
+  );
+  assert(
+    slashResponses[0].text?.includes("1 memory entry"),
+    "forget command should report one removed entry",
+  );
+  assert.strictEqual(slashResponses[0].response_type, "ephemeral", "forget command should be ephemeral");
+
+  // Verify the specific fact is gone from recent memory (the global store may
+  // still contain entries from earlier tests, so we check absence rather than
+  // an empty store).
+  await dispatchSlashCommand("memory 20", {} as WebClient, forgetUserId, "D_FORGET");
+  const memoryAfterForgetText = slashResponses[0].text ?? "";
+  assert(memoryAfterForgetText.includes("Recent memories"), "memory command should show header after forget");
+  assert(
+    !memoryAfterForgetText.includes(forgetFact),
+    "memory command should no longer list the forgotten fact",
+  );
+
+  // clearAllMemory helper should be user-scoped and remove only the target user's entries.
+  await rememberFact(forgetThreadKey, forgetUserId, "fact one");
+  await rememberFact(forgetThreadKey, forgetUserId, "fact two");
+  const cleared = await clearAllMemory(forgetUserId);
+  assert.strictEqual(cleared, 2, "clearAllMemory should remove both user entries");
 
   await dispatchSlashCommand("report");
   assert(slashResponses[0].text?.includes("/moonbot report weekly"), "bare report command should show usage");

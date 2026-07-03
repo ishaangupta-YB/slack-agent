@@ -37,7 +37,7 @@ import { getDemoMessage } from "./demo.js";
 import { getMetrics } from "./storage/metrics.js";
 import { downloadSlackFiles, formatSlackFiles, type SlackFile } from "./slack-files.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
-import { getMemoryRecent, rememberFact, formatMemoryEntry } from "./tools/memory.js";
+import { getMemoryRecent, rememberFact, forgetMemory, clearAllMemory, formatMemoryEntry } from "./tools/memory.js";
 import { generateWeeklyReport, generateDeployReport, getPublicStatusImpactSummary } from "./scheduler.js";
 import { runDiagnostics, formatDiagnosticResultForSlack } from "./diagnostics.js";
 import { readRecentAuditEvents } from "./tools/security.js";
@@ -880,6 +880,40 @@ export async function handleMoonbotCommand({
     return;
   }
 
+  if (subcommand === "forget") {
+    const query = args.slice(1).join(" ").trim();
+
+    if (!query) {
+      await respond({
+        text:
+          "*Forget* 🧹\n" +
+          "Remove remembered facts so I won't recall them again.\n" +
+          "• `/moonbot forget <text>` — delete any memory containing this text\n" +
+          "• `/moonbot forget all` — delete every memory I have for you",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    try {
+      const removed =
+        query.toLowerCase() === "all"
+          ? await clearAllMemory(command.user_id)
+          : await forgetMemory(query, command.user_id);
+
+      await respond({
+        text: `*Forgot* 🧹 ${removed} memory ${removed === 1 ? "entry" : "entries"}.`,
+        response_type: "ephemeral",
+      });
+    } catch (err) {
+      await respond({
+        text: `Could not forget memory: ${err instanceof Error ? err.message : String(err)}`,
+        response_type: "ephemeral",
+      });
+    }
+    return;
+  }
+
   await respond({
     text:
       "*Moon Bot* 🌙\n" +
@@ -897,6 +931,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot thread` — your current DM session info\n" +
       "• `/moonbot remember <fact>` — save a fact for future conversations\n" +
       "• `/moonbot memory [limit]` — recall recent remembered facts\n" +
+      "• `/moonbot forget <text|all>` — remove remembered facts\n" +
       "• `/moonbot search <query>` — search Slack history with the Real-Time Search API\n" +
       "• `/moonbot report weekly` — weekly ops report on demand\n" +
       "• `/moonbot impact` — public service status monitoring for the Agent for Good track\n" +

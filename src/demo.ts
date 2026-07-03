@@ -47,6 +47,7 @@ export function getDemoMessage(): string {
     `• Select any message → “Ask Moon Bot” for a threaded reply.\n` +
     `• \`/moonbot remember <fact>\` — save facts I should recall across threads.\n` +
     `• \`/moonbot memory [limit]\` — see what I’ve remembered.\n` +
+    `• \`/moonbot forget <text|all>\` — remove remembered facts.\n` +
     `• \`/moonbot tools\` — see which tools are available to your access tier.\n` +
     `• On any reply, click *View trace* to see the full agent reasoning timeline.\n` +
     `• Click *Start over* to clear the thread session and begin fresh.\n` +

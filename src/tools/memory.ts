@@ -132,6 +132,42 @@ export async function rememberFact(
   });
 }
 
+/**
+ * Delete memory entries whose prompt or outcome matches the given query.
+ * Deletions are scoped to the requesting user so users can only remove their
+ * own remembered facts.
+ */
+export async function forgetMemory(query: string, userId: string): Promise<number> {
+  return queueMemoryOp(async () => {
+    const q = query.toLowerCase();
+    const store = await readStore();
+    const before = store.entries.length;
+    store.entries = store.entries.filter(
+      (e) => e.userId !== userId || !(e.prompt.toLowerCase().includes(q) || e.outcome.toLowerCase().includes(q)),
+    );
+    if (store.entries.length < before) {
+      await writeStore(store);
+    }
+    return before - store.entries.length;
+  });
+}
+
+/**
+ * Delete all memory entries owned by the given user. Returns the number of
+ * removed entries.
+ */
+export async function clearAllMemory(userId: string): Promise<number> {
+  return queueMemoryOp(async () => {
+    const store = await readStore();
+    const before = store.entries.length;
+    store.entries = store.entries.filter((e) => e.userId !== userId);
+    if (store.entries.length < before) {
+      await writeStore(store);
+    }
+    return before - store.entries.length;
+  });
+}
+
 export function formatMemoryEntry(entry: MemoryEntry): string {
   const date = new Date(entry.timestamp).toLocaleString("en-US", {
     month: "short",
