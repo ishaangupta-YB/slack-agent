@@ -35,6 +35,7 @@ export function getDemoMessage(): string {
 
     `*Security + compliance*\n` +
     `• \`/moonbot audit\` — review recent security events if you have privileged access\n` +
+    `• \`/moonbot reload\` — reload skill Markdown files from disk without restarting (privileged only)\n` +
     `• \`/moonbot whoami\` — confirm your access tier and guest status\n` +
     `• \`/moonbot diagnose\` — run pre-flight configuration checks\n\n` +
 

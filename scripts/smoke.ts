@@ -43,6 +43,7 @@ import { getCounter } from "../src/storage/metrics.js";
 import { WebClient } from "@slack/web-api";
 import { HuggingFaceBucket } from "../src/storage/bucket.js";
 import { getSessionFilenameByThreadKey, handleMessage, prepareLlmMessages, readSessionMessages } from "../src/agent.js";
+import { reloadSkills } from "../src/skills/loader.js";
 import { clearChatOverride, setChatOverride } from "../src/llm/cloudflare.js";
 import { clearMongoExecutor, setMongoExecutor } from "../src/tools/mongo.js";
 import { clearAthenaExecutor, setAthenaExecutor } from "../src/tools/athena.js";
@@ -4165,6 +4166,7 @@ rLQ+epZplw==
   assert(slashResponses[0].text?.includes("/moonbot version"), "welcome fallback should mention /moonbot version");
   assert(slashResponses[0].text?.includes("/moonbot impact"), "welcome fallback should mention /moonbot impact");
   assert(slashResponses[0].text?.includes("/moonbot audit"), "welcome fallback should mention /moonbot audit");
+  assert(slashResponses[0].text?.includes("/moonbot reload"), "welcome fallback should mention /moonbot reload");
   assert(slashResponses[0].text?.includes("/moonbot remember"), "welcome fallback should mention /moonbot remember");
   assert(slashResponses[0].text?.includes("/moonbot memory"), "welcome fallback should mention /moonbot memory");
   assert(slashResponses[0].text?.includes("/moonbot forget"), "welcome fallback should mention /moonbot forget");
@@ -4624,6 +4626,44 @@ rLQ+epZplw==
     );
   } finally {
     cfg.okta.userTiers = originalAuditUserTiers;
+  }
+
+  // /moonbot reload — privileged-only runtime skill reload.
+  const originalReloadUserTiers = cfg.okta.userTiers;
+  const reloadSkillName = `smoke-reload-${Date.now()}`;
+  const reloadSkillDir = join("./skills", reloadSkillName);
+  const reloadSkillPath = join(reloadSkillDir, "SKILL.md");
+  try {
+    // Basic-tier user should be refused.
+    cfg.okta.userTiers = "U_RELOAD:basic";
+    await dispatchSlashCommand("reload", {} as WebClient, "U_RELOAD");
+    assert(
+      slashResponses[0].text?.includes("Only privileged-tier users can reload"),
+      "basic-tier user should be refused access to /moonbot reload",
+    );
+    assert.strictEqual(slashResponses[0].response_type, "ephemeral", "reload refusal should be ephemeral");
+
+    // Add a temporary skill file and reload as a privileged user.
+    mkdirSync(reloadSkillDir, { recursive: true });
+    writeFileSync(reloadSkillPath, `# ${reloadSkillName}\n\nSmoke test reload skill content.\n`, "utf-8");
+
+    cfg.okta.userTiers = "U_RELOAD:privileged";
+    await dispatchSlashCommand("reload", {} as WebClient, "U_RELOAD");
+    const reloadText = slashResponses[0].text ?? "";
+    assert(reloadText.includes("Skills reloaded"), "reload command should include skills reloaded header");
+    assert(reloadText.includes(reloadSkillName), "reload command should list the newly created skill");
+    assert.strictEqual(slashResponses[0].response_type, "ephemeral", "reload response should be ephemeral");
+
+    // Verify the reload helper also returns the new skill.
+    const reloaded = reloadSkills();
+    assert(reloaded.names.includes(reloadSkillName), "reloadSkills should include the temporary skill");
+  } finally {
+    cfg.okta.userTiers = originalReloadUserTiers;
+    if (existsSync(reloadSkillPath)) rmSync(reloadSkillPath);
+    if (existsSync(reloadSkillDir)) rmSync(reloadSkillDir, { recursive: true });
+    // Restore the skill cache so later skill-discovery assertions are not
+    // polluted by the temporary skill.
+    reloadSkills();
   }
 
   // /moonbot ping — live LLM connectivity check.

@@ -33,8 +33,6 @@ export interface StoredMessage {
   correlationId?: string;
 }
 
-const skills = loadSkills();
-
 function formatMemoryContext(entries: MemoryEntry[]): string {
   if (entries.length === 0) return "";
   const lines = entries.map((e) => {
@@ -89,7 +87,7 @@ function systemPrompt(
     "Be concise but thorough, defaulting to Slack-compatible markdown." +
     memoryContext +
     formatToolInstructions(listTools(tier, environment)) +
-    buildSkillPrompt(skills)
+    buildSkillPrompt(loadSkills())
   );
 }
 

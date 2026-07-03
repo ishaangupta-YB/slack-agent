@@ -18,6 +18,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Agent for Good** — designed for under-resourced nonprofit, civic-tech, and open-source teams that need to monitor public services, respond to incidents, and communicate impact without dedicated SREs.
 - **Memory & continuity** — every thread is a resumable session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant truly remembers context. Users can also explicitly save facts with `/moonbot remember <fact>`, recall recent memories with `/moonbot memory [limit]`, and remove remembered facts with `/moonbot forget <text|all>`.
 - **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
+- **Hot skill reload** — privileged users can run `/moonbot reload` to pick up new or edited skill Markdown files in `skills/` without restarting the bot.
 - **Runtime metrics** — the bucket server exposes a `/metrics` endpoint and `/moonbot metrics` reports live operational counters: messages handled, LLM calls, tool calls, tool errors, sessions, thread map entries, memory, feedback, audit events, and response artifacts.
 - **Request correlation IDs** — every Slack message and GitHub webhook gets a short correlation ID that is persisted to the session JSONL and included in error logs, so failures are easy to trace back to the originating message.
 - **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
@@ -156,7 +157,7 @@ npm run prepare-submission     # verify deliverables are present and forbidden f
 - Reply in any thread Moon Bot has joined without @-mentioning it again.
 - In DMs: just send a message — replies stay in the main DM view and the whole DM history shares one continuous session.
 - Open the Slack AI Assistant panel and select **Moon Bot**.
-- Use `/moonbot help`, `/moonbot demo`, `/moonbot tools`, `/moonbot version`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, `/moonbot forget <text|all>`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
+- Use `/moonbot help`, `/moonbot demo`, `/moonbot tools`, `/moonbot version`, `/moonbot status`, `/moonbot metrics`, `/moonbot diagnose`, `/moonbot audit [limit]` (privileged), `/moonbot reload` (privileged), `/moonbot ping`, `/moonbot whoami`, `/moonbot thread`, `/moonbot remember <fact>`, `/moonbot memory [limit]`, `/moonbot forget <text|all>`, `/moonbot search <query>`, `/moonbot report weekly`, `/moonbot report deploy`, `/moonbot statuspage <url>`, or `/moonbot impact`.
 
 ---
 

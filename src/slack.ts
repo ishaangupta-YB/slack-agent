@@ -35,6 +35,7 @@ import { searchSlackTool } from "./tools/slack-search.js";
 import { safeSay } from "./slack-delivery.js";
 import { getDemoMessage } from "./demo.js";
 import { getMetrics } from "./storage/metrics.js";
+import { reloadSkills } from "./skills/loader.js";
 import { downloadSlackFiles, formatSlackFiles, type SlackFile } from "./slack-files.js";
 import { recordFeedback, type FeedbackKind } from "./feedback.js";
 import { getMemoryRecent, rememberFact, forgetMemory, clearAllMemory, formatMemoryEntry } from "./tools/memory.js";
@@ -554,11 +555,11 @@ async function handleAppHomeOpened({
 app.event("app_home_opened", handleAppHomeOpened as never);
 
 /**
- * Slash command entry point: /moonbot [help | demo | tools | version | status | diagnose | ping | whoami | thread | remember | memory | search | report | statuspage | impact].
+ * Slash command entry point: /moonbot [help | demo | tools | version | status | metrics | diagnose | audit | reload | ping | whoami | thread | remember | memory | forget | search | report | statuspage | impact].
  *
  * Gives users a quick, discoverable way to check capabilities, health,
  * configuration diagnostics, tool inventory, real-time search, session info,
- * and live LLM connectivity without starting a threaded conversation.
+ * skill reload, and live LLM connectivity without starting a threaded conversation.
  */
 export async function handleMoonbotCommand({
   command,
@@ -728,6 +729,29 @@ export async function handleMoonbotCommand({
 
     await respond({
       text: `*Security audit log* \nShowing the last ${events.length} event(s):\n\n${lines}`,
+      response_type: "ephemeral",
+    });
+    return;
+  }
+
+  if (subcommand === "reload") {
+    const userId = command.user_id;
+    const userEmail = await getUserEmail(client, userId);
+    const tier = await resolveAccessTier(userId, userEmail);
+    if (tier !== "privileged") {
+      await respond({
+        text: "*Skill reload* \nOnly privileged-tier users can reload skills at runtime.",
+        response_type: "ephemeral",
+      });
+      return;
+    }
+
+    const result = reloadSkills();
+    await respond({
+      text:
+        `*Skills reloaded* ♻️\n` +
+        `Reloaded ${result.count} skill(s): ${result.names.join(", ") || "none"}.\n` +
+        "New skill Markdown files in `skills/` are now active for the next message.",
       response_type: "ephemeral",
     });
     return;
@@ -936,6 +960,7 @@ export async function handleMoonbotCommand({
       "• `/moonbot metrics` — runtime usage metrics\n" +
       "• `/moonbot diagnose` — pre-flight configuration check\n" +
       "• `/moonbot audit [limit]` — view recent security audit events (privileged only)\n" +
+      "• `/moonbot reload` — reload skill Markdown files without restarting (privileged only)\n" +
       "• `/moonbot ping` — live LLM connectivity check\n" +
       "• `/moonbot whoami` — your resolved access tier and guest status\n" +
       "• `/moonbot thread` — your current DM session info\n" +

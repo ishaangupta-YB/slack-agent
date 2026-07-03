@@ -8,7 +8,7 @@ export interface Skill {
 
 const SKILLS_DIR = "./skills";
 
-export function loadSkills(): Skill[] {
+function loadSkillsFromDisk(): Skill[] {
   if (!existsSync(SKILLS_DIR)) return [];
   const entries = readdirSync(SKILLS_DIR, { withFileTypes: true });
   const skills: Skill[] = [];
@@ -22,6 +22,27 @@ export function loadSkills(): Skill[] {
     });
   }
   return skills;
+}
+
+let skillsCache: Skill[] = loadSkillsFromDisk();
+
+export function loadSkills(): Skill[] {
+  return skillsCache;
+}
+
+export interface ReloadSkillsResult {
+  skills: Skill[];
+  count: number;
+  names: string[];
+}
+
+export function reloadSkills(): ReloadSkillsResult {
+  skillsCache = loadSkillsFromDisk();
+  return {
+    skills: skillsCache,
+    count: skillsCache.length,
+    names: skillsCache.map((s) => s.name),
+  };
 }
 
 export function buildSkillPrompt(skills: Skill[]): string {
