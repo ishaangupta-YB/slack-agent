@@ -144,6 +144,8 @@ npm run verify-slack
 npm start
 ```
 
+Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
+
 Or use Docker:
 
 ```bash

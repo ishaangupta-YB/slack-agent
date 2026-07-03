@@ -138,9 +138,10 @@ npm run build                  # compile the production bundle
 node dist/app.js --check       # validate startup without connecting to Slack (tokens not needed)
 npm run diagnose               # validate env vars and local directories
 npm run verify-slack           # validate Slack token scopes and connectivity
+npm run slack-e2e              # post a test message and verify Moon Bot replies (requires SLACK_E2E_CHANNEL)
 ```
 
-`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode.
+`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a live message and poll for the bot's reply in a real Slack workspace.
 
 ### 5. Talk to Moon Bot
 
@@ -194,6 +195,7 @@ node dist/app.js --check  # Validate production bundle startup
 npm run smoke        # Full integration smoke suite
 npm run diagnose     # Pre-flight config validation
 npm run verify-slack # Pre-flight Slack connectivity validation
+npm run slack-e2e    # Live end-to-end Slack message test
 npm run dev          # Run with tsx (no build step)
 ```
 

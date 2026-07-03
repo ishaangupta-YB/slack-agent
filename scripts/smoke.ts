@@ -57,6 +57,7 @@ import { startGitHubBotServer, stopGitHubBotServer } from "../src/github-bot.js"
 import { logSecurityEvent } from "../src/tools/security.js";
 import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
+import { runSlackE2E } from "./slack-e2e.js";
 
 function clean() {
   if (existsSync(process.env.MEMORY_FILE!)) rmSync(process.env.MEMORY_FILE!);
@@ -4095,6 +4096,51 @@ rLQ+epZplw==
   assert(badResult.checks.some((c) => c.name === "bot_auth" && !c.ok));
   assert(badResult.checks.some((c) => c.name === "app_auth" && c.ok));
   console.log("Slack connectivity verification passed");
+
+  // End-to-end Slack message test: post a message and poll for the bot's reply.
+  // The first poll has not seen the bot reply yet; the second poll returns it.
+  let e2eRepliesCalls = 0;
+  const e2eMockClient = {
+    auth: {
+      test: async () => ({ ok: true, user_id: "UBOT" }),
+    },
+    chat: {
+      postMessage: async () => ({ ok: true, ts: "123.100" }),
+    },
+    conversations: {
+      replies: async () => {
+        e2eRepliesCalls++;
+        if (e2eRepliesCalls < 2) {
+          return {
+            ok: true,
+            messages: [
+              { ts: "123.100", user: "UUSER", text: "Moon Bot Slack end-to-end test 1" },
+            ],
+          };
+        }
+        return {
+          ok: true,
+          messages: [
+            { ts: "123.100", user: "UUSER", text: "Moon Bot Slack end-to-end test 1" },
+            { ts: "123.101", user: "UBOT", text: "_Hello from Moon Bot_" },
+          ],
+        };
+      },
+      history: async () => ({ ok: true, messages: [] }),
+    },
+  } as unknown as WebClient;
+  const slackE2eResult = await runSlackE2E(e2eMockClient, "C123", {
+    messageText: "hello bot",
+    pollIntervalMs: 1,
+  });
+  assert.strictEqual(slackE2eResult.ok, true, `expected e2e success, got ${slackE2eResult.error}`);
+  assert.strictEqual(slackE2eResult.botUserId, "UBOT");
+  assert.strictEqual(slackE2eResult.postedTs, "123.100");
+  assert(
+    slackE2eResult.replyText?.includes("Moon Bot"),
+    `unexpected reply: ${slackE2eResult.replyText}`,
+  );
+  console.log("Slack end-to-end message test passed");
 
   // One-shot local ask CLI: lets developers run a single agent turn without Slack credentials.
   clearChatOverride();
