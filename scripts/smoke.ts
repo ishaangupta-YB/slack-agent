@@ -215,7 +215,34 @@ async function main() {
   );
 
   const compoundCommand = await runToolCall({ tool: "bash", params: { command: "echo a && echo b" } });
-  assert(compoundCommand.result.includes("compound commands are not allowed"));
+  assert(compoundCommand.result.includes("compound commands"));
+
+  const multilineCommand = await runToolCall({
+    tool: "bash",
+    params: { command: "echo a\necho b" },
+  });
+  assert(
+    multilineCommand.result.includes("multiline input"),
+    `Expected multiline command to be rejected, got: ${multilineCommand.result}`,
+  );
+
+  const backtickSubstitution = await runToolCall({
+    tool: "bash",
+    params: { command: "echo `id`" },
+  });
+  assert(
+    backtickSubstitution.result.includes("command substitution"),
+    `Expected backtick substitution to be rejected, got: ${backtickSubstitution.result}`,
+  );
+
+  const parenSubstitution = await runToolCall({
+    tool: "bash",
+    params: { command: "echo $(id)" },
+  });
+  assert(
+    parenSubstitution.result.includes("command substitution"),
+    `Expected $(...) substitution to be rejected, got: ${parenSubstitution.result}`,
+  );
 
   // Tiered bash sandboxing: without any tier users configured the command runs as /bin/sh -c.
   let lastCommand = "";

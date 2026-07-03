@@ -36,6 +36,18 @@ function isSuspicious(command: string): boolean {
   return SUSPICIOUS_COMMANDS.some((re) => re.test(command));
 }
 
+function containsShellControlCharacters(command: string): boolean {
+  return (
+    command.includes("&&") ||
+    command.includes("||") ||
+    command.includes(";") ||
+    command.includes("\n") ||
+    command.includes("\r") ||
+    command.includes("`") ||
+    command.includes("$(")
+  );
+}
+
 export type BashExecutor = (
   command: string,
   args: string[],
@@ -95,7 +107,7 @@ function runCommand(command: string, args: string[], options: { cwd: string; tim
 export const bashTool: Tool = {
   name: "bash",
   description:
-    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single commands only; compound operators are rejected. Suspicious commands are blocked and logged. When BASH_TIER_USERS is configured, commands run under the Linux user assigned to the caller's access tier via su -l.",
+    "Run a shell command in the project root. Bash is disabled unless ALLOW_BASH=true. Single simple commands only; compound operators, command substitution (`...` or $(...)), and newlines are rejected. Suspicious commands are blocked and logged. When BASH_TIER_USERS is configured, commands run under the Linux user assigned to the caller's access tier via su -l.",
   params,
   tier: "basic",
   run(input) {
@@ -104,8 +116,8 @@ export const bashTool: Tool = {
     }
 
     const command = input.command.trim();
-    if (command.includes("&&") || command.includes("||") || command.includes(";")) {
-      return "Error: compound commands are not allowed. Run one command at a time.";
+    if (containsShellControlCharacters(command)) {
+      return "Error: compound commands, command substitution, or multiline input are not allowed. Run one simple command at a time.";
     }
     if (BLOCKED_COMMANDS.some((re) => re.test(command))) {
       logSecurityEvent({
