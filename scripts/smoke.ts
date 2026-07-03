@@ -3744,6 +3744,8 @@ rLQ+epZplw==
   assert(botScopes.includes("commands"), "manifest must include commands scope for slash commands and shortcuts");
   assert(botScopes.includes("reactions:read"), "manifest must include reactions:read scope for emoji reaction actions");
   assert(botScopes.includes("im:history"), "manifest must include im:history scope");
+  assert(botScopes.includes("channels:history"), "manifest must include channels:history scope for thread follow-ups in public channels");
+  assert(botScopes.includes("groups:history"), "manifest must include groups:history scope for thread follow-ups in private channels");
   assert(botScopes.includes("users:read"), "manifest must include users:read scope");
   assert(botScopes.includes("users:read.email"), "manifest must include users:read.email scope");
   assert(botScopes.includes("files:read"), "manifest must include files:read scope for file attachment handling");
@@ -3761,6 +3763,8 @@ rLQ+epZplw==
 
   const botEvents = manifest.settings?.event_subscriptions?.bot_events ?? [];
   assert(botEvents.includes("app_mention"), "manifest must subscribe to app_mention events");
+  assert(botEvents.includes("message.channels"), "manifest must subscribe to message.channels events for thread follow-ups");
+  assert(botEvents.includes("message.groups"), "manifest must subscribe to message.groups events for private-channel thread follow-ups");
   assert(botEvents.includes("assistant_thread_started"), "manifest must subscribe to assistant_thread_started events");
   assert(botEvents.includes("reaction_added"), "manifest must subscribe to reaction_added events");
   assert(manifest.settings?.socket_mode_enabled === true, "manifest must enable Socket Mode");
