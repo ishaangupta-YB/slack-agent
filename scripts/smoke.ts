@@ -1271,6 +1271,70 @@ async function main() {
   assert(sizzleResult.result.includes("1024"));
   console.log("Sizzle query tool passed");
 
+  const sizzleTraversal = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: {
+        query: "SELECT * FROM __source_0",
+        files: ["../../../etc/passwd"],
+        max_rows: 3,
+      },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleTraversal.result.includes("outside SIZZLE_DATA_DIR"));
+
+  const sizzleSemicolon = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT 1; DROP TABLE t", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleSemicolon.result.includes("semicolons"));
+
+  const sizzleInlineFile = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT * FROM read_parquet('/etc/passwd')", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleInlineFile.result.includes("file sources must be provided via the files parameter"));
+
+  const sizzleDml = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT * FROM t WHERE name = 'attach'", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleDml.result.includes("disallowed SQL keyword"));
+
+  const sizzleBadStart = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "PRAGMA version", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleBadStart.result.includes("SELECT or WITH"));
+
+  const sizzlePathLiteral = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT * FROM t WHERE path = '/etc/passwd'", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzlePathLiteral.result.includes("path-like string literals"));
+
   clearSizzleExecutor();
   cfg.integrations.sizzleDataDir = undefined;
   const sizzleUnconfigured = await runToolCall(

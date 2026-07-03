@@ -1,11 +1,12 @@
 import { execFile } from "node:child_process";
+import { normalize, resolve, sep } from "node:path";
 import { z } from "zod";
 import { cfg } from "../config.js";
 import { truncateOutput } from "./types.js";
 import type { Tool } from "./types.js";
 
 const sizzleQueryParams = z.object({
-  query: z.string().describe("DuckDB SQL query to execute."),
+  query: z.string().describe("DuckDB SQL query to execute. Only SELECT/WITH statements are allowed."),
   files: z
     .array(z.string())
     .optional()
@@ -42,7 +43,11 @@ function defaultExecutor(command: string, args: string[]): Promise<ExecResult> {
     execFile(
       command,
       args,
-      { encoding: "utf-8", maxBuffer: 8 * 1024 * 1024 },
+      {
+        encoding: "utf-8",
+        maxBuffer: 8 * 1024 * 1024,
+        cwd: getDataDir() ?? process.cwd(),
+      },
       (error, stdout, stderr) => {
         resolve({
           stdout,
@@ -62,39 +67,83 @@ function isSizzleConfigured(): boolean {
   return Boolean(cfg.integrations.sizzleDataDir);
 }
 
+function getDataDir(): string | undefined {
+  return cfg.integrations.sizzleDataDir ? resolve(cfg.integrations.sizzleDataDir) : undefined;
+}
+
+function safeDataPath(inputPath: string): string | undefined {
+  const dataDir = getDataDir();
+  if (!dataDir) return undefined;
+  const resolved = normalize(resolve(dataDir, inputPath));
+  const rootWithSep = dataDir.endsWith(sep) ? dataDir : dataDir + sep;
+  if (resolved === dataDir) return dataDir;
+  if (resolved.startsWith(rootWithSep)) return resolved;
+  return undefined;
+}
+
+function validateQuery(query: string): string | undefined {
+  const q = query.trim();
+  if (!/^[\s(]*(SELECT|WITH)\b/i.test(q)) {
+    return "Error: only SELECT or WITH queries are allowed.";
+  }
+  if (/;/u.test(q)) {
+    return "Error: semicolons are not allowed in Sizzle queries.";
+  }
+  if (/\b(ATTACH|COPY|EXPORT|IMPORT|PRAGMA|CALL|LOAD|INSTALL|CREATE|DROP|INSERT|UPDATE|DELETE|ALTER|BEGIN|COMMIT|ROLLBACK|CHECKPOINT|VACUUM)\b/giu.test(q)) {
+    return "Error: disallowed SQL keyword detected.";
+  }
+  if (/\b(read_parquet|read_csv_auto)\b/giu.test(q)) {
+    return "Error: file sources must be provided via the files parameter.";
+  }
+  if (/'[^']*[\\/][^']*'/u.test(q)) {
+    return "Error: path-like string literals are not allowed in queries.";
+  }
+  if (/--|\/\*/u.test(q)) {
+    return "Error: comments are not allowed in Sizzle queries.";
+  }
+  return undefined;
+}
+
 /**
  * Renders a DuckDB SELECT as a markdown table by wrapping it in a row-limit CTE.
- * When files are provided, they are registered in DuckDB using the `read_parquet`
- * or `read_csv_auto` table functions depending on extension.
+ * When files are provided, they are resolved under SIZZLE_DATA_DIR and registered
+ * using the `read_parquet` or `read_csv_auto` table functions depending on extension.
  */
-function buildSql(input: z.infer<typeof sizzleQueryParams>): string {
+function buildSql(input: z.infer<typeof sizzleQueryParams>, resolvedSources: string[]): string {
   const query = input.query.trim();
-  const sources = input.files ?? [];
 
-  if (sources.length === 0) {
+  if (resolvedSources.length === 0) {
     return `WITH _query AS (${query}) SELECT * FROM _query LIMIT ${input.max_rows}`;
   }
 
-  const sourceCtes = sources
-    .map((source, idx) => {
-      const path = source.replace(/'/g, "''");
+  const sourceCtes = resolvedSources
+    .map((sourcePath, idx) => {
+      const escaped = sourcePath.replace(/'/g, "''");
       const name = `__source_${idx}`;
-      if (/\.csv$/i.test(source)) {
-        return `${name} AS (SELECT * FROM read_csv_auto('${path}'))`;
+      if (/\.csv$/i.test(sourcePath)) {
+        return `${name} AS (SELECT * FROM read_csv_auto('${escaped}'))`;
       }
-      return `${name} AS (SELECT * FROM read_parquet('${path}'))`;
+      return `${name} AS (SELECT * FROM read_parquet('${escaped}'))`;
     })
     .join(", ");
 
   return `WITH ${sourceCtes}, _query AS (${query}) SELECT * FROM _query LIMIT ${input.max_rows}`;
 }
 
-function buildArgs(input: z.infer<typeof sizzleQueryParams>): string[] {
-  const args = ["-c", buildSql(input)];
-  if (input.format === "csv") {
-    args.unshift("-csv");
+function buildArgs(input: z.infer<typeof sizzleQueryParams>): string | string[] {
+  const queryError = validateQuery(input.query);
+  if (queryError) return queryError;
+
+  const resolvedSources: string[] = [];
+  for (const source of input.files ?? []) {
+    const safe = safeDataPath(source);
+    if (!safe) {
+      return `Error: file path is outside SIZZLE_DATA_DIR: ${source}`;
+    }
+    resolvedSources.push(safe);
   }
-  return args;
+
+  return ["-c", buildSql(input, resolvedSources)];
 }
 
 function csvToMarkdown(stdout: string): string {
@@ -133,8 +182,12 @@ async function sizzleQuery(input: z.infer<typeof sizzleQueryParams>): Promise<st
   }
 
   try {
-    const args = buildArgs(input);
-    const result = await execDuckDb(args);
+    const argsOrError = buildArgs(input);
+    if (typeof argsOrError === "string") {
+      return argsOrError;
+    }
+
+    const result = await execDuckDb(argsOrError);
 
     if (result.exitCode !== 0) {
       const detail = result.stderr || result.stdout;
@@ -151,7 +204,7 @@ async function sizzleQuery(input: z.infer<typeof sizzleQueryParams>): Promise<st
 export const sizzleQueryTool: Tool = {
   name: "sizzle_query",
   description:
-    "Run a DuckDB SQL query against Xet storage statistics hosted in DuckLake (Parquet/CSV files). Useful for storage capacity, deduplication ratio, shard counts, and bandwidth metrics. Set SIZZLE_DATA_DIR to enable. (elastic tier)",
+    "Run a SELECT/WITH DuckDB SQL query against Xet storage statistics hosted in DuckLake (Parquet/CSV files). Files are resolved under SIZZLE_DATA_DIR; only the provided sources may be queried, and file paths cannot escape the data directory. Useful for storage capacity, deduplication ratio, shard counts, and bandwidth metrics. (elastic tier)",
   params: sizzleQueryParams,
   tier: "elastic",
   run: sizzleQuery,

@@ -67,3 +67,4 @@ Capacity summary from a CSV export:
 - DuckDB detects file type from extension. `*.parquet` uses `read_parquet`; `*.csv` uses `read_csv_auto`.
 - If `SIZZLE_DATA_DIR` is not set, the tool returns a configuration message instead of failing.
 - Large result sets are truncated to keep Slack messages readable.
+- For sandbox safety, queries must be `SELECT` or `WITH` statements, cannot contain semicolons, comments, or destructive keywords, and file paths cannot escape `SIZZLE_DATA_DIR`.
