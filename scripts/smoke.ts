@@ -4080,6 +4080,53 @@ rLQ+epZplw==
   );
   console.log("Production bundle startup check passed");
 
+  // Production healthcheck: verify the compiled dist/healthcheck.js can
+  // validate a running bucket server, and that it fails against a closed port.
+  assert.strictEqual(
+    getActiveBucketServer(),
+    undefined,
+    "Bucket server should not be active before healthcheck test",
+  );
+
+  await startBucketServer();
+
+  const healthCheckOkResult = await new Promise<{ code: number; stdout: string }>((resolve) => {
+    const child = spawn("node", ["dist/healthcheck.js"], {
+      env: { ...process.env, HEALTHCHECK_RETRIES: "0" },
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    child.stdout.on("data", (data) => {
+      stdout += String(data);
+    });
+    child.on("close", (code) => {
+      resolve({ code: code ?? 1, stdout });
+    });
+  });
+
+  assert.strictEqual(healthCheckOkResult.code, 0, "Compiled healthcheck should pass against running bucket server");
+  assert(
+    healthCheckOkResult.stdout.includes("healthcheck OK") && healthCheckOkResult.stdout.includes('"status":"ok"'),
+    `Expected healthcheck output to report OK, got: ${healthCheckOkResult.stdout}`,
+  );
+
+  stopBucketServer();
+  assert.strictEqual(getActiveBucketServer(), undefined, "Bucket server should be stopped after healthcheck test");
+
+  const healthCheckFailResult = await new Promise<{ code: number }>((resolve) => {
+    const child = spawn("node", ["dist/healthcheck.js"], {
+      env: { ...process.env, HEALTHCHECK_URL: "http://localhost:13099/health", HEALTHCHECK_RETRIES: "0" },
+      stdio: "ignore",
+    });
+    child.on("close", (code) => resolve({ code: code ?? 1 }));
+  });
+  assert.strictEqual(
+    healthCheckFailResult.code,
+    1,
+    "Compiled healthcheck should fail when the /health endpoint is unreachable",
+  );
+  console.log("Production healthcheck passed");
+
   console.log("smoke tests passed");
   clean();
   await shutdownTools();

@@ -16,7 +16,7 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-RUN apk add --no-cache git wget
+RUN apk add --no-cache git
 
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
@@ -38,6 +38,6 @@ VOLUME ["/app/data"]
 EXPOSE 3001
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget -qO- http://localhost:3001/health || exit 1
+  CMD node dist/healthcheck.js
 
 CMD ["node", "dist/app.js"]

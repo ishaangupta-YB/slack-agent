@@ -225,7 +225,7 @@ Try these in Slack to show off the core tracks:
 
 ## Deployment
 
-A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_PORT` and runs in Socket Mode — no public ingress URL is required for Slack events.
+A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_PORT`, uses `src/healthcheck.ts` for container health checks, and runs in Socket Mode — no public ingress URL is required for Slack events.
 
 ### GitHub-only bot mode
 
