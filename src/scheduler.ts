@@ -483,6 +483,27 @@ async function postStatusAlert(
   }
 }
 
+async function postStatusRecovery(
+  app: App,
+  channel: string,
+  pageName: string,
+  url: string,
+  indicator: string,
+  description: string,
+): Promise<void> {
+  try {
+    const text =
+      `*${pageName} status recovered* ✅\n` +
+      `• Indicator: \`${indicator}\`\n` +
+      `• Description: ${description}\n` +
+      `• Page: ${url}`;
+    await app.client.chat.postMessage({ channel, text, unfurl_links: false });
+    console.log(`Public status recovery posted to ${channel} for ${pageName} (${indicator})`);
+  } catch (err) {
+    console.error("Public status recovery failed:", err);
+  }
+}
+
 export async function checkPublicStatusPages(
   app: App,
   channel: string,
@@ -507,8 +528,11 @@ export async function checkPublicStatusPages(
       }
       const prev = state.get(url);
       const wasIncident = prev?.lastIndicator ? isIncidentStatus(prev.lastIndicator) : false;
-      if (isIncidentStatus(parsed.indicator) && !wasIncident) {
+      const isIncident = isIncidentStatus(parsed.indicator);
+      if (isIncident && !wasIncident) {
         await postStatusAlert(app, channel, parsed.name, url, parsed.indicator, parsed.description);
+      } else if (!isIncident && wasIncident) {
+        await postStatusRecovery(app, channel, parsed.name, url, parsed.indicator, parsed.description);
       }
       state.set(url, { url, lastIndicator: parsed.indicator });
     } catch (err) {

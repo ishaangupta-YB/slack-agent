@@ -21,6 +21,8 @@ When a civic service depends on a third-party platform (CDN, auth provider, clou
 
 Moon Bot should call `public_status` with the JSON endpoint, then summarize the indicator and description.
 
+When `STATUS_MONITOR_CHANNEL` and `STATUS_MONITOR_PAGES` are configured, Moon Bot also polls those pages on a cron schedule, posts a Slack alert the first time an incident is detected, and posts a recovery notice when the service returns to an operational indicator.
+
 ### Incident response in one thread
 
 1. A team member posts in `#incidents` that the donation portal is slow.

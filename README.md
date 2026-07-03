@@ -19,7 +19,7 @@ Built for the **Slack Agent Builder Challenge** (New Slack Agent or Slack Agent 
 - **Memory & continuity** — every thread is a resumable session backed by a bucket; prior interactions from the same thread and related past threads are automatically recalled into the system prompt so the assistant truly remembers context.
 - **Auditable artifacts** — every response links to the full markdown response, a JSONL session trace, and a rendered HTML trace viewer.
 - **Runtime metrics** — the bucket server exposes a `/metrics` endpoint with live counts for sessions, thread map entries, memory, feedback, audit events, and response artifacts.
-- **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
+- **Scheduled reports** — weekly ops report, post-deploy impact monitor, and proactive public-status monitoring with restart-safe incident state and recovery alerts; also available on demand via `weekly_report`/`deploy_report` tools and `/moonbot report` slash commands.
 - **Tiered access** — basic, elastic, and privileged tiers (Okta or env-driven) gate which tools a user can invoke.
 - **Defense in depth** — sandboxed bash, suspicious-command blocking, prompt-injection reporting, `/moonbot audit` (privileged-only) for reviewing security events in Slack, and local credential proxies for Elasticsearch, HuggingFace, and Plausible.
 - **Message shortcut** — select any Slack message and choose *Ask Moon Bot* to get a threaded, context-aware reply.

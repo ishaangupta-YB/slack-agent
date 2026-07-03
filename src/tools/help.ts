@@ -96,7 +96,7 @@ export const helpTool: Tool = {
         `**Automated reports**\n` +
         `• Weekly ops report (Mondays 09:00 UTC) — error rates, rate-limiting, Gitaly health\n` +
         `• Deploy monitor — watches the deploy channel and compares before/after error rates\n` +
-        `• Public status monitor — watches civic/nonprofit service status pages and posts incident alerts\n` +
+        `• Public status monitor — watches civic/nonprofit service status pages and posts incident and recovery alerts\n` +
         `• Slash commands: \`/moonbot search <query>\`, \`/moonbot report weekly\`, \`/moonbot report deploy\`, \`/moonbot statuspage <url>\`, \`/moonbot impact\`, \`/moonbot status\`, \`/moonbot metrics\`, \`/moonbot diagnose\`, \`/moonbot audit [limit]\` (privileged), \`/moonbot ping\`, or \`/moonbot whoami\`\n\n` +
         `**Example prompts**\n` +
         `• “Search Slack for recent deployment discussions.”\n` +

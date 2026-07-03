@@ -2415,13 +2415,15 @@ rLQ+epZplw==
     cfg.scheduler.statusMonitorCron = "*/5 * * * *";
 
     const originalFetch = globalThis.fetch;
+    let currentIndicator = "major";
+    let currentDescription = "Major outage";
     globalThis.fetch = async (url: string | URL | Request, init?: RequestInit) => {
       const urlString = String(url);
       if (urlString.includes("status.example.com")) {
         return new Response(
           JSON.stringify({
             page: { name: "Example Service", updated_at: new Date().toISOString() },
-            status: { indicator: "major", description: "Major outage" },
+            status: { indicator: currentIndicator, description: currentDescription },
           }),
           { status: 200, headers: { "Content-Type": "application/json" } },
         );
@@ -2463,6 +2465,22 @@ rLQ+epZplw==
         state,
       );
       assert.strictEqual(postedMessages.length, 0, "Public status monitor should not re-alert for unchanged incident");
+
+      // Third check after the service recovers should post a recovery notice.
+      currentIndicator = "operational";
+      currentDescription = "All systems operational";
+      postedMessages.length = 0;
+      await checkPublicStatusPages(
+        mockApp,
+        cfg.scheduler.statusMonitorChannel,
+        cfg.scheduler.statusMonitorPages,
+        state,
+      );
+      assert.strictEqual(postedMessages.length, 1, "Public status monitor should alert on recovery");
+      const recovery = postedMessages[0];
+      assert.strictEqual(recovery.channel, "CSTATUS");
+      assert((recovery.text as string).includes("recovered"));
+      assert((recovery.text as string).includes("operational"));
 
       console.log("Public status monitor passed");
     } finally {
