@@ -1337,6 +1337,26 @@ async function main() {
   );
   assert(sizzlePathLiteral.result.includes("path-like string literals"));
 
+  const sizzleReadText = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT * FROM read_text('secrets.txt')", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleReadText.result.includes("file sources must be provided via the files parameter"));
+
+  const sizzleParquetScan = await runToolCall(
+    {
+      tool: "sizzle_query",
+      params: { query: "SELECT * FROM parquet_scan('data.parquet')", max_rows: 1 },
+    },
+    8_000,
+    "elastic",
+  );
+  assert(sizzleParquetScan.result.includes("file sources must be provided via the files parameter"));
+
   clearSizzleExecutor();
   cfg.integrations.sizzleDataDir = undefined;
   const sizzleUnconfigured = await runToolCall(

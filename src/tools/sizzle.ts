@@ -92,7 +92,12 @@ function validateQuery(query: string): string | undefined {
   if (/\b(ATTACH|COPY|EXPORT|IMPORT|PRAGMA|CALL|LOAD|INSTALL|CREATE|DROP|INSERT|UPDATE|DELETE|ALTER|BEGIN|COMMIT|ROLLBACK|CHECKPOINT|VACUUM)\b/giu.test(q)) {
     return "Error: disallowed SQL keyword detected.";
   }
-  if (/\b(read_parquet|read_csv_auto)\b/giu.test(q)) {
+  // Block any file-reading or file-scanning table functions inside the
+  // user-supplied query. File access is only allowed through the `files`
+  // parameter, which the wrapper resolves under SIZZLE_DATA_DIR and injects
+  // as CTEs. This prevents sandbox escapes via DuckDB functions such as
+  // read_text, read_json, parquet_scan, csv_scan, glob, etc.
+  if (/\b(read_[a-z0-9_]+|parquet_scan|parquet_metadata|csv_scan|json_scan|glob|sniff_csv)\s*\(/giu.test(q)) {
     return "Error: file sources must be provided via the files parameter.";
   }
   if (/'[^']*[\\/][^']*'/u.test(q)) {
