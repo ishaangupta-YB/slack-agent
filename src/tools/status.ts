@@ -62,7 +62,7 @@ export const statusTool = {
       `*Integrations:*`,
       `• GitHub static token: ${isConfigured(cfg.integrations.githubToken)}`,
       `• GitHub App auth: ${cfg.integrations.githubApp.appId ? "configured" : "not configured"}`,
-      `• GitHub API retries: ${cfg.integrations.githubApiRetries} (base delay ${cfg.integrations.githubApiRetryBaseMs}ms)`,
+      `• GitHub API retries: ${cfg.integrations.githubApiRetries} (base delay ${cfg.integrations.githubApiRetryBaseMs}ms, timeout ${cfg.integrations.githubApiTimeoutMs}ms)`,
       `• Elasticsearch: ${isConfigured(cfg.integrations.esUrl)}`,
       `• MongoDB: ${isConfigured(cfg.integrations.mongoUri)}`,
       `• AWS Athena: ${isConfigured(cfg.integrations.awsAccessKeyId)}`,

@@ -68,8 +68,10 @@ function signAppJwt(appId: string, privateKey: string): string {
 }
 
 async function exchangeForInstallationToken(jwt: string, installationId: string): Promise<TokenCache> {
+  const signal = createAttemptSignal(cfg.integrations.githubApiTimeoutMs);
   const resp = await fetchImpl(`${GH_API_BASE}/app/installations/${installationId}/access_tokens`, {
     method: "POST",
+    signal,
     headers: {
       Authorization: `Bearer ${jwt}`,
       Accept: "application/vnd.github+json",
@@ -129,6 +131,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function createAttemptSignal(timeoutMs: number, userSignal?: AbortSignal): AbortSignal | undefined {
+  if (timeoutMs <= 0 && !userSignal) return undefined;
+  const timeoutSignal = timeoutMs > 0 ? AbortSignal.timeout(timeoutMs) : undefined;
+  if (userSignal && timeoutSignal) {
+    return AbortSignal.any([userSignal, timeoutSignal]);
+  }
+  return userSignal ?? timeoutSignal;
+}
+
 export async function githubApi<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = path.startsWith("http") ? path : `${GH_API_BASE}${path}`;
   const token = await getGitHubToken();
@@ -138,9 +149,11 @@ export async function githubApi<T>(path: string, options: RequestInit = {}): Pro
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     let resp: Response | undefined;
+    const signal = createAttemptSignal(cfg.integrations.githubApiTimeoutMs, options.signal as AbortSignal | undefined);
     try {
-      resp = await fetch(url, {
+      resp = await fetchImpl(url, {
         ...options,
+        signal,
         headers: {
           Authorization: `Bearer ${token}`,
           Accept: "application/vnd.github+json",

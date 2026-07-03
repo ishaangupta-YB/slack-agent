@@ -53,7 +53,7 @@ import { buildSandboxCommand, clearBashExecutor, setBashExecutor } from "../src/
 import { startEsProxy, stopEsProxy } from "../src/proxy/es.js";
 import { startPlausibleProxy, stopPlausibleProxy } from "../src/proxy/plausible.js";
 import { startHfProxy, stopHfProxy } from "../src/proxy/hf.js";
-import { clearGitHubTokenCache } from "../src/integrations/github.js";
+import { clearGitHubTokenCache, clearFetchOverride, githubApi, setFetchOverride } from "../src/integrations/github.js";
 import { startGitHubBotServer, stopGitHubBotServer } from "../src/github-bot.js";
 import { logSecurityEvent } from "../src/tools/security.js";
 import { loadSkills } from "../src/skills/loader.js";
@@ -1614,6 +1614,67 @@ async function main() {
   cfg.integrations.githubApiRetryBaseMs = originalGhRetryBaseMs;
   globalThis.fetch = originalGhFetchForRetry;
   console.log("GitHub API retry passed");
+
+  // GitHub API respects injected fetch overrides and per-request timeouts.
+  {
+    const originalGhTimeoutMsForOverrideTest = cfg.integrations.githubApiTimeoutMs;
+    const originalGhRetriesForOverrideTest = cfg.integrations.githubApiRetries;
+    const originalGhRetryBaseMsForOverrideTest = cfg.integrations.githubApiRetryBaseMs;
+    const originalGhTokenForOverrideTest = cfg.integrations.githubToken;
+    cfg.integrations.githubApiTimeoutMs = 1;
+    cfg.integrations.githubApiRetries = 0;
+    cfg.integrations.githubApiRetryBaseMs = 1;
+    cfg.integrations.githubToken = "override-token";
+    clearGitHubTokenCache();
+
+    let overrideCalled = false;
+    setFetchOverride(async () => {
+      overrideCalled = true;
+      return new Response(JSON.stringify([{ id: 42 }]), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    });
+    const overrideResult = await githubApi<Array<{ id: number }>>("/repos/override/test/issues");
+    assert(overrideCalled, "Expected githubApi to honor setFetchOverride");
+    assert.strictEqual(overrideResult.length, 1);
+    clearFetchOverride();
+
+    const originalFetchForTimeoutTest = globalThis.fetch;
+    globalThis.fetch = async (_input, init) => {
+      if (!init?.signal) {
+        throw new Error("Expected signal to be provided");
+      }
+      return new Promise((_, reject) => {
+        const timer = setTimeout(() => reject(new Error("Fetch was not aborted in time")), 1000000);
+        init.signal!.addEventListener("abort", () => {
+          clearTimeout(timer);
+          const err = new Error("The operation was aborted.");
+          err.name = "AbortError";
+          reject(err);
+        }, { once: true });
+      });
+    };
+    let timeoutError: unknown;
+    try {
+      await githubApi("/repos/timeout/test/issues");
+    } catch (err) {
+      timeoutError = err;
+    } finally {
+      globalThis.fetch = originalFetchForTimeoutTest;
+    }
+    assert(
+      timeoutError instanceof Error && timeoutError.name === "AbortError",
+      `Expected GitHub API timeout to abort, got: ${timeoutError instanceof Error ? timeoutError.message : String(timeoutError)}`,
+    );
+
+    cfg.integrations.githubApiTimeoutMs = originalGhTimeoutMsForOverrideTest;
+    cfg.integrations.githubApiRetries = originalGhRetriesForOverrideTest;
+    cfg.integrations.githubApiRetryBaseMs = originalGhRetryBaseMsForOverrideTest;
+    cfg.integrations.githubToken = originalGhTokenForOverrideTest;
+    clearGitHubTokenCache();
+    console.log("GitHub API fetch override and timeout passed");
+  }
 
   // GitHub App token path + commit_to_pr tool: mint a short-lived installation token and use it to push a commit.
   const testPrivateKey = `-----BEGIN PRIVATE KEY-----

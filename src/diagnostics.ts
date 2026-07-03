@@ -299,6 +299,13 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "GITHUB_API_RETRY_BASE_MS", status: "ok", message: `${githubApiRetryBaseMs}ms` });
   }
 
+  const githubApiTimeoutMs = parseInt(env("GITHUB_API_TIMEOUT_MS") || "30000", 10);
+  if (Number.isNaN(githubApiTimeoutMs) || githubApiTimeoutMs <= 0) {
+    checks.push({ name: "GITHUB_API_TIMEOUT_MS", status: "warn", message: "Invalid request timeout; must be a positive number of milliseconds" });
+  } else {
+    checks.push({ name: "GITHUB_API_TIMEOUT_MS", status: "ok", message: `${githubApiTimeoutMs}ms` });
+  }
+
   // Optional integrations
   checkOptionalUrl(checks, "ES_URL");
   if (isSet("ES_URL")) {
