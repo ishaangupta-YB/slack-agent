@@ -57,7 +57,8 @@ export const helpTool: Tool = {
         `• \`/moonbot statuspage <url>\` — check a public service status page on demand\n` +
         `• \`/moonbot impact\` — public service status monitoring for the Agent for Good track\n\n` +
         `Every reply includes buttons linking to the full response markdown and the session trace.\n` +
-        `You can also react to any Moon Bot message with :+1:/:-1: (feedback), :arrows_counterclockwise: (reset thread), or :question: (show help).`,
+        `Click 👍 / 👎 to give feedback; after a thumbs-down, you can tap *Regenerate response* to ask me to try again.\n` +
+        `You can also react with :+1:/:-1: (feedback), :arrows_counterclockwise: (reset thread), or :question: (show help).`,
 
       code:
         `**Code & GitHub**\n` +
@@ -108,7 +109,8 @@ export const helpTool: Tool = {
         `• “Show me your system status.”\n` +
         `• “Check the status page for status.cloudflare.com.”\n\n` +
         `**Emoji reactions**\n` +
-        `React to any Moon Bot message with :+1: / :-1: for feedback, :arrows_counterclockwise: to reset the thread, or :question: for help.`,
+        `React to any Moon Bot message with :+1: / :-1: for feedback, :arrows_counterclockwise: to reset the thread, or :question: for help.\n` +
+        `After a thumbs-down feedback button, you can also choose *Regenerate response* to retry the answer.`,
     };
 
     const privacy =

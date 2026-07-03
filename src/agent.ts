@@ -339,6 +339,34 @@ export interface HandleMessageResult {
 }
 
 /**
+ * Regenerate the last response in a thread. This appends a user message asking
+ * the model to try again with a different approach, then runs the ReAct loop
+ * against the existing session history. It is used when a user taps the
+ * "Regenerate response" button after a thumbs-down feedback action.
+ */
+export async function requestRegenerate(
+  threadKey: string,
+  messageTs: string,
+  userId: string,
+  userEmail?: string,
+  environment: ToolEnvironment = "slack",
+): Promise<HandleMessageResult | undefined> {
+  const map = await ensureThreadMap();
+  const entry = map[threadKey];
+  if (!entry) return undefined;
+  // Ensure the regenerate turn is newer than the last processed message so it
+  // is not de-duplicated. Slack timestamps are compared lexicographically, so
+  // fall back to a numeric increment when the caller's timestamp is older.
+  if (messageTs <= entry.lastProcessedMessageTs) {
+    const numeric = parseFloat(entry.lastProcessedMessageTs);
+    messageTs = `${numeric + 1}`;
+  }
+  const instruction =
+    "The previous response was not helpful. Please try a different approach and provide a better answer.";
+  return handleMessage(threadKey, instruction, messageTs, userId, userEmail, environment);
+}
+
+/**
  * Look up the persisted session filename for a Slack thread key, if any.
  * This lets non-message handlers (e.g. feedback block actions) correlate
  * a Slack message with its agent session trace.

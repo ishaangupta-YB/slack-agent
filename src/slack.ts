@@ -17,6 +17,7 @@ import {
   getThreadInfo,
   handleMessage,
   hasThreadKey,
+  requestRegenerate,
   resetThread,
 } from "./agent.js";
 import { resolveAccessTier } from "./auth/tiers.js";
@@ -185,6 +186,80 @@ function formatDuration(totalSeconds: number): string {
   return `${minutes}m ${seconds}s`;
 }
 
+async function safePostMessage(
+  client: WebClient,
+  args: Parameters<WebClient["chat"]["postMessage"]>[0],
+  options?: { retries?: number; baseDelayMs?: number },
+): Promise<ChatPostMessageResponse> {
+  const retries = Math.max(0, options?.retries ?? cfg.slack.sayRetries);
+  const baseDelayMs = Math.max(100, options?.baseDelayMs ?? cfg.slack.sayRetryBaseMs);
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return (await client.chat.postMessage(args)) as ChatPostMessageResponse;
+    } catch (err) {
+      lastErr = err;
+      const isLast = attempt === retries;
+      const slackError = (err as { data?: { error?: string; retry_after?: number } }).data?.error;
+      const code = (err as { code?: string }).code;
+      const retryable =
+        slackError === "rate_limited" ||
+        slackError === "fatal_error" ||
+        slackError === "internal_error" ||
+        slackError === "timeout" ||
+        code === "slack_sdk_network_error" ||
+        code === "slack_sdk_request_timeout" ||
+        ["ECONNRESET", "ETIMEDOUT", "ECONNREFUSED", "EPIPE", "ENOTFOUND"].includes(code ?? "");
+      if (!retryable || isLast) throw err;
+      const retryAfter = (err as { data?: { retry_after?: number } }).data?.retry_after;
+      const delayMs = retryAfter ? retryAfter * 1000 : baseDelayMs * 2 ** attempt;
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastErr;
+}
+
+async function postAgentReply(
+  client: WebClient,
+  channel: string,
+  threadTs: string | undefined,
+  threadKey: string,
+  reply: string,
+  sessionFilename: string,
+): Promise<void> {
+  const { responseUrl, sessionUrl, traceUrl } = await uploadArtifacts(
+    threadKey,
+    sessionFilename,
+    reply,
+  );
+  const { text: fallbackText, blocks } = prepareSlackMessage(
+    reply,
+    responseUrl,
+    sessionUrl,
+    traceUrl,
+    threadKey,
+  );
+  const botResponse = await safePostMessage(
+    client,
+    {
+      channel,
+      text: fallbackText,
+      blocks,
+      thread_ts: threadTs,
+      unfurl_links: false,
+    },
+    { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
+  );
+  if (
+    botResponse &&
+    typeof botResponse === "object" &&
+    "channel" in botResponse &&
+    "ts" in botResponse
+  ) {
+    trackBotMessage(String(botResponse.channel), String(botResponse.ts), threadKey);
+  }
+}
+
 async function handleIncomingMessage({
   event,
   say,
@@ -241,42 +316,13 @@ async function handleIncomingMessage({
       () => handleMessage(threadKey, prompt.trim(), ts, userId, userEmail, "slack", onToolStatus),
     );
     if (skipped) return;
-    const { responseUrl, sessionUrl, traceUrl } = await uploadArtifacts(
-      threadKey,
-      sessionFilename,
-      reply,
-    );
     // Keep channel/group/MPIM replies threaded (create a thread for top-level
     // mentions, reply in the thread for follow-ups). For one-on-one DMs, post
     // replies as top-level messages so the conversation stays in the main DM
-    // view; only keep an explicit DM thread reply threaded when the user
-    // already threaded their message.
+    // view; only keep an explicit DM thread reply threaded when the user already
+    // threaded their message.
     const threadTs = event.channel_type === "im" ? event.thread_ts : (event.thread_ts ?? ts);
-    const { text: fallbackText, blocks } = prepareSlackMessage(
-      reply,
-      responseUrl,
-      sessionUrl,
-      traceUrl,
-      threadKey,
-    );
-    const botResponse = await safeSay(
-      say,
-      {
-        text: fallbackText,
-        blocks,
-        thread_ts: threadTs,
-        unfurl_links: false,
-      },
-      { retries: cfg.slack.sayRetries, baseDelayMs: cfg.slack.sayRetryBaseMs },
-    );
-    if (
-      botResponse &&
-      typeof botResponse === "object" &&
-      "channel" in botResponse &&
-      "ts" in botResponse
-    ) {
-      trackBotMessage(String(botResponse.channel), String(botResponse.ts), threadKey);
-    }
+    await postAgentReply(client, channel, threadTs, threadKey, reply, sessionFilename);
   } catch (err) {
     console.error("Agent error:", err);
     await safeSay(
@@ -876,11 +922,41 @@ export async function handleFeedbackAction({
     sessionFilename,
   });
 
+  if (kind === "helpful") {
+    await client.chat.postEphemeral({
+      channel,
+      user: userId,
+      thread_ts: threadTs,
+      text: "Thanks for the feedback! 🌙",
+    });
+    return;
+  }
+
+  // For thumbs-down feedback, offer a one-click regenerate action so the user
+  // can ask Moon Bot to try again with a different approach.
   await client.chat.postEphemeral({
     channel,
     user: userId,
     thread_ts: threadTs,
-    text: kind === "helpful" ? "Thanks for the feedback! 🌙" : "Thanks — we’ll use this to improve Moon Bot.",
+    text: "Thanks — we’ll use this to improve Moon Bot.",
+    blocks: [
+      {
+        type: "section",
+        text: { type: "mrkdwn", text: "Thanks — we’ll use this to improve Moon Bot. Want me to try again?" },
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "🔄 Regenerate response", emoji: true },
+            action_id: "regenerate_response",
+            value: threadKey,
+            style: "primary",
+          } as never,
+        ],
+      },
+    ],
   });
 }
 
@@ -930,6 +1006,74 @@ export async function handleResetThread({
 }
 
 app.action("reset_thread", handleResetThread as never);
+
+/**
+ * Regenerate response action: triggered from the thumbs-down feedback ephemeral
+ * message. It asks the agent to retry the last turn with a different approach,
+ * then posts the new response in the same thread.
+ */
+export async function handleRegenerateResponse({
+  ack,
+  body,
+  client,
+  action,
+}: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
+  await ack();
+
+  const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
+  const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
+  const messageTs = message?.ts ?? "unknown";
+  const threadTs = message?.thread_ts;
+
+  const threadKey = (action as { value?: string }).value ??
+    (threadTs ? `${channel}:${threadTs}` : `${channel}:${messageTs}`);
+
+  const userEmail = await getUserEmail(client, userId);
+  // Use a synthetic timestamp that is guaranteed to be newer than the last
+  // processed message so the regenerate turn is not de-duplicated.
+  const syntheticTs = `${Math.floor(Date.now() / 1000)}.${String(Date.now()).slice(-6).padStart(6, "0")}`;
+
+  try {
+    const result = await runWithToolContext(
+      { channelId: channel, threadKey, userId, userEmail },
+      () => requestRegenerate(threadKey, syntheticTs, userId, userEmail, "slack"),
+    );
+    if (!result) {
+      await client.chat.postEphemeral({
+        channel,
+        user: userId,
+        thread_ts: threadTs,
+        text: "I couldn’t find an active session to regenerate. Try sending a new message instead.",
+      });
+      return;
+    }
+    await postAgentReply(
+      client,
+      channel,
+      threadTs,
+      threadKey,
+      result.text,
+      result.sessionFilename,
+    );
+    await client.chat.postEphemeral({
+      channel,
+      user: userId,
+      thread_ts: threadTs,
+      text: "I’ve posted a regenerated response above. Let me know if that’s better!",
+    });
+  } catch (err) {
+    console.error("Regenerate error:", err);
+    await client.chat.postEphemeral({
+      channel,
+      user: userId,
+      thread_ts: threadTs,
+      text: "Sorry, I wasn’t able to regenerate the response. Please try again in a moment.",
+    });
+  }
+}
+
+app.action("regenerate_response", handleRegenerateResponse as never);
 
 /**
  * Emoji reaction handler: users can react to Moon Bot responses with 👍/👎,

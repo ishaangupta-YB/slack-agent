@@ -48,6 +48,7 @@ export function getDemoMessage(): string {
     `• \`/moonbot tools\` — see which tools are available to your access tier.\n` +
     `• On any reply, click *View trace* to see the full agent reasoning timeline.\n` +
     `• Click *Start over* to clear the thread session and begin fresh.\n` +
-    `• Click 👍 / 👎 or react with 👍 / 👎 / 🔄 / ❓ to record feedback, reset, or get help.`
+    `• Click 👍 / 👎 or react with 👍 / 👎 / 🔄 / ❓ to record feedback, reset, or get help.\n` +
+    `• After a 👎, tap *Regenerate response* to ask Moon Bot to try again with a different approach.`
   );
 }

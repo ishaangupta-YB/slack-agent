@@ -39,7 +39,7 @@ The bot is built for the Slack Agent Builder Challenge and satisfies all three m
 | **App Home + slash command** | Home tab overview and `/moonbot help | demo | tools | status | metrics | diagnose | audit | ping | whoami | thread | search | report | statuspage | impact` for quick discovery. |
 | **Message shortcut** | Select any Slack message and choose *Ask Moon Bot* for a threaded, context-aware reply. |
 | **File attachments** | Share text files, logs, CSVs, JSON, or code snippets in a thread; Moon Bot reads them as context (requires the `files:read` scope). |
-| **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; they can also use emoji reactions 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
+| **Inline feedback + emoji reactions** | Every response includes 👍 / 👎 buttons so users can flag helpful/unhelpful replies; after a 👎, a *Regenerate response* button asks Moon Bot to retry with a different approach. Users can also react with emoji 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help. |
 | **Resilient GitHub API calls** | GitHub read/write operations retry transient 5xx / 429 errors with exponential backoff and honor GitHub's `Retry-After` header, so PR/issue writes succeed during brief GitHub outages or rate-limit windows. |
 | **Self-correcting tool calls** | Malformed `<tool_call>` JSON is reported back to the model as a parse error so it can retry instead of silently failing. |
 | **Start over reset** | Tapping "Start over" or reacting with 🔄 on any reply clears the thread session so the next message begins fresh. |
@@ -177,7 +177,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
    `How many 5xx errors did we see in the last hour?`
 5. **File attachments:** upload a `.log` or `.txt` file to a thread and ask `@Moon Bot summarize this file` to show Slack file-reading.
 6. **Message shortcut:** select any message, choose *Ask Moon Bot*, and watch it reply in the thread.
-7. **Inline feedback + emoji reactions:** after any response, click 👍 or 👎, or react to the message with 👍 / 👎 / 🔄 / ❓ and confirm the ephemeral action.
+7. **Inline feedback + regenerate + emoji reactions:** after any response, click 👍 or 👎; after a 👎, tap *Regenerate response* to ask Moon Bot to retry. You can also react with 👍 / 👎 / 🔄 / ❓ for feedback, reset, or help.
 8. **Scheduled reports on demand:**  
    `/moonbot report weekly` and `/moonbot report deploy`
 9. **Public status page and impact monitoring on demand:**  
@@ -200,7 +200,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 | Time | Scene | What to show |
 |------|-------|--------------|
 | 0:00–0:20 | Intro | Show the bot in the Slack workspace, App Home tab, and assistant panel. |
-| 0:20–0:50 | Slack AI Assistant | Open Moon Bot from the assistant panel, run the search prompt, and show the response + artifact buttons. |
+| 0:20–0:50 | Slack AI Assistant | Open Moon Bot from the assistant panel, run the search prompt, and show the response + artifact buttons. Click 👎 and then *Regenerate response* to show self-improvement. |
 | 0:50–1:20 | Real-Time Search API | Ask about a recent deployment in a channel; show `assistant.search.context` results and concise summary. |
 | 1:20–1:50 | Code Q&A + GitHub + HuggingFace Hub | Mention `@Moon Bot` and ask it to look up a HuggingFace model, then search code and open a draft PR; show the PR with the standard footer + trace link. |
 | 1:50–2:10 | Scheduled reports | Run `/moonbot report weekly` to show the ops report and `/moonbot report deploy` for the impact check. |

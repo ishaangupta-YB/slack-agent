@@ -29,6 +29,7 @@ import {
   handleMoonbotCommand,
   handleAskMoonBotShortcut,
   handleFeedbackAction,
+  handleRegenerateResponse,
   handleResetThread,
   handleReactionAdded,
   trackBotMessage,
@@ -4195,6 +4196,87 @@ rLQ+epZplw==
     await getSessionFilenameByThreadKey(legacyThreadKey),
     undefined,
     "legacy-computed thread session should be removed",
+  );
+
+  // Regenerate response action: after a thumbs-down, the ephemeral message
+  // should offer a regenerate button, and clicking it reruns the agent.
+  const regenThreadKey = "C_REGEN:888000.000001";
+  setChatOverride(async () => "Original answer.");
+  await handleMessage(regenThreadKey, "what is the weather?", "888000.000001", "U_REGEN");
+  clearChatOverride();
+
+  const regenFeedbackEphemeral: Array<{ text?: string; blocks?: unknown }> = [];
+  const regenFeedbackClient = {
+    chat: {
+      postEphemeral: async (args: { text?: string; blocks?: unknown }) => {
+        regenFeedbackEphemeral.push(args);
+        return { ok: true };
+      },
+    },
+  } as unknown as WebClient;
+  await handleFeedbackAction({
+    ...makeActionArgs({
+      actionId: "feedback_not_helpful",
+      value: regenThreadKey,
+      channel: "C_REGEN",
+      ts: "888000.000002",
+      threadTs: "888000.000001",
+    }),
+    client: regenFeedbackClient,
+  } as never);
+
+  const regenEphemeral = regenFeedbackEphemeral.find((e) => e.blocks);
+  const regenActionsBlock = (regenEphemeral?.blocks as Array<{ type?: string; elements?: Array<{ action_id?: string; value?: string }> }> | undefined)?.find(
+    (b) => b.type === "actions",
+  );
+  const regenButton = regenActionsBlock?.elements?.find((e) => e.action_id === "regenerate_response");
+  assert(regenButton, "thumbs-down ephemeral should include a regenerate_response button");
+  assert.strictEqual(regenButton.value, regenThreadKey, "regenerate button should carry the thread key");
+
+  function makeRegenerateClient() {
+    const postMessageCalls: Array<{ channel?: string; thread_ts?: string; text?: string; blocks?: unknown }> = [];
+    const ephemeralTexts: string[] = [];
+    const client = {
+      users: {
+        info: async () => ({ ok: true, user: { profile: { email: "regen@example.com" } } }),
+      },
+      chat: {
+        postEphemeral: async (args: { text: string }) => {
+          ephemeralTexts.push(args.text);
+          return { ok: true };
+        },
+        postMessage: async (args: { channel?: string; thread_ts?: string; text?: string; blocks?: unknown }) => {
+          postMessageCalls.push(args);
+          return { ok: true, channel: args.channel ?? "C_REGEN", ts: "888000.000003" };
+        },
+      },
+    } as unknown as WebClient;
+    return { client, getPostMessageCalls: () => postMessageCalls, getEphemeralTexts: () => ephemeralTexts };
+  }
+
+  setChatOverride(async () => "Regenerated answer.");
+  const regenClient = makeRegenerateClient();
+  await handleRegenerateResponse({
+    ...makeActionArgs({
+      actionId: "regenerate_response",
+      value: regenThreadKey,
+      channel: "C_REGEN",
+      ts: "888000.000002",
+      threadTs: "888000.000001",
+    }),
+    client: regenClient.client,
+  } as never);
+  clearChatOverride();
+
+  const regenPosts = regenClient.getPostMessageCalls();
+  assert(regenPosts.length >= 1, "regenerate action should post a new response");
+  assert(
+    regenPosts.some((p) => p.text?.includes("Regenerated answer.")),
+    "regenerated response should contain the new answer",
+  );
+  assert(
+    regenClient.getEphemeralTexts().some((t) => t.includes("regenerated response above")),
+    "regenerate action should confirm the new response was posted",
   );
 
   console.log("Response feedback buttons passed");
