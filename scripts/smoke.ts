@@ -62,6 +62,7 @@ import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
 import { verifyCloudflare } from "./verify-cloudflare.js";
 import { verifyGitHub } from "./verify-github.js";
+import { runAllPreflightChecks } from "./verify-all.js";
 import { runSlackE2E } from "./slack-e2e.js";
 import { checkSubmission } from "./prepare-submission.js";
 
@@ -5441,6 +5442,43 @@ rLQ+epZplw==
   );
 
   console.log("GitHub connectivity verification passed");
+
+  // Unified pre-flight verifier: runAllPreflightChecks aggregates diagnostics,
+  // Slack, Cloudflare, and GitHub checks into a single report. Diagnostics are
+  // skipped here because the smoke environment deliberately uses placeholder
+  // tokens and an opt-in LLM ping flag that would fail.
+  const allGoodPreflightResult = await runAllPreflightChecks({
+    slackClients: { bot: goodMockClient, app: goodAppClient },
+    cloudflare: {
+      accountId: "1234567890abcdef1234567890abcdef",
+      apiToken: "test-token",
+      model: "@cf/moonshotai/kimi-k2.7-code",
+      fetchImpl: goodCfFetch,
+    },
+    github: { token: "ghp_testtoken", fetchImpl: goodGhFetch },
+    skipDiagnostics: true,
+  });
+  assert.strictEqual(allGoodPreflightResult.ok, true, "all pre-flight checks should pass with good mocks");
+  assert(allGoodPreflightResult.sections.some((s) => s.name === "slack" && s.ok));
+  assert(allGoodPreflightResult.sections.some((s) => s.name === "cloudflare" && s.ok));
+  assert(allGoodPreflightResult.sections.some((s) => s.name === "github" && s.ok));
+
+  const someBadPreflightResult = await runAllPreflightChecks({
+    slackClients: { bot: badMockClient, app: badAppClient },
+    cloudflare: {
+      accountId: "",
+      apiToken: "",
+      model: "@cf/moonshotai/kimi-k2.7-code",
+      fetchImpl: goodCfFetch,
+    },
+    github: { token: "" },
+    skipDiagnostics: true,
+  });
+  assert.strictEqual(someBadPreflightResult.ok, false, "pre-flight checks should fail when a section fails");
+  const slackPreflightSection = someBadPreflightResult.sections.find((s) => s.name === "slack");
+  assert(slackPreflightSection && !slackPreflightSection.ok, "slack pre-flight section should report failure");
+
+  console.log("Unified pre-flight verification passed");
 
   // End-to-end Slack message test: post a message and poll for the bot's reply.
   // The first poll has not seen the bot reply yet; the second poll returns it.

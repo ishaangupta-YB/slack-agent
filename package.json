@@ -14,6 +14,7 @@
     "verify-slack": "tsx scripts/verify-slack.ts",
     "verify-cloudflare": "tsx scripts/verify-cloudflare.ts",
     "verify-github": "tsx scripts/verify-github.ts",
+    "verify": "tsx scripts/verify-all.ts",
     "slack-e2e": "tsx scripts/slack-e2e.ts",
     "prepare-submission": "tsx scripts/prepare-submission.ts",
     "healthcheck": "node dist/healthcheck.js",
