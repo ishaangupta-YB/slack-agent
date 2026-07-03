@@ -166,6 +166,39 @@ async function assertNotGuest(
   return false;
 }
 
+/**
+ * Common authorization gate for interactive Slack surfaces (slash commands,
+ * message shortcuts, block actions, emoji reactions). Returns true if the user
+ * is allowed to interact with Moon Bot, otherwise sends an ephemeral refusal
+ * and returns false.
+ */
+async function assertUserCanInteract(
+  client: WebClient,
+  userId: string,
+  channel: string,
+  respond?: (args: { text: string; response_type: "ephemeral" }) => Promise<unknown>,
+): Promise<boolean> {
+  if (!userIsAuthorized(userId)) {
+    const text = "Sorry, you’re not authorized to use Moon Bot in this workspace.";
+    if (respond) {
+      await respond({ text, response_type: "ephemeral" });
+    } else {
+      await client.chat.postEphemeral({ channel, user: userId, text });
+    }
+    return false;
+  }
+  if (!cfg.security.allowGuests && (await isGuestUser(client, userId))) {
+    const text = "Sorry, guest accounts are not allowed to use Moon Bot in this workspace.";
+    if (respond) {
+      await respond({ text, response_type: "ephemeral" });
+    } else {
+      await client.chat.postEphemeral({ channel, user: userId, text });
+    }
+    return false;
+  }
+  return true;
+}
+
 export function stripBotMention(text: string, botUserId?: string): string {
   if (!text) return text;
   if (botUserId) {
@@ -524,6 +557,8 @@ export async function handleMoonbotCommand({
 }: SlackCommandMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
   await ack();
 
+  if (!(await assertUserCanInteract(client, command.user_id, command.channel_id, respond))) return;
+
   const args = command.text.trim().split(/\s+/).filter(Boolean);
   const subcommand = args[0] || "welcome";
 
@@ -837,6 +872,8 @@ export async function handleAskMoonBotShortcut({
 
   const userId = shortcut.user.id;
   const channel = shortcut.channel.id;
+  if (!(await assertUserCanInteract(client, userId, channel))) return;
+
   const messageTs = shortcut.message.ts;
   const text = shortcut.message.text ?? "";
 
@@ -884,6 +921,10 @@ export async function handleFeedbackAction({
 }: SlackActionMiddlewareArgs & AllMiddlewareArgs): Promise<void> {
   await ack();
 
+  const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
+  const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  if (!(await assertUserCanInteract(client, userId, channel))) return;
+
   const actionId = (action as { action_id?: string }).action_id ?? "";
   const kind: FeedbackKind | undefined =
     actionId === "feedback_helpful"
@@ -893,8 +934,6 @@ export async function handleFeedbackAction({
         : undefined;
   if (!kind) return;
 
-  const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
-  const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
   const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
   const messageTs = message?.ts ?? "unknown";
   const threadTs = message?.thread_ts;
@@ -981,6 +1020,8 @@ export async function handleResetThread({
 
   const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
   const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  if (!(await assertUserCanInteract(client, userId, channel))) return;
+
   const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
   const messageTs = message?.ts ?? "unknown";
   const threadTs = message?.thread_ts;
@@ -1022,6 +1063,8 @@ export async function handleRegenerateResponse({
 
   const userId = (body as { user?: { id?: string } }).user?.id ?? "unknown";
   const channel = (body as { channel?: { id?: string } }).channel?.id ?? "unknown";
+  if (!(await assertUserCanInteract(client, userId, channel))) return;
+
   const message = (body as { message?: { ts?: string; thread_ts?: string } }).message;
   const messageTs = message?.ts ?? "unknown";
   const threadTs = message?.thread_ts;
@@ -1096,6 +1139,8 @@ export async function handleReactionAdded({
   const userId = reactionEvent.user;
   const item = reactionEvent.item;
   if (!item || item.type !== "message" || !item.channel || !item.ts || !userId) return;
+
+  if (!(await assertUserCanInteract(client, userId, item.channel))) return;
 
   const threadKey = getTrackedThreadKey(item.channel, item.ts);
   if (!threadKey) return; // reaction was not on a tracked Moon Bot message

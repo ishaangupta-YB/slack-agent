@@ -4542,6 +4542,232 @@ rLQ+epZplw==
 
   console.log("Emoji reactions passed");
 
+  // Authorization and guest-account checks on interactive Slack surfaces.
+  const originalAuthAllowedUserIds = cfg.security.allowedUserIds;
+  const originalAuthAllowGuests = cfg.security.allowGuests;
+  try {
+    cfg.security.allowGuests = false;
+
+    function makeAuthSurfaceClient(opts: { isRestricted?: boolean; isUltraRestricted?: boolean }) {
+      return {
+        users: {
+          info: async ({ user }: { user: string }) => ({
+            ok: true,
+            user: {
+              id: user,
+              profile: { email: `${user.toLowerCase()}@example.com` },
+              is_restricted: opts.isRestricted ?? false,
+              is_ultra_restricted: opts.isUltraRestricted ?? false,
+            },
+          }),
+        },
+        chat: {
+          postEphemeral: async (args: { text: string }) => ({ ok: true, args }),
+          postMessage: async () => ({ ok: true }),
+        },
+      } as unknown as WebClient;
+    }
+
+    // Slash commands: unauthorized user is refused via respond.
+    cfg.security.allowedUserIds = ["U_ALLOWED_SURFACE"];
+    const slashAuthClient = makeAuthSurfaceClient({});
+    await dispatchSlashCommand("status", slashAuthClient, "U_NOT_ALLOWED_SURFACE", "C1");
+    assert(
+      slashResponses[0].text?.includes("not authorized"),
+      "slash command should refuse unauthorized user via respond",
+    );
+    assert.strictEqual(slashResponses[0].response_type, "ephemeral", "slash refusal should be ephemeral");
+
+    // Slash commands: guest user is refused.
+    cfg.security.allowedUserIds = [];
+    const slashGuestClient = makeAuthSurfaceClient({ isRestricted: true });
+    await dispatchSlashCommand("status", slashGuestClient, "U_GUEST_SURFACE", "C1");
+    assert(
+      slashResponses[0].text?.includes("guest accounts are not allowed"),
+      "slash command should refuse guest user via respond",
+    );
+
+    // Message shortcut: unauthorized and guest users are refused with an ephemeral.
+    const shortcutAuthRefusals: string[] = [];
+    function makeShortcutAuthClient(opts: { isRestricted?: boolean; isUltraRestricted?: boolean }) {
+      return {
+        users: {
+          info: async ({ user }: { user: string }) => ({
+            ok: true,
+            user: {
+              id: user,
+              profile: { email: `${user.toLowerCase()}@example.com` },
+              is_restricted: opts.isRestricted ?? false,
+              is_ultra_restricted: opts.isUltraRestricted ?? false,
+            },
+          }),
+        },
+        chat: {
+          postMessage: async () => ({ ok: true }),
+          postEphemeral: async (args: { text: string }) => {
+            shortcutAuthRefusals.push(args.text);
+            return { ok: true, args };
+          },
+        },
+      } as unknown as WebClient;
+    }
+    async function dispatchAuthShortcut(client: WebClient, userId: string) {
+      await handleAskMoonBotShortcut({
+        ack: async () => {},
+        shortcut: {
+          type: "message_action",
+          callback_id: "ask_moon_bot",
+          trigger_id: "T123",
+          message_ts: "1888888888.000000",
+          response_url: "https://example.com/response",
+          message: { type: "message", user: "U1", ts: "1888888888.000000", text: "Please explain" },
+          user: { id: userId, name: "test" },
+          channel: { id: "C_AUTH", name: "general" },
+          team: { id: "T1", domain: "demo" },
+          token: "test-token",
+          action_ts: "1234567890.000000",
+        },
+        client,
+      } as SlackShortcutMiddlewareArgs);
+    }
+    cfg.security.allowedUserIds = ["U_ALLOWED_SURFACE"];
+    await dispatchAuthShortcut(makeShortcutAuthClient({}), "U_NOT_ALLOWED_SHORTCUT");
+    assert(
+      shortcutAuthRefusals.some((t) => t.includes("not authorized")),
+      "message shortcut should refuse unauthorized user",
+    );
+
+    cfg.security.allowedUserIds = [];
+    await dispatchAuthShortcut(makeShortcutAuthClient({ isRestricted: true }), "U_GUEST_SHORTCUT");
+    assert(
+      shortcutAuthRefusals.some((t) => t.includes("guest accounts are not allowed")),
+      "message shortcut should refuse guest user",
+    );
+
+    // Block actions: unauthorized and guest users are refused with an ephemeral.
+    const actionAuthRefusals: string[] = [];
+    function makeActionAuthClient(opts: { isRestricted?: boolean; isUltraRestricted?: boolean }) {
+      return {
+        users: {
+          info: async ({ user }: { user: string }) => ({
+            ok: true,
+            user: {
+              id: user,
+              profile: { email: `${user.toLowerCase()}@example.com` },
+              is_restricted: opts.isRestricted ?? false,
+              is_ultra_restricted: opts.isUltraRestricted ?? false,
+            },
+          }),
+        },
+        chat: {
+          postEphemeral: async (args: { text: string }) => {
+            actionAuthRefusals.push(args.text);
+            return { ok: true, args };
+          },
+        },
+      } as unknown as WebClient;
+    }
+    function makeAuthActionArgs(
+      userId: string,
+      channel: string,
+      opts: { actionId: string; value?: string; ts: string; threadTs?: string },
+    ) {
+      return {
+        ack: async () => {},
+        body: {
+          user: { id: userId },
+          channel: { id: channel },
+          message: { ts: opts.ts, thread_ts: opts.threadTs },
+        },
+        action: { action_id: opts.actionId, value: opts.value },
+      };
+    }
+    cfg.security.allowedUserIds = ["U_ALLOWED_SURFACE"];
+    await handleResetThread({
+      ...makeAuthActionArgs("U_NOT_ALLOWED_ACTION", "C_AUTH", {
+        actionId: "reset_thread",
+        value: "C_AUTH:123",
+        ts: "123",
+      }),
+      client: makeActionAuthClient({}),
+    } as never);
+    assert(
+      actionAuthRefusals.some((t) => t.includes("not authorized")),
+      "reset block action should refuse unauthorized user",
+    );
+
+    cfg.security.allowedUserIds = [];
+    await handleFeedbackAction({
+      ...makeAuthActionArgs("U_GUEST_ACTION", "C_AUTH", {
+        actionId: "feedback_helpful",
+        value: "C_AUTH:123",
+        ts: "123",
+      }),
+      client: makeActionAuthClient({ isRestricted: true }),
+    } as never);
+    assert(
+      actionAuthRefusals.some((t) => t.includes("guest accounts are not allowed")),
+      "feedback block action should refuse guest user",
+    );
+
+    // Emoji reactions: unauthorized and guest users are refused with an ephemeral.
+    const reactionAuthRefusals: string[] = [];
+    function makeReactionAuthClient(opts: { isRestricted?: boolean; isUltraRestricted?: boolean }) {
+      return {
+        users: {
+          info: async ({ user }: { user: string }) => ({
+            ok: true,
+            user: {
+              id: user,
+              profile: { email: `${user.toLowerCase()}@example.com` },
+              is_restricted: opts.isRestricted ?? false,
+              is_ultra_restricted: opts.isUltraRestricted ?? false,
+            },
+          }),
+        },
+        chat: {
+          postEphemeral: async (args: { text: string }) => {
+            reactionAuthRefusals.push(args.text);
+            return { ok: true, args };
+          },
+        },
+      } as unknown as WebClient;
+    }
+    trackBotMessage("C_AUTH_REACT", "200.000", "C_AUTH_REACT:100.000");
+    cfg.security.allowedUserIds = ["U_ALLOWED_SURFACE"];
+    await handleReactionAdded({
+      event: {
+        user: "U_NOT_ALLOWED_REACTION",
+        reaction: "+1",
+        item: { type: "message", channel: "C_AUTH_REACT", ts: "200.000" },
+      },
+      client: makeReactionAuthClient({}),
+    } as never);
+    assert(
+      reactionAuthRefusals.some((t) => t.includes("not authorized")),
+      "emoji reaction should refuse unauthorized user",
+    );
+
+    cfg.security.allowedUserIds = [];
+    await handleReactionAdded({
+      event: {
+        user: "U_GUEST_REACTION",
+        reaction: "+1",
+        item: { type: "message", channel: "C_AUTH_REACT", ts: "200.000" },
+      },
+      client: makeReactionAuthClient({ isRestricted: true }),
+    } as never);
+    assert(
+      reactionAuthRefusals.some((t) => t.includes("guest accounts are not allowed")),
+      "emoji reaction should refuse guest user",
+    );
+
+    console.log("Interactive surface authorization/guest checks passed");
+  } finally {
+    cfg.security.allowedUserIds = originalAuthAllowedUserIds;
+    cfg.security.allowGuests = originalAuthAllowGuests;
+  }
+
   // Slack connectivity verification: with a healthy mocked WebClient every check passes.
   const manifestBotScopes: string[] = JSON.parse(readFileSync("manifest.json", "utf-8"))?.oauth_config
     ?.scopes?.bot ?? [];
