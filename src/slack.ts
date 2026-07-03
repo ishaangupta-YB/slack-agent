@@ -11,6 +11,7 @@ import {
   type SayFn,
 } from "@slack/bolt";
 import { WebClient, type ChatPostMessageResponse } from "@slack/web-api";
+import { randomUUID } from "node:crypto";
 import { cfg } from "./config.js";
 import {
   getSessionFilenameByThreadKey,
@@ -327,6 +328,7 @@ async function handleIncomingMessage({
   const userEmail = await getUserEmail(client, userId);
   const botUserId = await ensureBotUserId(client);
   const cleanText = stripBotMention(text, botUserId);
+  const correlationId = randomUUID().slice(0, 8);
 
   // Download any text-like file attachments and append their contents as context
   // so users can ask questions about logs, CSVs, code snippets, etc. shared in Slack.
@@ -345,7 +347,7 @@ async function handleIncomingMessage({
 
   try {
     const { text: reply, sessionFilename, skipped } = await runWithToolContext(
-      { actionToken, channelId: channel, threadKey, userId },
+      { actionToken, channelId: channel, threadKey, userId, correlationId },
       () => handleMessage(threadKey, prompt.trim(), ts, userId, userEmail, "slack", onToolStatus),
     );
     if (skipped) return;
@@ -357,7 +359,10 @@ async function handleIncomingMessage({
     const threadTs = event.channel_type === "im" ? event.thread_ts : (event.thread_ts ?? ts);
     await postAgentReply(client, channel, threadTs, threadKey, reply, sessionFilename);
   } catch (err) {
-    console.error("Agent error:", err);
+    console.error(
+      `[correlationId=${correlationId}] Agent error for channel=${channel} threadKey=${threadKey} userId=${userId}:`,
+      err,
+    );
     await safeSay(
       say,
       {

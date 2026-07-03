@@ -29,6 +29,8 @@ export interface StoredMessage {
   content: string;
   ts?: string;
   userId?: string;
+  /** Correlation ID that links this message to a specific Slack/GitHub request. */
+  correlationId?: string;
 }
 
 const skills = loadSkills();
@@ -254,7 +256,9 @@ export function prepareLlmMessages(
 }
 
 function appendSessionMessage(filename: string, msg: StoredMessage) {
-  appendFileSync(sessionFilePath(filename), JSON.stringify(msg) + "\n");
+  const ctx = getToolContext();
+  const enriched = ctx.correlationId ? { ...msg, correlationId: ctx.correlationId } : msg;
+  appendFileSync(sessionFilePath(filename), JSON.stringify(enriched) + "\n");
 }
 
 function appendLlmMessages(filename: string, messages: LlmMessage[], userId?: string) {

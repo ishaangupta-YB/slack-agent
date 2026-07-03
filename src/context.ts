@@ -16,6 +16,8 @@ export interface ToolContext {
   sessionFilename?: string;
   /** Access tier of the current user. */
   tier?: AccessTier;
+  /** Short correlation ID used to trace a single request through logs and sessions. */
+  correlationId?: string;
 }
 
 const toolContextStore = new AsyncLocalStorage<ToolContext>();

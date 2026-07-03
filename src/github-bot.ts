@@ -84,7 +84,10 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(payload);
 }
 
-async function handleIssueComment(payload: GitHubWebhookPayload): Promise<string | undefined> {
+async function handleIssueComment(
+  payload: GitHubWebhookPayload,
+  correlationId?: string,
+): Promise<string | undefined> {
   const repo = payload.repository?.full_name;
   const issue = payload.issue;
   const comment = payload.comment;
@@ -104,39 +107,46 @@ async function handleIssueComment(payload: GitHubWebhookPayload): Promise<string
   const threadKey = `github:${repo}:issue:${issue.number}`;
   const messageTs = `${comment.id}`;
 
-  return runWithToolContext({ userId: sender, userEmail: "", channelId: "", threadKey }, async () => {
-    const ctx = getToolContext();
-    const { text, sessionFilename } = await handleMessage(
-      threadKey,
-      cleaned,
-      messageTs,
-      sender,
-      "",
-      "github",
-    );
+  return runWithToolContext(
+    { userId: sender, userEmail: "", channelId: "", threadKey, correlationId },
+    async () => {
+      const ctx = getToolContext();
+      const { text, sessionFilename } = await handleMessage(
+        threadKey,
+        cleaned,
+        messageTs,
+        sender,
+        "",
+        "github",
+      );
 
-    ctx.sessionFilename = sessionFilename;
+      ctx.sessionFilename = sessionFilename;
 
-    const result = await runToolCall(
-      {
-        tool: "comment_on_issue",
-        params: { repo, issue_number: issue.number, body: text },
-      },
-      8_000,
-      "basic",
-      "github",
-    );
+      const result = await runToolCall(
+        {
+          tool: "comment_on_issue",
+          params: { repo, issue_number: issue.number, body: text },
+        },
+        8_000,
+        "basic",
+        "github",
+      );
 
-    if (result.error) {
-      console.error("Failed to post GitHub comment:", result.result);
-      return "replied but failed to post GitHub comment";
-    }
-    return "replied";
-  });
+      if (result.error) {
+        console.error(
+          `[correlationId=${correlationId ?? "none"}] Failed to post GitHub comment:`,
+          result.result,
+        );
+        return "replied but failed to post GitHub comment";
+      }
+      return "replied";
+    },
+  );
 }
 
 async function handlePullRequestReviewComment(
   payload: GitHubWebhookPayload,
+  correlationId?: string,
 ): Promise<string | undefined> {
   const repo = payload.repository?.full_name;
   const pr = payload.pull_request;
@@ -156,35 +166,41 @@ async function handlePullRequestReviewComment(
   const threadKey = `github:${repo}:pr:${pr.number}`;
   const messageTs = `${comment.id}`;
 
-  return runWithToolContext({ userId: sender, userEmail: "", channelId: "", threadKey }, async () => {
-    const ctx = getToolContext();
-    const { text, sessionFilename } = await handleMessage(
-      threadKey,
-      cleaned,
-      messageTs,
-      sender,
-      "",
-      "github",
-    );
+  return runWithToolContext(
+    { userId: sender, userEmail: "", channelId: "", threadKey, correlationId },
+    async () => {
+      const ctx = getToolContext();
+      const { text, sessionFilename } = await handleMessage(
+        threadKey,
+        cleaned,
+        messageTs,
+        sender,
+        "",
+        "github",
+      );
 
-    ctx.sessionFilename = sessionFilename;
+      ctx.sessionFilename = sessionFilename;
 
-    const result = await runToolCall(
-      {
-        tool: "comment_on_issue",
-        params: { repo, issue_number: pr.number, body: text },
-      },
-      8_000,
-      "basic",
-      "github",
-    );
+      const result = await runToolCall(
+        {
+          tool: "comment_on_issue",
+          params: { repo, issue_number: pr.number, body: text },
+        },
+        8_000,
+        "basic",
+        "github",
+      );
 
-    if (result.error) {
-      console.error("Failed to post GitHub comment:", result.result);
-      return "replied but failed to post GitHub comment";
-    }
-    return "replied";
-  });
+      if (result.error) {
+        console.error(
+          `[correlationId=${correlationId ?? "none"}] Failed to post GitHub comment:`,
+          result.result,
+        );
+        return "replied but failed to post GitHub comment";
+      }
+      return "replied";
+    },
+  );
 }
 
 async function handleWebhook(req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -223,19 +239,23 @@ async function handleWebhook(req: IncomingMessage, res: ServerResponse): Promise
     return;
   }
 
-  console.log(`GitHub webhook received: event=${event} delivery=${delivery ?? "unknown"}`);
+  const correlationId = delivery ?? `gh-${Date.now()}`;
+  console.log(`GitHub webhook received: event=${event} delivery=${delivery ?? "unknown"} correlationId=${correlationId}`);
 
   let result: string | undefined;
   try {
     if (event === "issue_comment") {
-      result = await handleIssueComment(payload);
+      result = await handleIssueComment(payload, correlationId);
     } else if (event === "pull_request_review_comment") {
-      result = await handlePullRequestReviewComment(payload);
+      result = await handlePullRequestReviewComment(payload, correlationId);
     } else {
       result = `ignored: unsupported event ${event}`;
     }
   } catch (err) {
-    console.error("Error handling GitHub webhook:", err instanceof Error ? err.message : String(err));
+    console.error(
+      `[correlationId=${correlationId}] Error handling GitHub webhook:`,
+      err instanceof Error ? err.message : String(err),
+    );
     sendJson(res, 500, { error: "internal error" });
     return;
   }

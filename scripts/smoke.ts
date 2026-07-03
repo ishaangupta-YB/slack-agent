@@ -2035,6 +2035,37 @@ rLQ+epZplw==
   assert.strictEqual(mentionJson.result, "replied");
   assert(ghBotCommentBody.includes("Hello from the GitHub bot!"), "Expected comment body to include agent reply");
 
+  // Correlation IDs in GitHub-only mode: the X-GitHub-Delivery header becomes
+  // the request correlation ID and is persisted to the session JSONL.
+  const ghDelivery = "gh-delivery-corr-test";
+  const corrMentionBody = {
+    action: "created",
+    repository: { full_name: "gh-owner/gh-repo", owner: { login: "gh-owner" } },
+    issue: { number: 43, user: { login: "gh-owner" } },
+    comment: { body: "@moon-bot correlation test", user: { login: "alice" }, id: 1006 },
+    sender: { login: "alice" },
+  };
+  const corrPayload = JSON.stringify(corrMentionBody);
+  const corrMention = await fetch(`http://localhost:${ghPort}/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-GitHub-Event": "issue_comment",
+      "X-GitHub-Delivery": ghDelivery,
+      "X-Hub-Signature-256": makeSignature(corrPayload),
+    },
+    body: corrPayload,
+  });
+  assert.strictEqual(corrMention.status, 200);
+  const corrSessionFilename = await getSessionFilenameByThreadKey("github:gh-owner/gh-repo:issue:43");
+  assert(corrSessionFilename, "GitHub correlation test should create a session");
+  const corrSessionMessages = await readSessionMessages(corrSessionFilename);
+  const ghCorrIds = corrSessionMessages
+    .map((m) => m.correlationId)
+    .filter((id): id is string => Boolean(id));
+  assert(ghCorrIds.length >= 1, "GitHub session should include correlation IDs");
+  assert(ghCorrIds.every((id) => id === ghDelivery), "GitHub correlation ID should match X-GitHub-Delivery");
+
   cfg.githubBot.webhookPort = originalGhWebhookPort;
   cfg.githubBot.webhookSecret = originalGhWebhookSecret;
   cfg.githubBot.allowedRepos = [];
@@ -3463,6 +3494,69 @@ rLQ+epZplw==
   const binaryUserMessage = binarySessionMessages.find((m) => m.role === "user" && m.content.includes("Describe this image"));
   assert(binaryUserMessage, "binary attachment session should contain the user's text message");
   assert(!binaryUserMessage.content.includes("photo.png"), "binary attachment content should not be appended to the prompt");
+
+  // 9) Correlation IDs are generated per Slack request and persisted to the
+  //    session JSONL so operators can trace a message through logs and artifacts.
+  const corrThreadKey = `D_CORR_${randomUUID().slice(0, 8)}`;
+  routingCalls = [];
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: corrThreadKey,
+        ts: "1777000100.000000",
+        user: "U1",
+        text: "What is my correlation ID?",
+      },
+      event_ts: "1234567890.000009",
+    },
+    ack: async () => {},
+  });
+  const corrSession = await getSessionFilenameByThreadKey(corrThreadKey);
+  assert(corrSession, "correlation-id test should create an active session");
+  const corrMessages = await readSessionMessages(corrSession);
+  const corrIds = corrMessages
+    .map((m) => m.correlationId)
+    .filter((id): id is string => Boolean(id));
+  assert(corrIds.length >= 2, "system and user messages should carry a correlation ID");
+  assert.strictEqual(new Set(corrIds).size, 1, "all messages in the request should share the same correlation ID");
+
+  // 10) When the agent fails, the error log includes the correlation ID and
+  //     Slack routing context for debugging.
+  const corrErrorThreadKey = `D_CORR_ERR_${randomUUID().slice(0, 8)}`;
+  let capturedError = "";
+  const originalConsoleError = console.error;
+  console.error = (...args: unknown[]) => {
+    capturedError += args.join(" ") + "\n";
+  };
+  setChatOverride(async () => {
+    throw new Error("simulated LLM failure for correlation test");
+  });
+  await app.processEvent({
+    body: {
+      type: "event_callback",
+      event: {
+        type: "message",
+        channel_type: "im",
+        channel: corrErrorThreadKey,
+        ts: "1777000101.000000",
+        user: "U1",
+        text: "Trigger an error",
+      },
+      event_ts: "1234567890.000010",
+    },
+    ack: async () => {},
+  });
+  console.error = originalConsoleError;
+  clearChatOverride();
+  assert(capturedError.includes("correlationId="), "error log should include correlationId");
+  assert(
+    capturedError.includes(`channel=${corrErrorThreadKey}`),
+    `error log should include channel context: ${capturedError}`,
+  );
+  assert(capturedError.includes("simulated LLM failure"), "error log should surface the underlying error");
 
   clearChatOverride();
   console.log("Channel / MPIM / DM message routing passed");
