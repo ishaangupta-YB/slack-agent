@@ -1,6 +1,5 @@
 import { access, constants, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { pingLLM } from "./llm/cloudflare.js";
 
 export interface DiagnosticCheck {
   name: string;
@@ -137,6 +136,9 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
   // Slack testing to confirm Cloudflare Workers AI is reachable.
   if (env("DIAGNOSE_LLM_PING") === "true") {
     try {
+      // Lazy-load the LLM module so runDiagnostics can be invoked before Cloudflare
+      // credentials are configured (e.g., `npm run diagnose` on a fresh clone).
+      const { pingLLM } = await import("./llm/cloudflare.js");
       const ping = await pingLLM();
       if (ping.ok) {
         checks.push({ name: "LLM connectivity", status: "ok", message: `${ping.model} responded in ${ping.latencyMs}ms` });
