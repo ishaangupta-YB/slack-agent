@@ -1,5 +1,5 @@
 import assert from "node:assert";
-import { createHmac, randomUUID } from "node:crypto";
+import { createHmac, generateKeyPairSync, randomUUID } from "node:crypto";
 import { createServer } from "node:http";
 import { existsSync, rmSync, readFileSync, writeFileSync, mkdirSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -61,6 +61,7 @@ import { logSecurityEvent } from "../src/tools/security.js";
 import { loadSkills } from "../src/skills/loader.js";
 import { verifySlack } from "./verify-slack.js";
 import { verifyCloudflare } from "./verify-cloudflare.js";
+import { verifyGitHub } from "./verify-github.js";
 import { runSlackE2E } from "./slack-e2e.js";
 import { checkSubmission } from "./prepare-submission.js";
 
@@ -5339,6 +5340,107 @@ rLQ+epZplw==
   assert(fallbackCfResult.checks.some((c) => c.name === "fallback_model" && c.ok));
 
   console.log("Cloudflare Workers AI verification passed");
+
+  // GitHub connectivity verification: confirm missing credentials, token-mode success + scopes,
+  // token-mode failure, and GitHub App installation-token exchange are all detected.
+  const missingGhResult = await verifyGitHub({ token: "" });
+  assert.strictEqual(missingGhResult.ok, false);
+  assert.strictEqual(missingGhResult.mode, "none");
+  assert(missingGhResult.checks.some((c) => c.name === "env_credentials" && !c.ok));
+
+  const goodGhFetch: typeof fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("/rate_limit")) {
+      return new Response(
+        JSON.stringify({ resources: { core: { remaining: 4987, limit: 5000 } } }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    return new Response(
+      JSON.stringify({ login: "moonbot", name: "Moon Bot" }),
+      {
+        status: 200,
+        headers: {
+          "content-type": "application/json",
+          "X-OAuth-Scopes": "repo, read:user, workflow",
+        },
+      },
+    );
+  };
+  const goodGhResult = await verifyGitHub({
+    token: "ghp_testtoken",
+    fetchImpl: goodGhFetch,
+  });
+  assert.strictEqual(goodGhResult.ok, true);
+  assert.strictEqual(goodGhResult.mode, "token");
+  assert(goodGhResult.checks.some((c) => c.name === "env_credentials" && c.ok));
+  assert(
+    goodGhResult.checks.some(
+      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Moon Bot"),
+    ),
+  );
+  assert(
+    goodGhResult.checks.some(
+      (c) => c.name === "token_scopes" && c.ok && c.message.includes("repo"),
+    ),
+  );
+  assert(
+    goodGhResult.checks.some(
+      (c) => c.name === "rate_limit" && c.ok && c.message.includes("4987"),
+    ),
+  );
+
+  const badGhFetch: typeof fetch = async () => {
+    return new Response(JSON.stringify({ message: "Bad credentials" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  };
+  const badGhResult = await verifyGitHub({ token: "ghp_bad", fetchImpl: badGhFetch });
+  assert.strictEqual(badGhResult.ok, false);
+  assert(badGhResult.checks.some((c) => c.name === "api_reachable" && !c.ok && c.message.includes("401")));
+
+  const appGhFetch: typeof fetch = async (url, init) => {
+    const u = String(url);
+    const method = (init as RequestInit | undefined)?.method ?? "GET";
+    if (u.includes("/app/installations/123/access_tokens") && method === "POST") {
+      return new Response(JSON.stringify({ token: "v1.installation-token" }), {
+        status: 201,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    if (u.includes("/app")) {
+      return new Response(JSON.stringify({ slug: "moon-bot", name: "Moon Bot App" }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return new Response(
+      JSON.stringify({ resources: { core: { remaining: 4999, limit: 5000 } } }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  };
+  const { privateKey: testGhAppPrivateKey } = generateKeyPairSync("rsa", {
+    modulusLength: 2048,
+    privateKeyEncoding: { type: "pkcs1", format: "pem" },
+    publicKeyEncoding: { type: "spki", format: "pem" },
+  });
+  const goodGhAppResult = await verifyGitHub({
+    appId: "123",
+    privateKey: testGhAppPrivateKey,
+    installationId: "123",
+    fetchImpl: appGhFetch,
+  });
+  assert.strictEqual(goodGhAppResult.ok, true);
+  assert.strictEqual(goodGhAppResult.mode, "app");
+  assert(goodGhAppResult.checks.some((c) => c.name === "app_installation_token" && c.ok));
+  assert(
+    goodGhAppResult.checks.some(
+      (c) => c.name === "api_reachable" && c.ok && c.message.includes("Moon Bot App"),
+    ),
+  );
+
+  console.log("GitHub connectivity verification passed");
 
   // End-to-end Slack message test: post a message and poll for the bot's reply.
   // The first poll has not seen the bot reply yet; the second poll returns it.

@@ -147,13 +147,14 @@ node dist/app.js --check
 npm run diagnose
 npm run verify-cloudflare
 npm run verify-slack
+npm run verify-github
 npm run prepare-submission
 npm start
 ```
 
 `npm run verify-slack` also compares the installed bot token's actual scopes with the scopes declared in `manifest.json` and generates a Socket Mode connection URL via `apps.connections.open`, catching stale app installs or missing `connections:write` scope before the bot starts Socket Mode.
 
-`npm run verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot connects to Slack. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
+`npm run verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot connects to Slack. `npm run verify-github` validates that a personal access token or GitHub App installation can authenticate to the GitHub API, lists token scopes, and confirms App-token exchange so GitHub tools (PRs, issues, code review) work before the bot starts. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a test message and confirm Moon Bot replies in a real workspace.
 
 Or use Docker:
 
@@ -234,7 +235,7 @@ Use these prompts to show off the three mandatory technologies and the agentic w
 - [x] README with architecture diagram and quick-start
 - [x] Production bundle startup check (`node dist/app.js --check`)
 - [x] Pre-flight diagnostic (`npm run diagnose`)
-- [x] Slack connectivity verification (`npm run verify-slack` and `npm run verify-cloudflare`)
+- [x] Slack connectivity verification (`npm run verify-slack`, `npm run verify-cloudflare`, and `npm run verify-github`)
 - [x] Submission readiness check (`npm run prepare-submission`)
 - [ ] Slack developer sandbox URL (to be filled when sandbox is provisioned)
 - [ ] Demo video link (to be filled before final submission)

@@ -142,11 +142,12 @@ node dist/app.js --check       # validate startup without connecting to Slack (t
 npm run diagnose               # validate env vars and local directories
 npm run verify-cloudflare      # ping the configured Cloudflare Workers AI model(s)
 npm run verify-slack           # validate Slack token scopes and connectivity
+npm run verify-github          # validate GitHub token or App credentials and API reachability
 npm run slack-e2e              # post a test message and verify Moon Bot replies (requires SLACK_E2E_CHANNEL)
 npm run prepare-submission     # verify deliverables are present and forbidden files are untracked
 ```
 
-`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot starts. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode. It also compares the installed bot token's actual scopes against the scopes declared in `manifest.json` and generates a Socket Mode connection URL via `apps.connections.open` so stale installs or missing `connections:write` scope are caught early. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a live message and poll for the bot's reply in a real Slack workspace.
+`--check` starts the bucket server, credential proxies, and tool registry, then exits cleanly — a quick way to confirm the production build loads correctly before connecting to Slack. It can be run immediately after `npm run build`, even before Slack and Cloudflare tokens are configured. `diagnose` validates required tokens, optional integrations, writable runtime directories, and security flags. `verify-cloudflare` sends a tiny prompt to the configured Cloudflare Workers AI model (and fallback model, if configured) and reports latency, so model credential or catalog issues are caught before the bot starts. `verify-slack` calls the Slack Web API to confirm the bot token, Socket Mode app token, required scopes, and optional user token are ready before starting Socket Mode. It also compares the installed bot token's actual scopes against the scopes declared in `manifest.json` and generates a Socket Mode connection URL via `apps.connections.open` so stale installs or missing `connections:write` scope are caught early. `verify-github` checks that a personal access token (GITHUB_TOKEN) or GitHub App credentials (GITHUB_APP_ID, GITHUB_PRIVATE_KEY, GITHUB_INSTALLATION_ID) can authenticate to the GitHub API, lists granted scopes for token mode, and exchanges an installation token for App mode so GitHub tools work before the bot starts. Once the bot is running, set `SLACK_E2E_CHANNEL` and run `npm run slack-e2e` to post a live message and poll for the bot's reply in a real Slack workspace.
 
 ### 5. Talk to Moon Bot
 
@@ -206,6 +207,7 @@ npm run smoke        # Full integration smoke suite
 npm run diagnose          # Pre-flight config validation
 npm run verify-cloudflare # Pre-flight Cloudflare Workers AI model validation
 npm run verify-slack      # Pre-flight Slack connectivity validation
+npm run verify-github     # Pre-flight GitHub credential validation
 npm run slack-e2e         # Live end-to-end Slack message test
 npm run dev          # Run with tsx (no build step)
 ```
