@@ -181,6 +181,7 @@ npm run prepare-submission     # verify deliverables are present and forbidden f
 | `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | no | AWS Athena |
 | `SIZZLE_DATA_DIR` | no | DuckDB/Sizzle data |
 | `HF_TOKEN` / `HF_BUCKET_REPO` | no | Use HuggingFace Bucket for artifacts |
+| `BUCKET_HTTP_HOST` | no | Interface the bucket server binds to (default: `127.0.0.1`; use `0.0.0.0` in Docker/Kubernetes) |
 | `MCP_SERVERS` | no | JSON map of MCP servers |
 | `USER_TIERS` / `OKTA_*` | no | Access-tier resolution |
 | `GITHUB_ONLY` | no | Set to `true` to run as a GitHub-only bot (no Slack required) |
@@ -234,7 +235,7 @@ Try these in Slack to show off the core tracks:
 
 ## Deployment
 
-A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_PORT`, uses `src/healthcheck.ts` for container health checks, and runs in Socket Mode — no public ingress URL is required for Slack events.
+A production-ready Dockerfile and `docker-compose.yml` are included. The container exposes the artifact bucket server on `BUCKET_HTTP_HOST:BUCKET_HTTP_PORT` (set to `0.0.0.0:3001` by default in the image), uses `src/healthcheck.ts` for container health checks, and runs in Socket Mode — no public ingress URL is required for Slack events.
 
 ### GitHub-only bot mode
 

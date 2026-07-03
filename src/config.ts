@@ -94,6 +94,7 @@ export const cfg = {
     bucketDir: process.env.BUCKET_DIR || "./bucket",
     bucketPublicUrl: process.env.BUCKET_PUBLIC_URL || "",
     bucketHttpPort: parseInt(process.env.BUCKET_HTTP_PORT || "3001", 10),
+    bucketHttpHost: process.env.BUCKET_HTTP_HOST || "127.0.0.1",
     enableBucketServer: process.env.BUCKET_HTTP_PORT !== "0",
   },
   hf: {

@@ -31,6 +31,7 @@ ENV MEMORY_FILE=/app/data/sessions/memory.json
 ENV THREAD_MAP_FILE=/app/data/sessions/thread-map.json
 ENV BUCKET_DIR=/app/data/bucket
 ENV BUCKET_HTTP_PORT=3001
+ENV BUCKET_HTTP_HOST=0.0.0.0
 ENV PORT=3001
 
 VOLUME ["/app/data"]

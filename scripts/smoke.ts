@@ -2628,8 +2628,11 @@ rLQ+epZplw==
   console.log("HuggingFace Bucket integration passed");
 
   // Bucket server health endpoint
-  await startBucketServer();
+  const bucketServer = await startBucketServer();
   try {
+    const address = bucketServer.address() as { address: string; port: number };
+    assert.strictEqual(address.address, cfg.storage.bucketHttpHost, "bucket server should bind to configured host");
+    assert.strictEqual(address.port, cfg.storage.bucketHttpPort, "bucket server should listen on configured port");
     const healthUrl = `http://localhost:${cfg.storage.bucketHttpPort}/health`;
     const healthRes = await fetch(healthUrl);
     assert.strictEqual(healthRes.status, 200);

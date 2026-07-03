@@ -159,9 +159,11 @@ export function startBucketServer(): Promise<Server> {
       }
     });
 
-    server.listen(cfg.storage.bucketHttpPort, () => {
+    server.listen(cfg.storage.bucketHttpPort, cfg.storage.bucketHttpHost, () => {
       activeServer = server;
-      console.log(`Bucket server listening on port ${cfg.storage.bucketHttpPort}`);
+      console.log(
+        `Bucket server listening on ${cfg.storage.bucketHttpHost}:${cfg.storage.bucketHttpPort}`,
+      );
       resolveStart(server);
     });
 

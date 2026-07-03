@@ -12,6 +12,7 @@ services:
       - BUCKET_DIR=/app/data/bucket
       - BUCKET_PUBLIC_URL=${BUCKET_PUBLIC_URL:-http://localhost:3001}
       - BUCKET_HTTP_PORT=3001
+      - BUCKET_HTTP_HOST=0.0.0.0
     ports:
       - "${BUCKET_HTTP_PORT:-3001}:3001"
     volumes:

@@ -426,7 +426,8 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
   // Bucket public URL
   const usesHfBucket = isSet("HF_TOKEN") && isSet("HF_BUCKET_REPO");
   if (!usesHfBucket && !isSet("BUCKET_PUBLIC_URL") && env("BUCKET_HTTP_PORT") !== "0") {
-    checks.push({ name: "BUCKET_PUBLIC_URL", status: "warn", message: "Not set — artifact buttons will use local filesystem paths" });
+    const defaultUrl = `http://localhost:${env("BUCKET_HTTP_PORT") || "3001"}`;
+    checks.push({ name: "BUCKET_PUBLIC_URL", status: "warn", message: `Not set — artifact buttons will fallback to ${defaultUrl}; set BUCKET_PUBLIC_URL for a public hostname` });
   }
 
   const fails = checks.filter((c) => c.status === "fail").length;
