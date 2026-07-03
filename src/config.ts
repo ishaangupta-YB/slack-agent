@@ -65,6 +65,8 @@ export const cfg = {
       installationId: process.env.GITHUB_INSTALLATION_ID || "",
     },
     githubUserMap: parseJsonMap(process.env.GITHUB_USER_MAP),
+    githubApiRetries: parseInt(process.env.GITHUB_API_RETRIES || "2", 10),
+    githubApiRetryBaseMs: parseInt(process.env.GITHUB_API_RETRY_BASE_MS || "1000", 10),
     plausibleApiKey: process.env.PLAUSIBLE_API_KEY,
     esUrl: process.env.ES_URL,
     esApiKey: process.env.ES_API_KEY,

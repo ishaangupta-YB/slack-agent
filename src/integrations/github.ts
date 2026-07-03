@@ -121,30 +121,71 @@ export async function getGitHubToken(): Promise<string> {
   return cfg.integrations.githubToken;
 }
 
+function isRetryableGitHubError(status: number): boolean {
+  return status >= 500 || status === 429 || status === 408 || status === 409;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function githubApi<T>(path: string, options: RequestInit = {}): Promise<T> {
   const url = path.startsWith("http") ? path : `${GH_API_BASE}${path}`;
   const token = await getGitHubToken();
-  const resp = await fetch(url, {
-    ...options,
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-  });
 
-  if (!resp.ok) {
-    const body = await resp.text();
-    throw new Error(`GitHub API ${options.method || "GET"} ${path} failed (${resp.status}): ${body}`);
+  const maxRetries = cfg.integrations.githubApiRetries;
+  const baseMs = cfg.integrations.githubApiRetryBaseMs;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let resp: Response | undefined;
+    try {
+      resp = await fetch(url, {
+        ...options,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+          "Content-Type": "application/json",
+          ...(options.headers || {}),
+        },
+      });
+    } catch (err) {
+      // Network-level failure; retry if we still have attempts left.
+      if (attempt < maxRetries) {
+        const delay = baseMs * 2 ** attempt;
+        console.warn(
+          `GitHub API network error (${path}), retrying in ${delay}ms:`,
+          err instanceof Error ? err.message : String(err),
+        );
+        await sleep(delay);
+        continue;
+      }
+      throw err;
+    }
+
+    if (resp.ok) {
+      if (resp.status === 204) {
+        return undefined as T;
+      }
+      return (await resp.json()) as T;
+    }
+
+    if (!isRetryableGitHubError(resp.status) || attempt >= maxRetries) {
+      const body = await resp.text();
+      throw new Error(
+        `GitHub API ${options.method || "GET"} ${path} failed (${resp.status}): ${body}`,
+      );
+    }
+
+    // Honor GitHub's Retry-After header for 429 responses, otherwise exponential backoff.
+    const retryAfter = resp.headers.get("Retry-After");
+    const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : baseMs * 2 ** attempt;
+    console.warn(`GitHub API ${resp.status} (${path}), retrying in ${delay}ms`);
+    await sleep(delay);
   }
 
-  if (resp.status === 204) {
-    return undefined as T;
-  }
-
-  return (await resp.json()) as T;
+  // Unreachable in practice — the loop always returns or throws above.
+  throw new Error(`GitHub API ${options.method || "GET"} ${path} failed after retries`);
 }
 
 export function buildGitHubActionId(): string {

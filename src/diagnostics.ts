@@ -286,6 +286,19 @@ export async function runDiagnostics(): Promise<DiagnosticResult> {
     checks.push({ name: "GITHUB_USER_MAP", status: "warn", message: "Not set — PR/issue footers will not map to GitHub handles" });
   }
 
+  const githubApiRetries = parseInt(env("GITHUB_API_RETRIES") || "2", 10);
+  const githubApiRetryBaseMs = parseInt(env("GITHUB_API_RETRY_BASE_MS") || "1000", 10);
+  if (Number.isNaN(githubApiRetries) || githubApiRetries < 0) {
+    checks.push({ name: "GITHUB_API_RETRIES", status: "warn", message: "Invalid retry count; must be a non-negative integer" });
+  } else {
+    checks.push({ name: "GITHUB_API_RETRIES", status: "ok", message: `${githubApiRetries} retries` });
+  }
+  if (Number.isNaN(githubApiRetryBaseMs) || githubApiRetryBaseMs <= 0) {
+    checks.push({ name: "GITHUB_API_RETRY_BASE_MS", status: "warn", message: "Invalid base delay; must be a positive number of milliseconds" });
+  } else {
+    checks.push({ name: "GITHUB_API_RETRY_BASE_MS", status: "ok", message: `${githubApiRetryBaseMs}ms` });
+  }
+
   // Optional integrations
   checkOptionalUrl(checks, "ES_URL");
   if (isSet("ES_URL")) {

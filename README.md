@@ -172,6 +172,8 @@ npm run slack-e2e              # post a test message and verify Moon Bot replies
 | `SLACK_MAX_FILE_BYTES` | no | Maximum size in bytes of a Slack file attachment to include in the prompt (default: 1048576) |
 | `AGENT_MAX_CONTEXT_MESSAGES` | no | Max messages sent to the LLM per turn (default: `0` = unlimited); system prompt is always preserved and tool-call/observation pairs are never split |
 | `GITHUB_TOKEN` / `GITHUB_APP_*` | no | GitHub read/write; App auth recommended for PRs |
+| `GITHUB_API_RETRIES` | no | Retries for transient GitHub API errors (default: 2) |
+| `GITHUB_API_RETRY_BASE_MS` | no | Base backoff for GitHub API retries in ms (default: 1000) |
 | `PLAUSIBLE_API_KEY` | no | Plausible analytics |
 | `ES_URL` / `ES_API_KEY` / `ES_USERNAME` / `ES_PASSWORD` | no | Elasticsearch logs |
 | `MONGODB_URI` / `MONGODB_DATABASE` | no | MongoDB queries |

@@ -294,6 +294,7 @@ async function main() {
   assert(statusResult.result.includes("LLM retries:"));
   assert(statusResult.result.includes("Socket Mode"));
   assert(statusResult.result.includes("Slack message retries:"));
+  assert(statusResult.result.includes("GitHub API retries:"));
   assert(statusResult.result.includes("Bash execution: disabled"));
   assert(statusResult.result.includes("Guest accounts: refused"));
   assert(statusResult.result.includes("Default access tier:"));
@@ -1523,6 +1524,94 @@ async function main() {
   assert(getPrDiffResult.result.includes("src/main.test.ts"));
   assert(getPrDiffResult.result.includes("name is required"));
   console.log("GitHub PR diff review passed");
+
+  // GitHub API retries transient 5xx/429 errors with exponential backoff.
+  const originalGhTokenCfgForRetry = cfg.integrations.githubToken;
+  const originalGhRetryRetries = cfg.integrations.githubApiRetries;
+  const originalGhRetryBaseMs = cfg.integrations.githubApiRetryBaseMs;
+  cfg.integrations.githubToken = "test-token";
+  cfg.integrations.githubApiRetries = 2;
+  cfg.integrations.githubApiRetryBaseMs = 10; // keep smoke test fast
+  let ghRetryCallCount = 0;
+  let ghRetryAfterCallCount = 0;
+  const originalGhFetchForRetry = globalThis.fetch;
+  globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (url.endsWith("/repos/test-owner/test-repo/issues") && (init?.method ?? "GET") === "POST") {
+      ghRetryCallCount++;
+      if (ghRetryCallCount <= 2) {
+        return new Response(JSON.stringify({ message: "Internal Server Error" }), {
+          status: 503,
+          headers: { "content-type": "application/json" },
+        });
+      }
+      const body = JSON.parse((init?.body as string) || "{}") as { title?: string; body?: string };
+      return new Response(
+        JSON.stringify({
+          number: 99,
+          html_url: "https://github.com/test-owner/test-repo/issues/99",
+          title: body.title,
+          body: body.body,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }
+    if (url.includes("/repos/test-owner/test-repo/issues/101/comments")) {
+      ghRetryAfterCallCount++;
+      if (ghRetryAfterCallCount === 1) {
+        return new Response(JSON.stringify({ message: "Rate limited" }), {
+          status: 429,
+          headers: { "content-type": "application/json", "Retry-After": "0" },
+        });
+      }
+      return new Response(
+        JSON.stringify({
+          id: 101,
+          html_url: "https://github.com/test-owner/test-repo/issues/101#issuecomment-101",
+          body: JSON.parse((init?.body as string) || "{}").body,
+        }),
+        { status: 201, headers: { "content-type": "application/json" } },
+      );
+    }
+    if (url.includes("/repos/test-owner/test-repo/issues/102")) {
+      return new Response(JSON.stringify({ message: "Not Found" }), {
+        status: 404,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    return originalGhFetchForRetry(input, init);
+  };
+
+  const ghRetryResult = await runToolCall(
+    { tool: "create_issue", params: { repo: "test-owner/test-repo", title: "Retry test", body: "Retry body" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(ghRetryResult.error, undefined, `create_issue retry failed: ${ghRetryResult.result}`);
+  assert(ghRetryResult.result.includes("Created issue #99"), `Expected success after retries, got: ${ghRetryResult.result}`);
+  assert.strictEqual(ghRetryCallCount, 3, `Expected three GitHub API calls (2 retries + 1 success), got ${ghRetryCallCount}`);
+
+  const ghRetryAfterResult = await runToolCall(
+    { tool: "comment_on_issue", params: { repo: "test-owner/test-repo", issue_number: 101, body: "Retry-after body" } },
+    8_000,
+    "basic",
+  );
+  assert.strictEqual(ghRetryAfterResult.error, undefined, `comment_on_issue retry-after failed: ${ghRetryAfterResult.result}`);
+  assert(ghRetryAfterResult.result.includes("Commented on issue #101"));
+  assert.strictEqual(ghRetryAfterCallCount, 2, `Expected two calls honoring Retry-After, got ${ghRetryAfterCallCount}`);
+
+  const ghNoRetryResult = await runToolCall(
+    { tool: "comment_on_issue", params: { repo: "test-owner/test-repo", issue_number: 102, body: "404 body" } },
+    8_000,
+    "basic",
+  );
+  assert(ghNoRetryResult.result.includes("404"), `Expected non-retryable 404 to fail immediately, got: ${ghNoRetryResult.result}`);
+
+  cfg.integrations.githubToken = originalGhTokenCfgForRetry;
+  cfg.integrations.githubApiRetries = originalGhRetryRetries;
+  cfg.integrations.githubApiRetryBaseMs = originalGhRetryBaseMs;
+  globalThis.fetch = originalGhFetchForRetry;
+  console.log("GitHub API retry passed");
 
   // GitHub App token path + commit_to_pr tool: mint a short-lived installation token and use it to push a commit.
   const testPrivateKey = `-----BEGIN PRIVATE KEY-----
