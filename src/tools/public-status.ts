@@ -21,9 +21,10 @@ const params = z.object({
 export const publicStatusTool: Tool = {
   name: "public_status",
   description:
-    "Check the public status page of an external service. Useful for monitoring civic, nonprofit, or public-infrastructure dependencies from a Slack thread.",
+    "Check the public status page of an external service. Useful for monitoring civic, nonprofit, or public-infrastructure dependencies from a Slack thread or GitHub issue.",
   params,
   tier: "basic",
+  githubBot: true,
   async run(input) {
     const url = input.status_page_url;
     if (!URL.canParse(url)) {

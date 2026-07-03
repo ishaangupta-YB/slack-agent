@@ -1568,6 +1568,7 @@ rLQ+epZplw==
       "memory",
       "moon_help",
       "open_pr",
+      "public_status",
       "read_file",
       "search_code",
       "search_issues",
@@ -1588,7 +1589,6 @@ rLQ+epZplw==
     "plausible_query",
     "weekly_report",
     "deploy_report",
-    "public_status",
     "report_injection",
   ];
   for (const name of slackOnlyTools) {
