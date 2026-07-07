@@ -1,5 +1,5 @@
 {
-  "name": "ishu-slack-agent",
+  "name": "slack-agent",
   "version": "0.1.0",
   "description": "Slack-native coding agent backed by Cloudflare Workers AI",
   "type": "module",

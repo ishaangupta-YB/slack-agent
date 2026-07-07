@@ -42,7 +42,7 @@ export function getDemoMessage(): string {
     `*Agent for Good — public service resilience*\n` +
     `• \`/ishu impact\` — see which public services Ishu is monitoring and their current status\n` +
     `• \`Check the status page for status.cloudflare.com and tell me if any public services nonprofits rely on are degraded.\`\n` +
-    `• \`File a GitHub issue in huggingface/ishu-slack-agent summarizing the degraded service.\`\n\n` +
+    `• \`File a GitHub issue in huggingface/slack-agent summarizing the degraded service.\`\n\n` +
 
     `*Workflow polish*\n` +
     `• Select any message → “Ask Ishu” for a threaded reply.\n` +

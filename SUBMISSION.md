@@ -2,7 +2,7 @@
 
 **Track:** New Slack Agent / Slack Agent for Good  
 **Team:** Ishu  
-**Repo:** `ishu-slack-agent`
+**Repo:** `slack-agent`
 
 ---
 

@@ -1,7 +1,7 @@
 services:
   ishu:
     build: .
-    container_name: ishu-slack-agent
+    container_name: slack-agent
     env_file:
       - .env
     environment:

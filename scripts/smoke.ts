@@ -2168,7 +2168,7 @@ rLQ+epZplw==
       typeof lastMessage?.content === "string" &&
       lastMessage.content.includes("[tool result] read_file");
     if (isObservation) {
-      return "The project name is ishu-slack-agent (from package.json).";
+      return "The project name is slack-agent (from package.json).";
     }
     return '<tool_call>\n{"tool": "read_file", "params": {"path": "package.json"}}\n</tool_call>';
   });
@@ -2183,7 +2183,7 @@ rLQ+epZplw==
     e2eUserId,
   );
   assert(
-    e2eResult.text.includes("ishu-slack-agent"),
+    e2eResult.text.includes("slack-agent"),
     `Expected final answer to mention project name, got: ${e2eResult.text}`,
   );
 
@@ -2196,7 +2196,7 @@ rLQ+epZplw==
   assert(e2eSession.some((m) => m.role === "system"), "Session should contain system prompt");
   assert(e2eSession.some((m) => m.role === "user" && String(m.content).includes("project name")), "Session should contain user message");
   assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("tool_call")), "Session should contain assistant tool call");
-  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("ishu-slack-agent")), "Session should contain final answer");
+  assert(e2eSession.some((m) => m.role === "assistant" && String(m.content).includes("slack-agent")), "Session should contain final answer");
 
   const e2eMemory = await searchMemory("project name");
   assert(e2eMemory.length >= 1, "Memory should record the end-to-end interaction");
