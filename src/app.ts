@@ -48,6 +48,11 @@ const isCheckMode = process.argv.includes("--check");
   }
 
   const { app } = await import("./slack.js");
+  // The Bolt app is constructed with deferInitialization: true (see slack.ts),
+  // so its one-time async setup (auth.test, bot user id resolution) must be run
+  // explicitly before start(). Without this, app.start() throws
+  // AppInitializationError and the process exits on boot.
+  await app.init();
   await startScheduler(app);
   await app.start();
   console.log("Ishu is running in Socket Mode");
