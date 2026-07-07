@@ -5,9 +5,38 @@ export interface Message {
   content: string;
 }
 
-interface RunResponse {
+interface ChatChoice {
+  message?: { content?: string };
+  text?: string;
+}
+
+interface RunResult {
   response?: string;
-  result?: { response?: string } | string;
+  choices?: ChatChoice[];
+}
+
+export interface RunResponse {
+  response?: string;
+  choices?: ChatChoice[];
+  result?: RunResult | string;
+}
+
+/**
+ * Pull the assistant text out of a Workers AI /ai/run response. Cloudflare
+ * returns two shapes depending on the model: the legacy `result.response`
+ * string, and the OpenAI-style `result.choices[0].message.content` used by the
+ * newer chat models (e.g. the Kimi K2 family). Handle both, plus the rare case
+ * where `result` is itself a bare string.
+ */
+export function extractResponseText(json: RunResponse): string | undefined {
+  if (typeof json.result === "string") return json.result;
+  return (
+    json.result?.response ??
+    json.result?.choices?.[0]?.message?.content ??
+    json.response ??
+    json.choices?.[0]?.message?.content ??
+    undefined
+  );
 }
 
 let chatOverride: ((messages: Message[]) => Promise<string>) | undefined;
@@ -92,10 +121,7 @@ async function chatWithModel(model: string, messages: Message[]): Promise<string
       const json = await fetchChat(messages, controller.signal, model);
       clearTimeout(timer);
 
-      if (typeof json.result === "string") {
-        return json.result;
-      }
-      const text = json.result?.response ?? json.response;
+      const text = extractResponseText(json);
       if (!text) {
         throw new Error(`Unexpected Cloudflare response: ${JSON.stringify(json)}`);
       }

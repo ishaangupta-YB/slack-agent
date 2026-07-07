@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { pathToFileURL } from "node:url";
+import { extractResponseText, type RunResponse } from "../src/llm/cloudflare.js";
 
 export interface CloudflareVerifyCheck {
   name: string;
@@ -12,11 +13,6 @@ export interface CloudflareVerifyResult {
   checks: CloudflareVerifyCheck[];
   primaryModel: string;
   fallbackModel?: string;
-}
-
-interface RunResponse {
-  response?: string;
-  result?: { response?: string } | string;
 }
 
 interface FetchModelPingOptions {
@@ -61,12 +57,7 @@ async function fetchModelPing(options: FetchModelPingOptions): Promise<{ latency
   }
 
   const json = (await resp.json()) as RunResponse;
-  let text: string;
-  if (typeof json.result === "string") {
-    text = json.result;
-  } else {
-    text = json.result?.response ?? json.response ?? "";
-  }
+  const text = extractResponseText(json);
   if (!text) {
     throw new Error(`Unexpected Cloudflare response: ${JSON.stringify(json)}`);
   }
