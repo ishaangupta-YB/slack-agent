@@ -1,5 +1,6 @@
 import { cfg } from "./config.js";
 import { startBucketServer, stopBucketServer } from "./storage/server.js";
+import { restoreFromR2, startR2Sync, flushR2 } from "./storage/r2-sync.js";
 import { initializeTools, shutdownTools } from "./tools/registry.js";
 import { startScheduler, stopScheduler } from "./scheduler.js";
 import { startEsProxy, stopEsProxy } from "./proxy/es.js";
@@ -9,6 +10,11 @@ import { startHfProxy, stopHfProxy } from "./proxy/hf.js";
 const isCheckMode = process.argv.includes("--check");
 
 (async () => {
+  // Restore durable state (sessions, memory, artifacts) from R2 before any
+  // server reads local disk. No-op unless R2 is configured.
+  if (!isCheckMode) {
+    await restoreFromR2();
+  }
   if (cfg.storage.enableBucketServer) {
     await startBucketServer();
   }
@@ -31,6 +37,10 @@ const isCheckMode = process.argv.includes("--check");
     process.exit(0);
   }
 
+  // Begin mirroring durable state to R2 now that the process is up. No-op
+  // unless R2 is configured.
+  startR2Sync();
+
   if (cfg.githubBot.enabled) {
     const { startGitHubBotServer } = await import("./github-bot.js");
     await startGitHubBotServer();
@@ -45,6 +55,8 @@ const isCheckMode = process.argv.includes("--check");
 
 async function shutdown(signal: string) {
   console.log(`Received ${signal}, shutting down...`);
+  // Final durable-state flush before the ephemeral disk goes away.
+  await flushR2();
   await stopScheduler();
   stopEsProxy();
   stopPlausibleProxy();

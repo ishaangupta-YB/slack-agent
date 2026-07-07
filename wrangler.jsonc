@@ -1,0 +1,45 @@
+{
+  // Cloudflare Worker + Container deployment for Ishu.
+  //
+  // Deploy with `npx wrangler deploy` (locally, or from GitHub Actions where
+  // Docker is available). Wrangler builds ./Dockerfile into a linux/amd64
+  // image, pushes it to the account's managed registry, and deploys the Worker
+  // defined in worker/index.ts.
+  //
+  // account_id is taken from the CLOUDFLARE_ACCOUNT_ID env var (CI) or your
+  // `wrangler login` session (local), so it is intentionally not hard-coded.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "ishu-slack-agent",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  "containers": [
+    {
+      "class_name": "IshuContainer",
+      "image": "./Dockerfile",
+      // standard-1 = 0.5 vCPU / 4 GiB / 8 GB disk. Comfortable headroom for
+      // Node + git + the agent. Drop to "basic" (0.25 vCPU / 1 GiB) to cut cost.
+      "instance_type": "standard-1",
+      // Socket Mode requires exactly ONE connection — never scale this out.
+      "max_instances": 1
+    }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "ISHU_CONTAINER", "class_name": "IshuContainer" }
+    ]
+  },
+
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["IshuContainer"] }
+  ],
+
+  // Keep-alive: re-poke the always-on container every 2 minutes so the outbound
+  // Slack Socket Mode connection never idles out.
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  }
+}

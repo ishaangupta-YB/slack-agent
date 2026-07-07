@@ -1,7 +1,7 @@
 {
   "display_information": {
     "name": "Ishu",
-    "description": "A Slack-native engineering agent that uses AI, MCP servers, and real-time search to answer questions, write code, open PRs, and monitor ops.",
+    "description": "A Slack-native engineering agent using AI, MCP, and search to answer questions, write code, open PRs, and monitor ops.",
     "background_color": "#1a1a1a"
   },
   "features": {
@@ -11,7 +11,7 @@
       "messages_tab_read_only_enabled": false
     },
     "assistant_view": {
-      "name": "Ishu"
+      "assistant_description": "Ask engineering questions, write code, open PRs, and monitor ops."
     },
     "bot_user": {
       "display_name": "Ishu",

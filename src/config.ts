@@ -101,6 +101,26 @@ export const cfg = {
     token: process.env.HF_TOKEN || "",
     bucketRepo: process.env.HF_BUCKET_REPO || "",
   },
+  r2: {
+    // Durable object storage for sessions + artifacts so that continuity
+    // survives container restarts on ephemeral-disk platforms (e.g. Cloudflare
+    // Containers). Fully off unless an account id, bucket, and credentials are
+    // all present; when off, the app behaves exactly as a local/Docker deploy.
+    accountId: process.env.R2_ACCOUNT_ID || process.env.CLOUDFLARE_ACCOUNT_ID || "",
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || "",
+    bucket: process.env.R2_BUCKET || "",
+    // Override the S3 endpoint if needed; defaults to the account's R2 endpoint.
+    endpoint: process.env.R2_ENDPOINT || "",
+    // Key prefix inside the bucket, so multiple deployments can share a bucket.
+    prefix: (process.env.R2_PREFIX || "ishu").replace(/^\/+|\/+$/g, ""),
+    syncIntervalMs: parseInt(process.env.R2_SYNC_INTERVAL_MS || "20000", 10),
+    get enabled(): boolean {
+      return Boolean(
+        this.accountId && this.accessKeyId && this.secretAccessKey && this.bucket,
+      );
+    },
+  },
   mcp: {
     serversRaw: process.env.MCP_SERVERS,
   },
