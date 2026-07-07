@@ -17,6 +17,14 @@
 
   "containers": [
     {
+      // Pinned to the container application that already owns the
+      // IshuContainer DO namespace (created when the Worker was named
+      // "ishu-slack-agent"). Renaming the Worker to "slack-agent" changed the
+      // auto-derived app name, which would otherwise try to create a SECOND
+      // app on the same DO namespace and fail with
+      // DURABLE_OBJECT_ALREADY_HAS_APPLICATION. Keep this pin so deploys
+      // update the existing app instead.
+      "name": "ishu-slack-agent-ishucontainer",
       "class_name": "IshuContainer",
       "image": "./Dockerfile",
       // standard-1 = 0.5 vCPU / 4 GiB / 8 GB disk. Comfortable headroom for
