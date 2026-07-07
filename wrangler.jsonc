@@ -9,7 +9,7 @@
   // account_id is taken from the CLOUDFLARE_ACCOUNT_ID env var (CI) or your
   // `wrangler login` session (local), so it is intentionally not hard-coded.
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "ishu-slack-agent",
+  "name": "slack-agent",
   "main": "worker/index.ts",
   "compatibility_date": "2025-11-01",
   "compatibility_flags": ["nodejs_compat"],
